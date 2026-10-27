@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Base Postgres (Neon). La même URL sert en local et en ligne :
+// colle-la dans DATABASE_URL (.env en local, réglages Vercel en ligne).
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  title     String   @default("Sans titre")
+  icon      String   @default("📄")
+  content   String   @default("[]") // blocs JSON
+  parentId  String?
+  parent    Page?    @relation("Tree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Page[]   @relation("Tree")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id        String    @id @default(cuid())
+  title     String
+  notes     String    @default("")
+  status    String    @default("todo") // todo | doing | done
+  category  String    @default("Créa")
+  date      DateTime?
+  endDate   DateTime? // fin, pour une tâche sur plusieurs jours
+  startTime String    @default("") // horaire facultatif "HH:MM" (tâche d'un seul jour)
+  endTime   String    @default("")
+  blockEventId String  @default("") // créneau bloqué dans Google Agenda pour cette tâche
+  blockCalId   String  @default("")
+  repeat        String    @default("") // "" | daily | every2days | every3days | weekdays | weekly | biweekly | monthly
+  repeatUntil   DateTime?
+  repeatSpawned Boolean   @default(false) // la tâche suivante a déjà été créée
+  props     String    @default("{}") // valeurs des propriétés perso (JSON)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  date      DateTime
+  label     String
+  kind      String   // recette | depense
+  amount    Float
+  category  String   @default("")
+  client    String   @default("")
+  payment   String   @default("Virement")
+  reference String   @default("") // n° de facture
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Settings {
+  id       Int    @id @default(1)
+  rate     Float  @default(24.6) // taux de cotisations URSSAF (%)
+  ceiling  Float  @default(77700) // plafond de CA micro
+  activity String @default("BNC - prestations de services")
+}
+
+// Agenda externe (Google, Apple, Outlook…) lu via son adresse iCal
+model Calendar {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  color     String   @default("#2383e2")
+  createdAt DateTime @default(now())
+}
+
+// Compte Google connecté (API Google Agenda, lecture + écriture)
+model GoogleAccount {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  refreshToken String
+  accessToken  String      @default("")
+  expiresAt    DateTime    @default(now())
+  scopes       String      @default("") // autorisations accordées (ex. envoi de mails)
+  calendars    GoogleCal[]
+  createdAt    DateTime    @default(now())
+}
+
+model GoogleCal {
+  id         String        @id @default(cuid())
+  accountId  String
+  account    GoogleAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  calendarId String
+  name       String
+  color      String        @default("#2383e2")
+  visible    Boolean       @default(true)
+  writable   Boolean       @default(false)
+
+  @@unique([accountId, calendarId])
+}
+
+// Propriété personnalisée des tâches (colonne de la vue Liste)
+model TaskProperty {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // text | number | select | multi | date | checkbox | url
+  options   String   @default("[]") // choix possibles (JSON) pour select / multi
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Abonnement aux notifications push d'un appareil (téléphone, ordinateur)
+model PushSub {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  device    String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// Réglages des notifications et des mails
+model NotifSettings {
+  id             Int     @id @default(1)
+  pushEnabled    Boolean @default(true)
+  emailEnabled   Boolean @default(true)
+  emailTo        String  @default("")
+  digestHour     Int     @default(8)   // heure du récap du matin (heure de Paris)
+  eventReminder  Int     @default(30)  // minutes avant un RDV (0 = pas de rappel)
+  lateAlert      Boolean @default(true)
+  lastDigestDate String  @default("")  // dernier récap envoyé (YYYY-MM-DD)
+  liveCalendar   String  @default("")  // agenda des lives à surveiller (id GoogleCal ou Calendar)
+  liveDays       Int     @default(3)   // nombre de jours à couvrir
+  liveCategory   String  @default("Gaming")
+  blockCalendar  String  @default("")  // agenda Google où bloquer les tâches avec horaire
+}
+
+// Rappels déjà envoyés, pour ne jamais notifier deux fois
+model SentReminder {
+  key       String   @id
+  createdAt DateTime @default(now())
+}
+
+// Musique d'inspiration (liens YouTube)
+model Track {
+  id        String   @id @default(cuid())
+  url       String
+  videoId   String   @default("")
+  start     Int      @default(0) // seconde de départ (ex. ?t=405)
+  title     String   @default("")
+  author    String   @default("")
+  mood      String   @default("") // ambiance / tags
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// Espace d'inspiration : une toile de blocs reliés (stockée en JSON : { nodes, edges, view })
+model Board {
+  id        String   @id @default(cuid())
+  name      String   @default("Nouvel espace")
+  data      String   @default("{\"nodes\":[],\"edges\":[]}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Fichiers des espaces inspi (vocaux, images importées), stockés à part pour garder les toiles légères
+model Media {
+  id        String   @id @default(cuid())
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+}
