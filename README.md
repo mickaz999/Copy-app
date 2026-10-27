@@ -23,3 +23,5 @@ npm run dev            # http://localhost:3000
 4. Les tables sont créées automatiquement à chaque déploiement.
 
 > Les taux URSSAF et plafonds sont réglables dans Compta → ⚙️ Réglages ; vérifie-les sur urssaf.fr, ils changent régulièrement.
+
+<!-- déployé depuis mickaz999/Copy-app -->
