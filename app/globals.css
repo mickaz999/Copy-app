@@ -920,3 +920,16 @@ button.primary {
 .board-viewport.gesturing iframe { pointer-events: none; }
 /* Au doigt, un lecteur ne capte les touchers qu'une fois son bloc sélectionné : sinon on peut glisser/zoomer par-dessus */
 @media (pointer: coarse) { .bnode:not(.selected) iframe { pointer-events: none; } }
+
+/* Perf mobile : le flou d'arrière-plan et le fond fixe coûtent cher au GPU des téléphones */
+html { -webkit-tap-highlight-color: transparent; }
+a, button, input, select, textarea, label, [role="button"] { touch-action: manipulation; }
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  body { background-attachment: scroll !important; }
+  *, *::before, *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .cal-month, .week, .table-wrap, .stat, .settings-card, .col, .modal, .th-pop, .pick-menu,
+  .topbar, table:not(.db), .bookmark, .gaccount, .card { background: rgba(250, 246, 240, .96) !important; box-shadow: 0 1px 3px rgba(28, 24, 20, .08) !important; }
+  .sidebar { background: #FAF6F0 !important; }
+  .overlay, .scrim { background: rgba(28, 24, 20, .4) !important; }
+  .main { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+}
