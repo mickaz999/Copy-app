@@ -27,16 +27,22 @@ export async function POST(req: Request) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { title, markdown } = await req.json();
+  const { title, markdown, pdf } = await req.json();
   if (!title || !markdown) return NextResponse.json({ error: "title et markdown requis" }, { status: 400 });
+
+  // Avec un PDF : la page contient juste le lien vers le document, plus lisible que le texte brut
+  const file = pdf ? await db.media.create({ data: { mime: "application/pdf", data: Buffer.from(String(pdf), "base64") } }) : null;
+  const blocks = file
+    ? [{ id: uid(), type: "link", url: `/api/media/${file.id}`, text: `📄 ${title} (PDF)` }]
+    : toBlocks(String(markdown));
 
   const parent = (await db.page.findFirst({ where: { title: PARENT, parentId: null } }))
     ?? (await db.page.create({ data: { title: PARENT, icon: "📊" } }));
   const page = await db.page.create({
-    data: { title: String(title), icon: "📈", parentId: parent.id, content: JSON.stringify(toBlocks(String(markdown))) },
+    data: { title: String(title), icon: "📈", parentId: parent.id, content: JSON.stringify(blocks) },
   });
 
   if (pushConfigured())
-    await sendPush({ title: "📊 Rapport de la semaine prêt", body: String(title), url: `/p/${page.id}`, tag: `report-${page.id}` }).catch(() => {});
+    await sendPush({ title: "📊 Rapport de la semaine prêt", body: String(title), url: file ? `/api/media/${file.id}` : `/p/${page.id}`, tag: `report-${page.id}` }).catch(() => {});
   return NextResponse.json({ ok: true, id: page.id });
 }
