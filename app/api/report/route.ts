@@ -30,14 +30,20 @@ export async function POST(req: Request) {
   const { title, markdown, pdf } = await req.json();
   if (!title || !markdown) return NextResponse.json({ error: "title et markdown requis" }, { status: 400 });
 
+  const parent = (await db.page.findFirst({ where: { title: PARENT, parentId: null } }))
+    ?? (await db.page.create({ data: { title: PARENT, icon: "📊" } }));
+  // Un rapport relancé le même jour remplace le précédent (page + PDF)
+  const old = await db.page.findMany({ where: { parentId: parent.id, title: String(title) } });
+  const oldMedia = old.flatMap((p) => [...p.content.matchAll(/\/api\/media\/([\w-]+)/g)].map((m) => m[1]));
+  await db.media.deleteMany({ where: { id: { in: oldMedia } } });
+  await db.page.deleteMany({ where: { id: { in: old.map((p) => p.id) } } });
+
   // Avec un PDF : la page contient juste le lien vers le document, plus lisible que le texte brut
   const file = pdf ? await db.media.create({ data: { mime: "application/pdf", data: Buffer.from(String(pdf), "base64") } }) : null;
   const blocks = file
     ? [{ id: uid(), type: "link", url: `/api/media/${file.id}`, text: `📄 ${title} (PDF)` }]
     : toBlocks(String(markdown));
 
-  const parent = (await db.page.findFirst({ where: { title: PARENT, parentId: null } }))
-    ?? (await db.page.create({ data: { title: PARENT, icon: "📊" } }));
   const page = await db.page.create({
     data: { title: String(title), icon: "📈", parentId: parent.id, content: JSON.stringify(blocks) },
   });
