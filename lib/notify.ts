@@ -2,6 +2,7 @@ import webpush from "web-push";
 import { db } from "@/lib/db";
 import { getEvents } from "@/lib/events";
 import { GMAIL_SCOPE, sendGmail } from "@/lib/google";
+import { sampleTwitch } from "@/lib/social";
 
 export const TZ = "Europe/Paris";
 
@@ -154,6 +155,9 @@ export async function runCron(appUrl: string) {
       log.push(`rappel tâche : ${t.title}`);
     }
   }
+
+  // Spectateurs Twitch pendant les lives, pour le rapport hebdo
+  log.push(...(await sampleTwitch().catch((e) => [`twitch : ${(e as Error).message}`])));
 
   // Lives : crée une tâche pour chaque jour à venir sans live programmé
   log.push(...(await checkLives(now.day)));

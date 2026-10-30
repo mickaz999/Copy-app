@@ -167,3 +167,24 @@ model Media {
   data      Bytes
   createdAt DateTime @default(now())
 }
+
+// Comptes connectés pour les stats avancées du rapport hebdo (youtube, twitch)
+model ApiToken {
+  provider     String   @id
+  refreshToken String
+  accessToken  String   @default("")
+  expiresAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Nombre de spectateurs Twitch relevé toutes les 5 min pendant les lives
+model TwitchSample {
+  id       String   @id @default(cuid())
+  streamId String
+  at       DateTime @default(now())
+  viewers  Int
+  title    String   @default("")
+  game     String   @default("")
+
+  @@index([at])
+}
