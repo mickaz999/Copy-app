@@ -955,6 +955,9 @@ a, button, input, select, textarea, label, [role="button"] { touch-action: manip
 .rdv-slots button:active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .rdv-form { display: grid; gap: 10px; }
 .rdv-form input, .rdv-form textarea { font-size: 16px; width: 100%; }
+.rdv-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rdv-modes button { justify-content: center; gap: 6px; padding: 12px 0; font-weight: 600; border-radius: 14px; background: #fff; border: 1px solid var(--border); box-shadow: none; }
+.rdv-modes button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .rdv-back { justify-self: start; text-transform: capitalize; }
 .rdv-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .rdv-done { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 20px 0; color: var(--green); }

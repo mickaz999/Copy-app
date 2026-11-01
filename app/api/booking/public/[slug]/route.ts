@@ -29,6 +29,9 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const name = String(body.name ?? "").trim().slice(0, 100);
   const email = String(body.email ?? "").trim().slice(0, 200);
   const note = String(body.note ?? "").trim().slice(0, 2000);
+  const mode = body.mode === "whatsapp" ? "whatsapp" : "visio";
+  const phone = String(body.phone ?? "").replace(/[^\d+]/g, "").slice(0, 20);
+  if (mode === "whatsapp" && phone.replace(/\D/g, "").length < 8) return NextResponse.json({ error: "Indique ton numéro WhatsApp." }, { status: 400 });
   const day = String(body.day ?? ""), time = String(body.time ?? "");
   if (!name || !EMAIL.test(email)) return NextResponse.json({ error: "Indique ton nom et une adresse mail valide." }, { status: 400 });
 
@@ -41,12 +44,14 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const [h, m] = time.split(":").map(Number);
   const endMin = h * 60 + m + b.duration;
   const end = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-  await gapi(cal.accountId, `/calendars/${encodeURIComponent(cal.calendarId)}/events?sendUpdates=all`, {
+  const how = mode === "visio" ? "Visio (Google Meet)" : `Appel WhatsApp · ${phone}`;
+  const ev = await gapi(cal.accountId, `/calendars/${encodeURIComponent(cal.calendarId)}/events?sendUpdates=all&conferenceDataVersion=1`, {
     method: "POST",
     body: JSON.stringify({
-      summary: `RDV · ${name}`,
-      description: `Pris via le lien de RDV.\n\nNom : ${name}\nMail : ${email}${note ? `\n\n${note}` : ""}`,
-      location: b.location,
+      summary: `RDV ${mode === "visio" ? "visio" : "WhatsApp"} · ${name}`,
+      description: `Pris via le lien de RDV.\n\nNom : ${name}\nMail : ${email}\nFormat : ${how}${mode === "whatsapp" ? `\nhttps://wa.me/${phone.replace(/\D/g, "")}` : ""}${note ? `\n\n${note}` : ""}`,
+      location: mode === "whatsapp" ? how : b.location,
+      ...(mode === "visio" ? { conferenceData: { createRequest: { requestId: `rdv-${Date.now()}`, conferenceSolutionKey: { type: "hangoutsMeet" } } } } : {}),
       start: { dateTime: `${day}T${time}:00`, timeZone: TZ },
       end: { dateTime: `${day}T${end}:00`, timeZone: TZ },
       attendees: [{ email, displayName: name }],
@@ -56,7 +61,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const s = await getSettings();
   if (s.pushEnabled) {
     const when = new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-    await sendPush({ title: "Nouveau RDV", body: `${name} · ${when} à ${time}`, url: "/planning", tag: `rdv-${day}-${time}` }).catch(() => {});
+    await sendPush({ title: "Nouveau RDV", body: `${name} · ${when} à ${time} · ${mode === "visio" ? "visio" : "WhatsApp"}`, url: "/planning", tag: `rdv-${day}-${time}` }).catch(() => {});
   }
-  return NextResponse.json({ ok: true, day, time, end });
+  return NextResponse.json({ ok: true, day, time, end, mode, meet: ev?.hangoutLink ?? "" });
 }
