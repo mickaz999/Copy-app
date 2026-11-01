@@ -4,8 +4,8 @@ import { Lock, Radio, Bell, BellOff, CheckCircle2, Mail, Send, Smartphone, Share
 import { api } from "@/lib/api";
 import BookingSettings from "@/components/BookingSettings";
 
-type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string };
-type Info = { settings: Settings; vapidPublicKey: string; pushReady: boolean; cronReady: boolean; mailFrom: string; googleConnected: boolean; devices: number; calendars: { id: string; name: string }[]; writableCalendars: { id: string; name: string }[] };
+type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string; mailAccount: string };
+type Info = { settings: Settings; vapidPublicKey: string; pushReady: boolean; cronReady: boolean; mailFrom: string; googleConnected: boolean; mailAccounts: { id: string; email: string }[]; devices: number; calendars: { id: string; name: string }[]; writableCalendars: { id: string; name: string }[] };
 
 // Clé VAPID (base64url) vers le format attendu par le navigateur
 const urlKey = (b64: string) => {
@@ -126,7 +126,15 @@ export default function Reglages() {
         <div className="sc-head"><Mail size={18} /> <h3>Récap du matin par mail</h3></div>
         {info.mailFrom
           ? <p className="muted">Envoyé depuis <b>{info.mailFrom}</b>.</p>
-          : <p className="muted">Pour envoyer les mails depuis ton Gmail, {info.googleConnected ? "reconnecte" : "connecte"} ton compte Google et accepte l&apos;autorisation « envoyer des e-mails ». <a className="link" href="/api/google/connect">{info.googleConnected ? "Reconnecter" : "Connecter"} Google</a></p>}
+          : <p className="muted">Pour envoyer les mails depuis un Gmail, {info.googleConnected ? "reconnecte" : "connecte"} ton compte Google et accepte l&apos;autorisation « envoyer des e-mails ». <a className="link" href="/api/google/connect">{info.googleConnected ? "Reconnecter" : "Connecter"} Google</a></p>}
+        {info.mailAccounts.length > 1 && (
+          <label className="field-line">Compte qui envoie les mails
+            <select id="n-mailacc" value={info.mailAccounts.find((a) => a.email === info.mailFrom)?.id ?? ""} onChange={async (e) => { await save({ ...s, mailAccount: e.target.value }); load(); }}>
+              {info.mailAccounts.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}
+            </select>
+          </label>
+        )}
+        <p className="muted small">Pour envoyer depuis un autre compte Google : <a className="link" href="/api/google/connect">connecte-le</a> en acceptant « envoyer des e-mails », puis choisis-le ici.</p>
         <label className="check-line"><input id="n-mail" type="checkbox" checked={s.emailEnabled} onChange={(e) => save({ ...s, emailEnabled: e.target.checked })} /> Recevoir le récap par mail</label>
         <label className="field-line">Adresse
           <input id="n-to" type="email" placeholder="toi@gmail.com" defaultValue={s.emailTo} onBlur={(e) => e.target.value !== s.emailTo && save({ ...s, emailTo: e.target.value })} />

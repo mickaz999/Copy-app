@@ -41,7 +41,11 @@ export async function sendPush(msg: Push) {
 }
 
 // Compte Google utilisable pour envoyer les mails (connecté avec l'autorisation Gmail)
-export const mailAccount = () => db.googleAccount.findFirst({ where: { scopes: { contains: GMAIL_SCOPE } }, orderBy: { createdAt: "asc" } });
+// Compte choisi dans les réglages, sinon le premier connecté
+export async function mailAccount() {
+  const [s, accs] = await Promise.all([getSettings(), db.googleAccount.findMany({ where: { scopes: { contains: GMAIL_SCOPE } }, orderBy: { createdAt: "asc" } })]);
+  return accs.find((a) => a.id === s.mailAccount) ?? accs[0] ?? null;
+}
 
 // Contenu du récap du jour
 export async function buildDigest(day: string) {

@@ -130,6 +130,7 @@ model NotifSettings {
   liveDays       Int     @default(3)   // nombre de jours à couvrir
   liveCategory   String  @default("Gaming")
   blockCalendar  String  @default("")  // agenda Google où bloquer les tâches avec horaire
+  mailAccount    String  @default("")  // compte Google (GoogleAccount.id) qui envoie les mails ; vide = le premier connecté
 }
 
 // Rappels déjà envoyés, pour ne jamais notifier deux fois

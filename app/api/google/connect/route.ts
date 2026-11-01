@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",
-    prompt: "consent",
+    prompt: "consent select_account",
     state,
   }).toString();
   const res = NextResponse.redirect(url);
