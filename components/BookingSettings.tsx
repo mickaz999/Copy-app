@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, Copy, ExternalLink, Plus, RefreshCw, X } from "lucide-react";
 import { api } from "@/lib/api";
 
-type Booking = { enabled: boolean; slug: string; title: string; intro: string; duration: number; step: number; buffer: number; minNotice: number; maxDays: number; hours: string; calendar: string; location: string };
+type Booking = { enabled: boolean; slug: string; title: string; intro: string; duration: number; step: number; buffer: number; minNotice: number; maxDays: number; hours: string; calendar: string; location: string; visioLink: string };
 type Hours = Record<string, [string, string][]>;
 
 const DAYS = [["1", "Lundi"], ["2", "Mardi"], ["3", "Mercredi"], ["4", "Jeudi"], ["5", "Vendredi"], ["6", "Samedi"], ["0", "Dimanche"]];
@@ -53,9 +53,10 @@ export default function BookingSettings({ calendars }: { calendars: { id: string
       <label className="field-line">Message (facultatif)
         <textarea rows={2} defaultValue={b.intro} onBlur={(e) => e.target.value !== b.intro && save({ ...b, intro: e.target.value })} />
       </label>
-      <label className="field-line">Lieu ou lien visio (facultatif)
-        <input defaultValue={b.location} onBlur={(e) => e.target.value !== b.location && save({ ...b, location: e.target.value })} />
+      <label className="field-line">Lien visio fixe (facultatif)
+        <input type="url" placeholder="https://meet.google.com/abc-defg-hij" defaultValue={b.visioLink} onBlur={(e) => e.target.value !== b.visioLink && save({ ...b, visioLink: e.target.value })} />
       </label>
+      <p className="muted small">Laissé vide, un nouveau lien Google Meet est créé pour chaque RDV.</p>
 
       <label className="field-line">Durée d&apos;un RDV {num("duration", [15, 20, 30, 45, 60, 90, 120], (n) => n < 60 ? `${n} min` : `${n / 60} h`)}</label>
       <label className="field-line">Un créneau toutes les {num("step", [15, 30, 60], (n) => n < 60 ? `${n} min` : "1 h")}</label>

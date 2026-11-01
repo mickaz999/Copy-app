@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     hours: JSON.stringify(hours),
     calendar: String(b.calendar ?? ""),
     location: String(b.location ?? "").slice(0, 300),
+    visioLink: /^https?:\/\//.test(String(b.visioLink ?? "").trim()) ? String(b.visioLink).trim().slice(0, 300) : "",
   };
   return NextResponse.json(await db.bookingSettings.upsert({ where: { id: 1 }, create: data, update: data }));
 }
