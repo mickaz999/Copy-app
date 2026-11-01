@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Workflow, Calculator, Music2, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
+import { Workflow, Calculator, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -84,7 +84,6 @@ export default function Sidebar() {
       <Link href="/planning" className={`navitem ${path === "/planning" ? "active" : ""}`}><CalendarDays size={17} className="nav-ic" /> Planning</Link>
       <Link href="/compta" className={`navitem ${path === "/compta" ? "active" : ""}`}><Wallet size={17} className="nav-ic" /> Compta EI</Link>
       <Link href="/reglages" className={`navitem ${path === "/reglages" ? "active" : ""}`}><Bell size={17} className="nav-ic" /> Notifications</Link>
-      <Link href="/musique" className={`navitem ${path === "/musique" ? "active" : ""}`}><Music2 size={17} className="nav-ic" /> Musique inspi</Link>
       <Link href="/inspi" className={`navitem ${path.startsWith("/inspi") ? "active" : ""}`}><Workflow size={17} className="nav-ic" /> Espaces inspi</Link>
       <Link href="/outils" className={`navitem ${path === "/outils" ? "active" : ""}`}><Calculator size={17} className="nav-ic" /> Outils</Link>
       <div className="section">
