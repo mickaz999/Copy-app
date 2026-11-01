@@ -5,6 +5,7 @@ import Logo from "@/components/Logo";
 
 type Info = { title: string; intro: string; duration: number; location: string; slots: Record<string, string[]> };
 
+const part = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { ...o, timeZone: "UTC" }).replace(".", "");
 const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
 export default function Rdv({ params }: { params: { slug: string } }) {
@@ -65,15 +66,23 @@ export default function Rdv({ params }: { params: { slug: string } }) {
               : <>
                   <div className="rdv-days">
                     {days.map((d) => (
-                      <button key={d} className={d === day ? "primary" : ""} onClick={() => setDay(d)}>
-                        <small>{dayLabel(d).split(" ")[0]}</small>
-                        <b>{dayLabel(d).split(" ").slice(1).join(" ")}</b>
+                      <button key={d} className={d === day ? "on" : ""} onClick={() => setDay(d)}>
+                        <small>{part(d, { weekday: "short" })}</small>
+                        <b>{part(d, { day: "numeric" })}</b>
+                        <small>{part(d, { month: "short" })}</small>
                       </button>
                     ))}
                   </div>
-                  <div className="rdv-slots">
-                    {(info.slots[day] ?? []).map((t) => <button key={t} onClick={() => setTime(t)}>{t}</button>)}
-                  </div>
+                  <p className="rdv-day">{dayLabel(day)}</p>
+                  {[["Matin", (t: string) => t < "12:00"], ["Après-midi", (t: string) => t >= "12:00" && t < "18:00"], ["Soir", (t: string) => t >= "18:00"]].map(([label, keep]: any) => {
+                    const list = (info.slots[day] ?? []).filter(keep);
+                    return list.length > 0 && (
+                      <div key={label} className="rdv-group">
+                        <span className="rdv-group-label">{label}</span>
+                        <div className="rdv-slots">{list.map((t: string) => <button key={t} onClick={() => setTime(t)}>{t}</button>)}</div>
+                      </div>
+                    );
+                  })}
                 </>)}
 
             {time && (

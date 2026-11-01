@@ -934,24 +934,33 @@ a, button, input, select, textarea, label, [role="button"] { touch-action: manip
   .main { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
 }
 /* Page publique de prise de RDV */
-.rdv { min-height: 100vh; display: grid; place-items: start center; padding: 40px 16px; }
-.rdv-card { width: 100%; max-width: 560px; display: grid; gap: 14px; background: rgba(250, 246, 240, .96); border: 1px solid var(--border); border-radius: 24px; padding: 24px; box-shadow: var(--shadow); }
-.rdv-card h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.rdv { min-height: 100vh; display: grid; place-items: start center; padding: max(28px, env(safe-area-inset-top)) 16px 40px; }
+.rdv-card { width: 100%; max-width: 520px; display: grid; gap: 16px; background: rgba(250, 246, 240, .96); border: 1px solid var(--border); border-radius: 24px; padding: 24px; box-shadow: var(--shadow); }
+.rdv-card h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; margin: 0; line-height: 1.1; }
 .rdv-intro { white-space: pre-line; margin: 0; }
-.rdv-meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; color: var(--muted); }
-.rdv-meta span { display: inline-flex; align-items: center; gap: 5px; }
-.rdv-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-.rdv-days button { display: grid; flex: none; min-width: 92px; padding: 8px 10px; text-align: center; text-transform: capitalize; }
-.rdv-days small { font-size: 12px; opacity: .75; }
-.rdv-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
-.rdv-slots button { justify-content: center; padding: 10px 0; font-weight: 600; }
+.rdv-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--muted); margin-top: -6px; }
+.rdv-meta span { display: inline-flex; align-items: center; gap: 5px; background: rgba(28, 24, 20, .05); border-radius: 999px; padding: 4px 10px; }
+.rdv-days { display: flex; gap: 8px; overflow-x: auto; margin: 0 -24px; padding: 4px 24px 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.rdv-days::-webkit-scrollbar { display: none; }
+.rdv-days button { flex: none; display: grid; justify-items: center; gap: 1px; width: 58px; padding: 8px 0; border-radius: 16px; scroll-snap-align: start; background: #fff; border: 1px solid var(--border); box-shadow: none; }
+.rdv-days button small { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+.rdv-days button b { font-size: 20px; line-height: 1.15; }
+.rdv-days button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.rdv-days button.on small { color: rgba(255, 255, 255, .85); }
+.rdv-day { margin: 0; font-weight: 700; font-size: 15px; text-transform: capitalize; }
+.rdv-group { display: grid; gap: 8px; }
+.rdv-group-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.rdv-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.rdv-slots button { justify-content: center; padding: 9px 0; font-weight: 600; font-size: 15px; border-radius: 12px; background: #fff; border: 1px solid var(--border); box-shadow: none; }
+.rdv-slots button:active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .rdv-form { display: grid; gap: 10px; }
 .rdv-form input, .rdv-form textarea { font-size: 16px; width: 100%; }
 .rdv-back { justify-self: start; text-transform: capitalize; }
 .rdv-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .rdv-done { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 20px 0; color: var(--green); }
 .rdv-done h1 { color: var(--text); }
-.rdv-done p { margin: 0; color: var(--text); text-transform: none; }
+.rdv-done p { margin: 0; color: var(--text); }
+@media (max-width: 480px) { .rdv-card { padding: 20px; } .rdv-days { margin: 0 -20px; padding: 4px 20px 8px; } }
 .hours-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
 .hours-row > b { width: 82px; }
 .hours-row input[type="time"] { width: 110px; }
