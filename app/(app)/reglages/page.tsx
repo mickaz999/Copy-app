@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Lock, Radio, Bell, BellOff, CheckCircle2, Mail, Send, Smartphone, Share, SquarePlus } from "lucide-react";
 import { api } from "@/lib/api";
+import BookingSettings from "@/components/BookingSettings";
 
 type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string };
 type Info = { settings: Settings; vapidPublicKey: string; pushReady: boolean; cronReady: boolean; mailFrom: string; googleConnected: boolean; devices: number; calendars: { id: string; name: string }[]; writableCalendars: { id: string; name: string }[] };
@@ -148,6 +149,8 @@ export default function Reglages() {
           </select>
         </label>
       </section>
+
+      <BookingSettings calendars={info.writableCalendars} />
 
       <section className="settings-card">
         <div className="sc-head"><Radio size={18} /> <h3>Surveillance des lives</h3></div>

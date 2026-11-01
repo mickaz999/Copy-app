@@ -920,3 +920,26 @@ button.primary {
 .board-viewport.gesturing iframe { pointer-events: none; }
 /* Au doigt, un lecteur ne capte les touchers qu'une fois son bloc sélectionné : sinon on peut glisser/zoomer par-dessus */
 @media (pointer: coarse) { .bnode:not(.selected) iframe { pointer-events: none; } }
+
+/* Page publique de prise de RDV */
+.rdv { min-height: 100vh; display: grid; place-items: start center; padding: 40px 16px; }
+.rdv-card { width: 100%; max-width: 560px; display: grid; gap: 14px; background: rgba(250, 246, 240, .96); border: 1px solid var(--border); border-radius: 24px; padding: 24px; box-shadow: var(--shadow); }
+.rdv-card h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.rdv-intro { white-space: pre-line; margin: 0; }
+.rdv-meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; color: var(--muted); }
+.rdv-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.rdv-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.rdv-days button { display: grid; flex: none; min-width: 92px; padding: 8px 10px; text-align: center; text-transform: capitalize; }
+.rdv-days small { font-size: 12px; opacity: .75; }
+.rdv-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.rdv-slots button { justify-content: center; padding: 10px 0; font-weight: 600; }
+.rdv-form { display: grid; gap: 10px; }
+.rdv-form input, .rdv-form textarea { font-size: 16px; width: 100%; }
+.rdv-back { justify-self: start; text-transform: capitalize; }
+.rdv-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.rdv-done { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 20px 0; color: var(--green); }
+.rdv-done h1 { color: var(--text); }
+.rdv-done p { margin: 0; color: var(--text); text-transform: none; }
+.hours-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.hours-row > b { width: 82px; }
+.hours-row input[type="time"] { width: 110px; }

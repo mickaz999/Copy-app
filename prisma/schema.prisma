@@ -188,3 +188,20 @@ model TwitchSample {
 
   @@index([at])
 }
+
+// Prise de RDV publique (/rdv/<slug>) : horaires proposés, croisés avec les agendas
+model BookingSettings {
+  id        Int     @id @default(1)
+  enabled   Boolean @default(false)
+  slug      String  @default(cuid()) // partie secrète du lien à partager
+  title     String  @default("Prendre rendez-vous")
+  intro     String  @default("")
+  duration  Int     @default(30)  // durée d'un RDV (min)
+  step      Int     @default(30)  // intervalle entre deux débuts de créneau (min)
+  buffer    Int     @default(0)   // marge libre avant / après chaque événement (min)
+  minNotice Int     @default(12)  // délai minimum avant un RDV (heures)
+  maxDays   Int     @default(30)  // jusqu'à combien de jours à l'avance
+  hours     String  @default("{\"1\":[[\"09:00\",\"18:00\"]],\"2\":[[\"09:00\",\"18:00\"]],\"3\":[[\"09:00\",\"18:00\"]],\"4\":[[\"09:00\",\"18:00\"]],\"5\":[[\"09:00\",\"18:00\"]]}") // plages par jour (0 = dimanche), heure de Paris
+  calendar  String  @default("")  // agenda Google (GoogleCal.id) où créer les RDV
+  location  String  @default("")
+}
