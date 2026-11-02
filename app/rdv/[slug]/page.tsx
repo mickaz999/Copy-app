@@ -50,7 +50,7 @@ export default function Rdv({ params }: { params: { slug: string } }) {
             <p>{dayLabel(done.day)}, de {done.time} à {done.end}.</p>
             <p>{done.mode === "visio" ? "En visio, avec ce lien :" : `Je t'appelle sur WhatsApp au ${form.phone}.`}</p>
             {done.meet && <a className="link" href={done.meet} target="_blank" rel="noreferrer">{done.meet.replace("https://", "")}</a>}
-            <p className="muted">Une invitation a été envoyée à {form.email}.</p>
+            {form.email && <p className="muted">Une invitation a été envoyée à {form.email}.</p>}
           </div>
         )}
         {info && !done && (
@@ -95,8 +95,12 @@ export default function Rdv({ params }: { params: { slug: string } }) {
                   <button type="button" className={form.mode === "whatsapp" ? "on" : ""} onClick={() => setForm({ ...form, mode: "whatsapp" })}><Phone size={18} /> Appel WhatsApp</button>
                 </div>
                 <input required placeholder="Ton nom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                <input required type="email" placeholder="Ton mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                <input required type="tel" inputMode="tel" placeholder={form.mode === "whatsapp" ? "Ton numéro WhatsApp (ex : +33 6 12 34 56 78)" : "Ton numéro de téléphone"} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                {form.mode === "visio"
+                  ? <input required type="email" placeholder="Ton mail (pour recevoir le lien)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  : <>
+                      <input required type="tel" inputMode="tel" placeholder="Ton numéro WhatsApp (ex : +33 6 12 34 56 78)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                      <input type="email" placeholder="Ton mail (facultatif, pour l'invitation)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                    </>}
                 <textarea placeholder="Un mot sur le sujet du RDV (facultatif)" rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
                 <input className="rdv-hp" tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
                 <button className="primary" disabled={busy}>{busy ? "Réservation…" : "Confirmer le RDV"}</button>
