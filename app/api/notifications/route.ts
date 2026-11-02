@@ -20,7 +20,8 @@ export async function GET() {
     mailAccounts: accounts.filter((a) => a.scopes.includes(GMAIL_SCOPE)).map((a) => ({ id: a.id, email: a.email })),
     devices,
     calendars: [...gcals.map((c) => ({ id: c.id, name: c.name })), ...icals.map((c) => ({ id: c.id, name: c.name }))],
-    writableCalendars: gcals.filter((c) => c.writable).map((c) => ({ id: c.id, name: c.name })),
+    // Nom du compte ajouté quand plusieurs comptes Google sont connectés (agendas homonymes)
+    writableCalendars: gcals.filter((c) => c.writable).map((c) => ({ id: c.id, name: accounts.length > 1 ? `${c.name} · ${accounts.find((a) => a.id === c.accountId)?.email ?? ""}` : c.name })),
   });
 }
 
