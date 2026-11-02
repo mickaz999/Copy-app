@@ -945,8 +945,8 @@ a, button, input, select, textarea, label, [role="button"] { touch-action: manip
 .rdv-days button { flex: none; display: grid; justify-items: center; gap: 1px; width: 58px; padding: 8px 0; border-radius: 16px; scroll-snap-align: start; background: #fff; border: 1px solid var(--border); box-shadow: none; }
 .rdv-days button small { font-size: 11px; color: var(--muted); text-transform: capitalize; }
 .rdv-days button b { font-size: 20px; line-height: 1.15; }
-.rdv-days button.on, .rdv-days button.on:hover { background: linear-gradient(135deg, #ffa25e, var(--accent)) !important; border-color: var(--accent) !important; color: #fff !important; box-shadow: 0 4px 12px rgba(255, 107, 0, .3) !important; }
-.rdv-days button.on small { color: rgba(255, 255, 255, .9) !important; }
+.rdv-days button.on, .rdv-days button.on:hover { border-color: var(--accent) !important; color: var(--accent) !important; box-shadow: none !important; }
+.rdv-days button.on small { color: var(--accent) !important; }
 .rdv-day { margin: 0; font-weight: 700; font-size: 15px; text-transform: capitalize; }
 .rdv-group { display: grid; gap: 8px; }
 .rdv-group-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
