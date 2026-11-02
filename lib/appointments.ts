@@ -91,30 +91,31 @@ export async function slotsFor(a: Appointment) {
   return freeSlots(await getBooking(), a.eventId);
 }
 
-export async function moveAppointment(a: Appointment, day: string, time: string, appUrl: string, opts: { message?: string; byClient?: boolean; force?: boolean } = {}) {
+export async function moveAppointment(a: Appointment, day: string, time: string, appUrl: string, opts: { message?: string; byClient?: boolean; force?: boolean; end?: string; skipGoogle?: boolean; silent?: boolean } = {}) {
   if (a.status !== "confirmed") throw new BookingError("Ce RDV est annulé.");
   const b = await getBooking();
   // Toi : tu peux forcer n'importe quel horaire ; la personne : seulement un créneau libre
   if (!opts.force && !(await freeSlots(b, a.eventId))[day]?.includes(time)) throw new BookingError("Ce créneau n'est plus libre, choisis-en un autre.", 409);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^\d{2}:\d{2}$/.test(time)) throw new BookingError("Date ou heure invalide.");
   const cal = await db.googleCal.findUnique({ where: { id: a.calId } });
-  const end = endOf(time, b.duration);
-  if (cal) await gapi(cal.accountId, `${eventPath(cal.calendarId, a.eventId)}?sendUpdates=all`, {
+  // end / skipGoogle : déplacé depuis la fenêtre d'événement du Planning, qui a déjà mis Google à jour
+  const end = opts.end && opts.end > time ? opts.end : endOf(time, b.duration);
+  if (cal && !opts.skipGoogle) await gapi(cal.accountId, `${eventPath(cal.calendarId, a.eventId)}?sendUpdates=all`, {
     method: "PATCH",
     body: JSON.stringify({ start: { dateTime: `${day}T${time}:00`, timeZone: TZ }, end: { dateTime: `${day}T${end}:00`, timeZone: TZ } }),
   });
   const next = await db.appointment.update({ where: { id: a.id }, data: { day, time, end, start: new Date(parisTime(day, time)) } });
-  await mailClient(next, "move", appUrl, opts.message);
+  if (!opts.silent) await mailClient(next, "move", appUrl, opts.message);
   if (opts.byClient) await notifyMe("RDV déplacé", next);
   return next;
 }
 
-export async function cancelAppointment(a: Appointment, appUrl: string, opts: { message?: string; byClient?: boolean } = {}) {
+export async function cancelAppointment(a: Appointment, appUrl: string, opts: { message?: string; byClient?: boolean; silent?: boolean } = {}) {
   if (a.status !== "confirmed") return a;
   const cal = await db.googleCal.findUnique({ where: { id: a.calId } });
   if (cal) await gapi(cal.accountId, `${eventPath(cal.calendarId, a.eventId)}?sendUpdates=all`, { method: "DELETE" }).catch(() => {});
   const next = await db.appointment.update({ where: { id: a.id }, data: { status: "cancelled" } });
-  await mailClient(next, "cancel", appUrl, opts.message);
+  if (!opts.silent) await mailClient(next, "cancel", appUrl, opts.message);
   if (opts.byClient) await notifyMe("RDV annulé", next);
   return next;
 }

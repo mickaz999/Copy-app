@@ -997,3 +997,10 @@ button.danger { color: #c4262c; }
   .appt { grid-template-columns: 1fr; gap: 6px; }
   .appt-actions { grid-template-columns: 1fr 1fr; }
 }
+.appt-box { display: grid; gap: 6px; background: var(--accent-soft); border-radius: 14px; padding: 10px 12px; }
+.appt-box textarea { width: 100%; }
+.rdv-pop { display: grid; justify-items: center; gap: 8px; text-align: center; width: min(360px, calc(100vw - 32px)); color: var(--green); }
+.rdv-pop h2 { margin: 0; color: var(--text); font-size: 22px; }
+.rdv-pop p { margin: 0; color: var(--text); }
+.rdv-pop p b { text-transform: capitalize; }
+.rdv-pop button { width: 100%; justify-content: center; margin-top: 6px; }

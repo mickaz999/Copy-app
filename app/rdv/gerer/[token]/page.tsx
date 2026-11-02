@@ -25,7 +25,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) { setError(j.error ?? "Erreur, réessaie."); load(); return; }
-    setView(""); setFlash(ok); load();
+    setView(""); setA({ ...a!, ...j }); setFlash(ok); load();
   }
 
   return (
@@ -37,7 +37,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
         {a && (
           <>
             <h1>{a.status === "cancelled" ? "RDV annulé" : "Ton RDV"}</h1>
-            {flash && <div className="notice ok">{flash}</div>}
+
             <div className={`rdv-summary ${a.status}`}>
               {a.status === "cancelled" ? <CalendarX size={22} /> : <CalendarCheck size={22} />}
               <div>
@@ -57,7 +57,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
             {view === "move" && a.slots && (
               <>
                 <button className="rdv-back" onClick={() => setView("")}><ChevronLeft size={16} /> Retour</button>
-                <SlotPicker slots={a.slots} onPick={(day, time) => !busy && confirm(`Déplacer au ${dayLabel(day)} à ${time} ?`) && act({ action: "move", day, time }, "RDV déplacé, une confirmation t'a été envoyée.")} />
+                <SlotPicker slots={a.slots} onPick={(day, time) => !busy && confirm(`Déplacer au ${dayLabel(day)} à ${time} ?`) && act({ action: "move", day, time }, "RDV déplacé !")} />
               </>
             )}
 
@@ -65,12 +65,23 @@ export default function Gerer({ params }: { params: { token: string } }) {
               <div className="rdv-form">
                 <button className="rdv-back" onClick={() => setView("")}><ChevronLeft size={16} /> Retour</button>
                 <textarea rows={3} placeholder="Un mot pour expliquer (facultatif)" value={message} onChange={(e) => setMessage(e.target.value)} />
-                <button className="danger" disabled={busy} onClick={() => act({ action: "cancel", message }, "RDV annulé.")}>Confirmer l&apos;annulation</button>
+                <button className="danger" disabled={busy} onClick={() => act({ action: "cancel", message }, "RDV annulé")}>Confirmer l&apos;annulation</button>
               </div>
             )}
           </>
         )}
       </div>
+      {flash && a && (
+        <div className="overlay" onClick={() => setFlash("")}>
+          <div className="modal rdv-pop" onClick={(e) => e.stopPropagation()}>
+            {a.status === "cancelled" ? <CalendarX size={36} /> : <CalendarCheck size={36} />}
+            <h2>{flash}</h2>
+            {a.status === "confirmed" && <p><b>{dayLabel(a.day)}</b><br />de {a.time} à {a.end}</p>}
+            <p className="muted small">{a.status === "cancelled" ? "Le créneau a été libéré." : "Une confirmation t'a été envoyée par mail."}</p>
+            <button className="primary" onClick={() => setFlash("")}>OK</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

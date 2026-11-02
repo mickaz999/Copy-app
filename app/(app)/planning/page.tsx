@@ -932,6 +932,11 @@ function EventModal({ form, calendars, onClose, onSaved }: { form: EvForm; calen
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (p: Partial<EvForm>) => setF({ ...f, ...p });
+  // RDV pris via le lien public : report / annulation avec mail à la personne
+  const [appt, setAppt] = useState<{ id: string; name: string; email: string; phone: string } | null>(null);
+  const [notify, setNotify] = useState(true);
+  const [message, setMessage] = useState("");
+  useEffect(() => { if (form.eventId) api(`rdv?eventId=${encodeURIComponent(form.eventId)}`).then(setAppt).catch(() => {}); }, []);
 
   async function save() {
     if (!f.title.trim()) return setError("Donne un titre à l'événement.");
@@ -945,6 +950,9 @@ function EventModal({ form, calendars, onClose, onSaved }: { form: EvForm; calen
     try {
       if (f.eventId) await api(`google/events/${f.calId}/${encodeURIComponent(f.eventId)}`, "PATCH", body);
       else await api("google/events", "POST", body);
+      const moved = f.startDay !== form.startDay || f.startTime !== form.startTime || f.endTime !== form.endTime;
+      if (appt && moved && !f.allDay)
+        await api(`rdv/${appt.id}`, "POST", { action: "move", day: f.startDay, time: f.startTime, end: f.endTime, force: true, skipGoogle: true, message: notify ? message : "", silent: !notify });
       onSaved();
     } catch (e) {
       setError(errorText(e)); setBusy(false);
@@ -954,7 +962,8 @@ function EventModal({ form, calendars, onClose, onSaved }: { form: EvForm; calen
   async function remove() {
     setBusy(true);
     try {
-      await api(`google/events/${f.calId}/${encodeURIComponent(f.eventId!)}`, "DELETE");
+      if (appt) await api(`rdv/${appt.id}`, "POST", { action: "cancel", message: notify ? message : "", silent: !notify });
+      else await api(`google/events/${f.calId}/${encodeURIComponent(f.eventId!)}`, "DELETE");
       onSaved();
     } catch (e) {
       setError(errorText(e)); setBusy(false);
@@ -987,10 +996,20 @@ function EventModal({ form, calendars, onClose, onSaved }: { form: EvForm; calen
         </div>
         <label>Lieu<input id="ev-loc" value={f.location} onChange={(e) => set({ location: e.target.value })} /></label>
         <label>Notes<textarea id="ev-desc" rows={3} value={f.description} onChange={(e) => set({ description: e.target.value })} /></label>
+        {appt && (
+          <div className="appt-box">
+            <b>RDV pris via ton lien · {appt.name}</b>
+            <span className="muted small">{appt.email || appt.phone}</span>
+            {appt.email
+              ? <label className="check"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Prévenir {appt.name} par mail si je déplace ou supprime</label>
+              : <span className="muted small">Pas de mail : préviens-le·la sur <a className="link" href={`https://wa.me/${appt.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">WhatsApp</a>.</span>}
+            {appt.email && notify && <textarea rows={2} placeholder="Message joint au mail (facultatif)" value={message} onChange={(e) => setMessage(e.target.value)} />}
+          </div>
+        )}
         {error && <div className="neg">{error}</div>}
         <div className="row">
           {f.eventId && !confirmDelete && <button className="neg" disabled={busy} onClick={() => setConfirmDelete(true)}>Supprimer</button>}
-          {confirmDelete && <><span className="neg">Supprimer de Google Agenda ?</span><button className="neg" disabled={busy} onClick={remove}>Oui</button><button onClick={() => setConfirmDelete(false)}>Non</button></>}
+          {confirmDelete && <><span className="neg">{appt ? `Annuler le RDV${appt.email && notify ? " et prévenir" : ""} ?` : "Supprimer de Google Agenda ?"}</span><button className="neg" disabled={busy} onClick={remove}>Oui</button><button onClick={() => setConfirmDelete(false)}>Non</button></>}
           <span style={{ flex: 1 }} />
           <button onClick={onClose}>Annuler</button>
           <button className="primary" disabled={busy} onClick={save}>{busy ? "…" : "Enregistrer"}</button>
