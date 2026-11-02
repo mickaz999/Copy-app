@@ -29,12 +29,12 @@ const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${
 const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
 
 // Périodes occupées : événements avec horaire de tous les agendas visibles + tâches avec horaire
-async function busyPeriods(from: number, to: number) {
+async function busyPeriods(from: number, to: number, ignoreEvent = "") {
   const [{ events }, tasks] = await Promise.all([
     getEvents(new Date(from), new Date(to), true),
     db.task.findMany({ where: { status: { not: "done" }, startTime: { not: "" }, endDate: null, date: { gte: new Date(from - 864e5), lte: new Date(to) } } }),
   ]);
-  const busy = events.filter((e) => !e.allDay).map((e) => [Date.parse(e.start), Date.parse(e.end)] as [number, number]);
+  const busy = events.filter((e) => !e.allDay && (!ignoreEvent || e.eventId !== ignoreEvent)).map((e) => [Date.parse(e.start), Date.parse(e.end)] as [number, number]);
   for (const t of tasks) {
     const day = t.date!.toISOString().slice(0, 10);
     const s = parisTime(day, t.startTime);
@@ -44,13 +44,14 @@ async function busyPeriods(from: number, to: number) {
 }
 
 // Créneaux libres, groupés par jour (heure de Paris) : { "2026-11-03": ["09:00", "09:30", …] }
-export async function freeSlots(b: Awaited<ReturnType<typeof getBooking>>) {
+// ignoreEvent : RDV en cours de report, dont le créneau actuel ne compte pas comme occupé
+export async function freeSlots(b: Awaited<ReturnType<typeof getBooking>>, ignoreEvent = "") {
   const hours: Hours = JSON.parse(b.hours || "{}");
   const now = Date.now();
   const first = now + b.minNotice * 36e5;
   const today = parisDay(now);
   const last = addDays(today, b.maxDays);
-  const busy = await busyPeriods(now, parisTime(last, "23:59"));
+  const busy = await busyPeriods(now, parisTime(last, "23:59"), ignoreEvent);
   const pad = b.buffer * 6e4;
   const out: Record<string, string[]> = {};
 

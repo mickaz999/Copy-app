@@ -967,3 +967,33 @@ a, button, input, select, textarea, label, [role="button"] { touch-action: manip
 .hours-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
 .hours-row > b { width: 82px; }
 .hours-row input[type="time"] { width: 110px; }
+
+/* Gestion des RDV */
+button.danger { color: #c4262c; }
+.rdv-summary { display: flex; gap: 12px; align-items: flex-start; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 14px; color: var(--green); }
+.rdv-summary.cancelled { color: #c4262c; }
+.rdv-summary > div { display: grid; gap: 3px; color: var(--text); }
+.rdv-summary b { text-transform: capitalize; }
+.rdv-summary span { font-size: 14px; color: var(--muted); }
+.rdv-summary.cancelled b, .rdv-summary.cancelled span { text-decoration: line-through; }
+.rdv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rdv-actions button { justify-content: center; padding: 12px 0; font-weight: 600; }
+.appt { display: grid; grid-template-columns: 150px 1fr auto; gap: 14px; align-items: start; padding: 12px 0; border-top: 1px solid var(--border); }
+.appt:first-of-type { border-top: none; }
+.appt.cancelled { opacity: .6; }
+.appt-when { display: grid; gap: 2px; }
+.appt-when b { text-transform: capitalize; font-size: 14px; }
+.appt-when span { font-size: 13px; color: var(--muted); }
+.appt-who { display: grid; gap: 4px; min-width: 0; }
+.appt-who p { margin: 0; white-space: pre-line; }
+.appt-mode { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); }
+.appt-links { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.appt-links a { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.appt-actions { display: grid; gap: 6px; }
+.appt-modal { display: grid; gap: 10px; width: min(520px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto; }
+.appt-modal h3 { margin: 0; }
+.appt-modal .rdv-days { margin: 0; padding: 4px 0 8px; }
+@media (max-width: 760px) {
+  .appt { grid-template-columns: 1fr; gap: 6px; }
+  .appt-actions { grid-template-columns: 1fr 1fr; }
+}

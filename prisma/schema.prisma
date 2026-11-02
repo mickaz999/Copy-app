@@ -207,3 +207,25 @@ model BookingSettings {
   location  String  @default("")
   visioLink String  @default("")  // lien visio fixe ; vide = un lien Meet créé pour chaque RDV
 }
+
+// RDV pris via le lien public (lié à l'événement Google créé)
+model Appointment {
+  id        String   @id @default(cuid())
+  token     String   @unique // lien « gérer mon RDV » envoyé à la personne
+  name      String
+  email     String   @default("")
+  phone     String   @default("")
+  mode      String   @default("visio") // visio | whatsapp
+  note      String   @default("")
+  day       String   // YYYY-MM-DD (heure de Paris)
+  time      String   // HH:MM
+  end       String
+  start     DateTime // instant de début, pour trier
+  meet      String   @default("")
+  calId     String   // GoogleCal.id
+  eventId   String
+  status    String   @default("confirmed") // confirmed | cancelled
+  createdAt DateTime @default(now())
+
+  @@index([start])
+}
