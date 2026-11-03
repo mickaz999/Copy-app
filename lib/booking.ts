@@ -49,6 +49,7 @@ async function busyPeriods(from: number, to: number, ignoreEvent = "") {
 // ignoreEvent : RDV en cours de report, dont le créneau actuel ne compte pas comme occupé
 export async function freeSlots(b: Awaited<ReturnType<typeof getBooking>>, ignoreEvent = "") {
   const hours: Hours = JSON.parse(b.hours || "{}");
+  const blocked = new Set<string>(JSON.parse(b.blocked || "[]"));
   const now = Date.now();
   const first = now + b.minNotice * 36e5;
   const today = parisDay(now);
@@ -58,7 +59,7 @@ export async function freeSlots(b: Awaited<ReturnType<typeof getBooking>>, ignor
   const out: Record<string, string[]> = {};
 
   for (let day = today; day <= last; day = addDays(day, 1)) {
-    const ranges = hours[String(new Date(day).getUTCDay())] ?? [];
+    const ranges = blocked.has(day) ? [] : hours[String(new Date(day).getUTCDay())] ?? [];
     for (const [a, z] of ranges) {
       for (let m = toMin(a); m + b.duration <= toMin(z); m += Math.max(5, b.step)) {
         const s = parisTime(day, hm(m)), e = s + b.duration * 6e4;

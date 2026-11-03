@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, Copy, ExternalLink, Plus, RefreshCw, X } from "lucide-react";
 import { api } from "@/lib/api";
 
-type Booking = { enabled: boolean; slug: string; title: string; intro: string; duration: number; step: number; buffer: number; minNotice: number; maxDays: number; hours: string; calendar: string; location: string; visioLink: string };
+type Booking = { enabled: boolean; slug: string; title: string; intro: string; duration: number; step: number; buffer: number; minNotice: number; maxDays: number; hours: string; calendar: string; location: string; visioLink: string; blocked: string };
 type Hours = Record<string, [string, string][]>;
 
 const DAYS = [["1", "Lundi"], ["2", "Mardi"], ["3", "Mercredi"], ["4", "Jeudi"], ["5", "Vendredi"], ["6", "Samedi"], ["0", "Dimanche"]];
@@ -12,12 +12,18 @@ const DAYS = [["1", "Lundi"], ["2", "Mardi"], ["3", "Mercredi"], ["4", "Jeudi"],
 export default function BookingSettings({ calendars }: { calendars: { id: string; name: string }[] }) {
   const [b, setB] = useState<Booking | null>(null);
   const [copied, setCopied] = useState(false);
+  const [blockDay, setBlockDay] = useState("");
   useEffect(() => { api<Booking>("booking").then(setB); }, []);
   if (!b) return null;
 
   const hours: Hours = JSON.parse(b.hours || "{}");
   const link = `${window.location.origin}/rdv/${b.slug}`;
-  const save = async (next: Booking) => { setB(next); setB(await api<Booking>("booking", "POST", { ...next, hours: JSON.parse(next.hours) })); };
+  const save = async (next: Booking) => { setB(next); setB(await api<Booking>("booking", "POST", { ...next, hours: JSON.parse(next.hours), blocked: JSON.parse(next.blocked || "[]") })); };
+  const today = new Date().toISOString().slice(0, 10);
+  // Les jours passés sont retirés automatiquement de la liste
+  const blocked: string[] = JSON.parse(b.blocked || "[]").filter((d: string) => d >= today);
+  const setBlocked = (list: string[]) => save({ ...b, blocked: JSON.stringify(Array.from(new Set(list)).sort()) });
+  const longDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   const setHours = (h: Hours) => save({ ...b, hours: JSON.stringify(h) });
   const num = (k: keyof Booking, opts: number[], label: (n: number) => string) => (
     <select value={b[k] as number} onChange={(e) => save({ ...b, [k]: Number(e.target.value) })}>
@@ -63,6 +69,17 @@ export default function BookingSettings({ calendars }: { calendars: { id: string
       <label className="field-line">Marge autour de tes événements {num("buffer", [0, 5, 10, 15, 30, 60], (n) => n ? `${n} min` : "Aucune")}</label>
       <label className="field-line">Délai minimum avant un RDV {num("minNotice", [0, 1, 2, 4, 12, 24, 48, 72], (n) => n ? `${n} h` : "Aucun")}</label>
       <label className="field-line">Réservable jusqu&apos;à {num("maxDays", [7, 14, 30, 60, 90], (n) => `${n} jours à l'avance`)}</label>
+
+      <div className="field-line">Jours bloqués (aucun RDV ce jour-là)</div>
+      <div className="row">
+        <input type="date" min={today} value={blockDay} onChange={(e) => setBlockDay(e.target.value)} />
+        <button disabled={!blockDay} onClick={() => { setBlocked([...blocked, blockDay]); setBlockDay(""); }}><Plus size={15} /> Bloquer ce jour</button>
+      </div>
+      {blocked.length > 0 && (
+        <div className="blocked-days">
+          {blocked.map((d) => <span key={d} className="blocked-day">{longDay(d)}<button className="ghost" aria-label="Débloquer" onClick={() => setBlocked(blocked.filter((x) => x !== d))}><X size={13} /></button></span>)}
+        </div>
+      )}
 
       <div className="field-line">Horaires proposés (heure de Paris)</div>
       {DAYS.map(([d, name]) => {

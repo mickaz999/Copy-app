@@ -1014,3 +1014,6 @@ button.danger { color: #c4262c; }
 /* Tâche du jour dont l'horaire est passé sans être faite */
 .chip.task.late-now, .wk-event.task-event.late-now { border-left-color: var(--red) !important; box-shadow: inset 0 0 0 1px rgba(229, 72, 77, .35) !important; }
 .wk-event.task-event .late-badge { margin-left: 4px; }
+.blocked-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.blocked-day { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; border-radius: 999px; background: #fde8e8; color: #9b1c1c; font-size: 13px; text-transform: capitalize; }
+.blocked-day button { padding: 2px; color: inherit; }

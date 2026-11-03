@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     minNotice: clamp(b.minNotice, 0, 336, 12),
     maxDays: clamp(b.maxDays, 1, 90, 30),
     hours: JSON.stringify(hours),
+    blocked: JSON.stringify((Array.isArray(b.blocked) ? b.blocked : []).filter((d: unknown) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()),
     calendar: String(b.calendar ?? ""),
     location: String(b.location ?? "").slice(0, 300),
     visioLink: /^https?:\/\//.test(String(b.visioLink ?? "").trim()) ? String(b.visioLink).trim().slice(0, 300) : "",
