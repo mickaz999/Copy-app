@@ -32,11 +32,13 @@ const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return h
 async function busyPeriods(from: number, to: number, ignoreEvent = "") {
   const [{ events }, tasks] = await Promise.all([
     getEvents(new Date(from), new Date(to), true),
-    db.task.findMany({ where: { status: { not: "done" }, startTime: { not: "" }, endDate: null, date: { gte: new Date(from - 864e5), lte: new Date(to) } } }),
+    db.task.findMany({ where: { status: { not: "done" }, startTime: { not: "" }, date: { gte: new Date(from - 864e5), lte: new Date(to) } } }),
   ]);
   const busy = events.filter((e) => !e.allDay && (!ignoreEvent || e.eventId !== ignoreEvent)).map((e) => [Date.parse(e.start), Date.parse(e.end)] as [number, number]);
   for (const t of tasks) {
     const day = t.date!.toISOString().slice(0, 10);
+    // Tâche sur plusieurs jours : pas de créneau précis (une date de fin le même jour compte comme un seul jour)
+    if (t.endDate && t.endDate.toISOString().slice(0, 10) !== day) continue;
     const s = parisTime(day, t.startTime);
     busy.push([s, t.endTime && t.endTime > t.startTime ? parisTime(day, t.endTime) : s + 36e5]);
   }

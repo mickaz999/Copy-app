@@ -289,6 +289,10 @@ export default function Planning() {
   // Une tâche apparaît sur chaque jour entre son début et sa fin
   const onDay = (t: Task, k: string) => { const s = day(t); return !!s && k >= s && k <= (endDay(t) ?? s); };
   const today = isoDay(new Date());
+  // Heure actuelle rafraîchie chaque minute (ligne « maintenant » et zone passée)
+  const [, setTick] = useState(0);
+  useEffect(() => { const i = setInterval(() => setTick((n) => n + 1), 60_000); return () => clearInterval(i); }, []);
+  const nowH = new Date().getHours() + new Date().getMinutes() / 60;
 
   // Enregistre une tâche ; si c'était une tâche répétitive terminée, la suivante vient d'être créée
   async function saveTask(id: string, body: Partial<Task>) {
@@ -644,10 +648,13 @@ export default function Planning() {
                   <div
                     key={k}
                     className="wk-col"
-                    style={{ backgroundSize: `100% ${HOUR_PX}px` }}
+                    style={{ backgroundSize: `100% ${HOUR_PX}px, 100% ${HOUR_PX}px` }}
                     title="Clique ou glisse pour créer un événement"
                     onPointerDown={(x) => colDown(x, k)}
                   >
+                    {(k < today || (k === today && nowH > HOUR_START)) && (
+                      <div className="wk-past" style={{ height: k < today ? "100%" : Math.min(HOUR_END - HOUR_START, nowH - HOUR_START) * HOUR_PX }} />
+                    )}
                     {draft?.k === k && (
                       <div
                         className="wk-draft"
@@ -683,10 +690,11 @@ export default function Planning() {
                         </div>
                       );
                     })}
-                    {k === today && (() => {
-                      const n = new Date(), h = n.getHours() + n.getMinutes() / 60;
-                      return h >= HOUR_START && h <= HOUR_END ? <div className="wk-now" style={{ top: (h - HOUR_START) * HOUR_PX }} /> : null;
-                    })()}
+                    {k === today && nowH >= HOUR_START && nowH <= HOUR_END && (
+                      <div className="wk-now" style={{ top: (nowH - HOUR_START) * HOUR_PX }}>
+                        <span>{fmtMin(Math.floor(nowH * 60))}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

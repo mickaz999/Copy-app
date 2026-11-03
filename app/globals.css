@@ -134,14 +134,21 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .wk-hour { position: absolute; right: 6px; transform: translateY(-1px); }
 .wk-col {
   position: relative; border-left: 1px solid var(--border);
-  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  /* Trait plein à chaque heure, pointillé léger à la demi-heure */
+  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, transparent calc(50% - .5px), rgba(28, 24, 20, .045) calc(50% - .5px), rgba(28, 24, 20, .045) calc(50% + .5px), transparent calc(50% + .5px));
 }
+/* Partie déjà passée de la journée, assombrie */
+.wk-past { position: absolute; left: 0; right: 0; top: 0; background: rgba(28, 24, 20, .07); pointer-events: none; z-index: 0; }
+.wk-col .wk-event { z-index: 1; }
 .wk-event {
   position: absolute; left: 3px; right: 3px; border-radius: 5px; padding: 2px 5px;
   color: #fff; font-size: 12px; overflow: hidden; cursor: pointer; line-height: 1.3;
 }
 .wk-event .loc { opacity: .85; font-size: 11px; }
-.wk-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); }
+.wk-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); z-index: 3; pointer-events: none; }
+.wk-now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.wk-now span { position: absolute; right: 3px; top: -9px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 6px; line-height: 16px; }
 
 /* Liens (bookmarks) */
 .bookmark { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); margin: 4px 0; }
