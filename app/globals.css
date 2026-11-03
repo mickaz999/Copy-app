@@ -1017,3 +1017,9 @@ button.danger { color: #c4262c; }
 .blocked-days { display: flex; flex-wrap: wrap; gap: 6px; }
 .blocked-day { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; border-radius: 999px; background: #fde8e8; color: #9b1c1c; font-size: 13px; text-transform: capitalize; }
 .blocked-day button { padding: 2px; color: inherit; }
+/* Jours fermés aux RDV (cadenas dans l'en-tête des jours du Planning) */
+.rdv-lock { padding: 2px !important; margin-left: 2px; color: var(--muted); opacity: .35; vertical-align: middle; }
+.wk-head:hover .rdv-lock, .day:hover .rdv-lock, .rdv-lock.on { opacity: 1; }
+.rdv-lock.on { color: var(--red); }
+.wk-head.rdv-blocked, .day.rdv-blocked { background-image: repeating-linear-gradient(135deg, rgba(229, 72, 77, .06) 0 6px, transparent 6px 12px); }
+@media (hover: none) { .rdv-lock { opacity: .6; } }

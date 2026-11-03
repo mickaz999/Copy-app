@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { api, isoDay } from "@/lib/api";
 import { REPEATS, nextDate } from "@/lib/repeat";
-import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
+import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 
 type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
@@ -303,6 +303,24 @@ export default function Planning() {
   const [, setTick] = useState(0);
   useEffect(() => { const i = setInterval(() => setTick((n) => n + 1), 60_000); return () => clearInterval(i); }, []);
   const nowH = new Date().getHours() + new Date().getMinutes() / 60;
+  // Jours fermés au lien de prise de RDV, basculés depuis l'en-tête des jours
+  const [booking, setBooking] = useState<any>(null);
+  useEffect(() => { api("booking").then(setBooking).catch(() => {}); }, []);
+  const blockedDays: string[] = booking ? JSON.parse(booking.blocked || "[]") : [];
+  async function toggleBlocked(k: string) {
+    if (!booking) return;
+    const list = blockedDays.includes(k) ? blockedDays.filter((d) => d !== k) : [...blockedDays, k];
+    setBooking({ ...booking, blocked: JSON.stringify(list) });
+    setBooking(await api("booking", "POST", { ...booking, hours: JSON.parse(booking.hours), blocked: list }));
+  }
+  const BlockBtn = ({ k }: { k: string }) => booking?.enabled && k >= today ? (
+    <button
+      className={`ghost rdv-lock ${blockedDays.includes(k) ? "on" : ""}`}
+      title={blockedDays.includes(k) ? "RDV bloqués ce jour : clique pour rouvrir" : "Bloquer les RDV ce jour"}
+      onClick={(e) => { e.stopPropagation(); toggleBlocked(k); }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >{blockedDays.includes(k) ? <Lock size={12} /> : <LockOpen size={12} />}</button>
+  ) : null;
 
   // Enregistre une tâche ; si c'était une tâche répétitive terminée, la suivante vient d'être créée
   async function saveTask(id: string, body: Partial<Task>) {
@@ -592,12 +610,12 @@ export default function Planning() {
                   return (
                     <div
                       key={k}
-                      className={`day ${d.getMonth() !== month.getMonth() ? "out" : ""} ${k === today ? "today" : ""} ${over === k ? "over" : ""}`}
+                      className={`day ${d.getMonth() !== month.getMonth() ? "out" : ""} ${k === today ? "today" : ""} ${over === k ? "over" : ""} ${blockedDays.includes(k) ? "rdv-blocked" : ""}`}
                       style={{ gridColumn: ci + 1 }}
                       onClick={() => newTask(k)}
                       {...dropProps(k)}
                     >
-                      <span className="num">{d.getDate()}</span>
+                      <span className="num">{d.getDate()}</span><BlockBtn k={k} />
                       <div style={{ height: depth[ci] * SPAN_ROW }} />
                       {k === today && lateTasks.filter((t) => !multiTask(t) || !onDay(t, k)).map((t) => <TaskChip key={`late-${t.id}`} t={t} late />)}
                       {evs.map((e) => <EventChip key={e.id} e={e} />)}
@@ -624,8 +642,8 @@ export default function Planning() {
             <div className="wk-row">
               <div className="wk-gutter" />
               {days.map((d) => (
-                <div key={+d} className={`wk-head ${isoDay(d) === today ? "today" : ""}`}>
-                  {DAYS[(d.getDay() + 6) % 7]} <span className="num">{d.getDate()}</span>
+                <div key={+d} className={`wk-head ${isoDay(d) === today ? "today" : ""} ${blockedDays.includes(isoDay(d)) ? "rdv-blocked" : ""}`}>
+                  {DAYS[(d.getDay() + 6) % 7]} <span className="num">{d.getDate()}</span> <BlockBtn k={isoDay(d)} />
                 </div>
               ))}
             </div>
