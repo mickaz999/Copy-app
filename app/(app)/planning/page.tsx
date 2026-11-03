@@ -48,6 +48,16 @@ function daysLate(t: Task) {
   if (!due || t.status === "done" || t.status === "waiting" || due >= now) return 0;
   return Math.round((Date.parse(now) - Date.parse(due)) / 864e5);
 }
+// Tâche du jour avec horaire dont l'heure de fin (ou début + 1 h) est passée sans être terminée
+function timeOver(t: Task) {
+  const d = t.date?.slice(0, 10), e = t.endDate?.slice(0, 10);
+  if (!d || !t.startTime || (e && e !== d) || t.status === "done" || t.status === "waiting" || d !== isoDay(new Date())) return false;
+  const [h, m] = (t.endTime && t.endTime > t.startTime ? t.endTime : t.startTime).split(":").map(Number);
+  const end = h * 60 + m + (t.endTime && t.endTime > t.startTime ? 0 : 60);
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes() >= end;
+}
+const latePill = (t: Task) => daysLate(t) > 0 ? `${daysLate(t)} j de retard` : timeOver(t) ? "en retard" : "";
 // Couleur de la catégorie (le « projet ») : bordure + fond teinté de la vignette
 const catColor = (t: Pick<Task, "category">) => COLORS[t.category] ?? "#ff6a00";
 const catStyle = (t: Pick<Task, "category">) => ({ borderLeftColor: catColor(t), ["--cat" as string]: catColor(t) }) as React.CSSProperties;
@@ -477,7 +487,7 @@ export default function Planning() {
 
   const TaskChip = ({ t, late }: { t: Task; late?: boolean }) => (
     <div
-      className={`chip task ${t.status} ${late ? "late" : lateDays(t) ? "overdue" : ""}`}
+      className={`chip task ${t.status} ${late ? "late" : lateDays(t) ? "overdue" : timeOver(t) ? "late-now" : ""}`}
       style={catStyle(t)}
       draggable
       onDragStart={(e) => e.dataTransfer.setData("id", t.id)}
@@ -491,7 +501,8 @@ export default function Planning() {
         {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
       </span>
       <span className="chip-text">{t.startTime && <b className="chip-time">{t.startTime}</b>}{t.title}</span>
-      {!late && <Countdown t={t} />}
+      {!late && !timeOver(t) && <Countdown t={t} />}
+      {!late && timeOver(t) && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> en retard</span>}
       {late && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> {lateLabel(lateDays(t))}</span>}
       {t.repeat && <Repeat size={11} className="rep" aria-label={REPEATS[t.repeat]} />}
     </div>
@@ -682,11 +693,11 @@ export default function Planning() {
                       const top = Math.max(0, (s0 - HOUR_START) * HOUR_PX);
                       const height = Math.max(22, (e0 - s0) * HOUR_PX);
                       return (
-                        <div key={`t-${t.id}`} className={`wk-event task-event ${t.status}`} style={{ top, height, ...catStyle(t) }} onClick={(x) => { x.stopPropagation(); setViewing(t); }} title={t.title}>
+                        <div key={`t-${t.id}`} className={`wk-event task-event ${t.status} ${timeOver(t) ? "late-now" : ""}`} style={{ top, height, ...catStyle(t) }} onClick={(x) => { x.stopPropagation(); setViewing(t); }} title={t.title}>
                           <span className="st" onClick={(x) => { x.stopPropagation(); move(t.id, { status: NEXT_STATUS[t.status] ?? "todo" }); }}>
                             {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
                           </span>
-                          <span><b>{t.startTime}</b> {t.title}</span>
+                          <span><b>{t.startTime}</b> {t.title}{timeOver(t) && <span className="late-badge"><AlertTriangle size={9} strokeWidth={2.5} /> en retard</span>}</span>
                         </div>
                       );
                     })}
@@ -745,7 +756,7 @@ export default function Planning() {
               <div className="row"><strong>{s.label}</strong><span className="muted">{visible.filter((t) => t.status === s.key).length}</span></div>
               {visible.filter((t) => t.status === s.key).map((t) => (
                 <div key={t.id} className="card task-card" style={catStyle(t)} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)} onClick={() => setViewing(t)}>
-                  <div>{t.title}{daysLate(t) > 0 && <span className="late-pill" style={{ marginLeft: 6 }}><AlertTriangle size={10} strokeWidth={2.5} /> {daysLate(t)} j de retard</span>}{!daysLate(t) && <Countdown t={t} />}</div>
+                  <div>{t.title}{latePill(t) && <span className="late-pill" style={{ marginLeft: 6 }}><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}{!latePill(t) && <Countdown t={t} />}</div>
                   <div className="row" style={{ marginTop: 4 }}>
                     <span className="tag" style={{ color: COLORS[t.category] }}>{t.category}</span>
                     {t.date && <span className="muted">{fmtDay(t.date)}{t.endDate && t.endDate.slice(0, 10) !== t.date.slice(0, 10) ? ` → ${fmtDay(t.endDate)}` : ""}</span>}
@@ -785,7 +796,7 @@ export default function Planning() {
         const t = tasks.find((x) => x.id === viewing.id) ?? viewing;
         const vals = propsOf(t);
         const filled = props.filter((p) => { const v = vals[p.id]; return v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length) && v !== false; });
-        const late = lateDays(t);
+        const late = lateDays(t) || (timeOver(t) ? -1 : 0);
         const color = catColor(t);
         return (
           <TaskView
@@ -1248,8 +1259,8 @@ function TaskTable({ tasks, props, onPatch, onSetProp, onAddOption, onOpen, onNe
             <tr key={t.id}>
               <td className="title-cell">
                 <input id={`t-${t.id}`} className="cell-input" placeholder="Sans titre" value={t.title} onChange={(e) => onPatch(t.id, { title: e.target.value })} />
-                {!daysLate(t) && <Countdown t={t} />}
-                {daysLate(t) > 0 && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {daysLate(t)} j de retard</span>}
+                {!latePill(t) && <Countdown t={t} />}
+                {latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
                 <button className="ghost open-btn" title="Ouvrir la tâche" onClick={() => onOpen(t)}>Ouvrir</button>
               </td>
               <td>
@@ -1333,7 +1344,7 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onD
           ))}
         </div>
 
-        {late > 0 && <div className="tv-late"><AlertTriangle size={15} /> {late === 1 ? "1 jour de retard" : `${late} jours de retard`}</div>}
+        {late !== 0 && <div className="tv-late"><AlertTriangle size={15} /> {late < 0 ? "En retard : l'horaire est passé" : late === 1 ? "1 jour de retard" : `${late} jours de retard`}</div>}
 
         <dl className="tv-props">
           <dt><Calendar size={14} /> {e0 && e0 !== s0 ? "Période" : "Date"}</dt>
