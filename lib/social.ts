@@ -29,8 +29,8 @@ export const PROVIDERS = {
   frameio: {
     authorize: "https://ims-na1.adobelogin.com/ims/authorize/v2",
     token: "https://ims-na1.adobelogin.com/ims/token/v3",
-    clientId: () => process.env.FRAMEIO_CLIENT_ID ?? "",
-    clientSecret: () => process.env.FRAMEIO_CLIENT_SECRET ?? "",
+    clientId: () => (process.env.FRAMEIO_CLIENT_ID ?? "").trim().replace(/^["']|["']$/g, ""),
+    clientSecret: () => (process.env.FRAMEIO_CLIENT_SECRET ?? "").trim().replace(/^["']|["']$/g, ""),
     scope: "openid,email,profile,offline_access,additional_info.roles",
     extra: {} as Record<string, string>,
   },
