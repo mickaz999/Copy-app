@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { fileMedia, isInside } from "@/lib/frameio";
+import { fileMedia } from "@/lib/frameio";
+import { checkItem } from "@/lib/sign";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   const q = new URL(req.url).searchParams;
   const id = q.get("id") ?? "";
   try {
-    if (!(await isInside(d.accountId, d.folderId, id, "file"))) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
+    if (!checkItem(params.token, id, q.get("sig") ?? "")) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
     const m = await fileMedia(d.accountId, id);
     if (q.get("download") === "1") {
       if (!d.download || !m.original) return NextResponse.json({ error: "Téléchargement non autorisé." }, { status: 403 });

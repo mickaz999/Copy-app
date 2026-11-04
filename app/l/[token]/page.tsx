@@ -331,12 +331,14 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
 }
 
 // Livraison d'un dossier Frame.io : navigation dans les sous-dossiers, aperçu, retours et téléchargement par fichier
-type Item = { id: string; name: string; type: string; mediaType: string; version: number };
+type Item = { id: string; name: string; type: string; mediaType: string; version: number; sig: string };
 type Media = { name: string; mediaType: string; play: string; thumb: string; canDownload: boolean };
 function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: () => Promise<unknown> }) {
   const base = `/api/livraison/${token}`;
-  const [loc, setLoc] = useState<{ id: string; stack?: boolean; name?: string }>({ id: "" });
-  const [data, setData] = useState<{ path: { id: string; name: string }[]; items: Item[] } | null>(null);
+  // Fil d'Ariane : dossiers ouverts depuis le dossier livré (le premier = racine)
+  const [path, setPath] = useState<{ id: string; name: string; sig: string; stack?: boolean }[]>([{ id: "", name: d.title, sig: "" }]);
+  const loc = path[path.length - 1];
+  const [data, setData] = useState<{ items: Item[] } | null>(null);
   const [error, setError] = useState("");
   const [file, setFile] = useState<Item | null>(null);
   const [media, setMedia] = useState<Media | null>(null);
@@ -349,20 +351,20 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   useEffect(() => { try { setAuthor(localStorage.getItem("liv-author") ?? ""); } catch {} }, []);
   useEffect(() => {
     setData(null); setError("");
-    fetch(`${base}/folder?id=${loc.id}${loc.stack ? "&stack=1" : ""}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setData(loc.stack ? { path: [...(data?.path ?? []), { id: loc.id, name: loc.name ?? "" }], items: j.items } : j); }).catch((e) => setError(e.message));
+    fetch(`${base}/folder?id=${loc.id}&sig=${loc.sig}${loc.stack ? "&stack=1" : ""}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setData(j); }).catch((e) => setError(e.message));
   }, [loc.id]);
   useEffect(() => {
     setMedia(null); setNow(0);
-    if (file) fetch(`${base}/file?id=${file.id}`).then((r) => r.json()).then(setMedia).catch(() => {});
+    if (file) fetch(`${base}/file?id=${file.id}&sig=${file.sig}`).then((r) => r.json()).then(setMedia).catch(() => {});
   }, [file?.id]);
 
   const files = data?.items.filter((x) => x.type !== "folder" && x.type !== "version_stack") ?? [];
   const isVid = (m?: string) => !m || m.startsWith("video");
   const icon = (x: Item) => x.type === "folder" ? <Folder size={22} /> : x.type === "version_stack" ? <Layers size={22} /> : x.mediaType.startsWith("image") ? <FileImage size={22} /> : <Film size={22} />;
-  const dl = (id: string) => `${base}/file?id=${id}&download=1`;
+  const dl = (f: Item) => `${base}/file?id=${f.id}&sig=${f.sig}&download=1`;
   async function downloadFolder() {
     for (const f of files) {
-      const el = document.createElement("iframe"); el.style.display = "none"; el.src = dl(f.id);
+      const el = document.createElement("iframe"); el.style.display = "none"; el.src = dl(f);
       document.body.appendChild(el); setTimeout(() => el.remove(), 120_000);
       await new Promise((ok) => setTimeout(ok, 1200));
     }
@@ -399,9 +401,9 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
       <div className="liv-main">
         <div className="liv-player">
           <div className="liv-crumbs">
-            {(data?.path ?? []).map((p, i, all) => (
-              <span key={p.id}>
-                <button className="ghost" disabled={i === all.length - 1} onClick={() => { setFile(null); setLoc({ id: i === 0 ? "" : p.id }); }}>{p.name}</button>
+            {path.map((p, i, all) => (
+              <span key={p.id || "root"}>
+                <button className="ghost" disabled={i === all.length - 1} onClick={() => { setFile(null); setPath(path.slice(0, i + 1)); }}>{p.name}</button>
                 {i < all.length - 1 && <ChevronRight size={14} />}
               </span>
             ))}
@@ -415,7 +417,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
               <div className="liv-actions">
                 <span className="liv-file">{file.name}</span>
                 <span style={{ flex: 1 }} />
-                {media?.canDownload && <a href={dl(file.id)} target="_blank" rel="noreferrer"><button><Download size={15} /> Télécharger</button></a>}
+                {media?.canDownload && <a href={dl(file)} target="_blank" rel="noreferrer"><button><Download size={15} /> Télécharger</button></a>}
                 <button onClick={() => setFile(null)}>Fermer</button>
               </div>
             </div>
@@ -425,7 +427,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           {data?.items.length === 0 && <p className="muted">Dossier vide.</p>}
           <div className="liv-browser">
             {data?.items.map((x) => (
-              <button key={x.id} className={`ghost liv-entry ${file?.id === x.id ? "on" : ""}`} onClick={() => x.type === "folder" || x.type === "version_stack" ? (setFile(null), setLoc({ id: x.id, stack: x.type === "version_stack", name: x.name })) : setFile(x)}>
+              <button key={x.id} className={`ghost liv-entry ${file?.id === x.id ? "on" : ""}`} onClick={() => x.type === "folder" || x.type === "version_stack" ? (setFile(null), setPath([...path, { id: x.id, name: x.name, sig: x.sig, stack: x.type === "version_stack" }])) : setFile(x)}>
                 <span className="liv-entry-ic">{icon(x)}</span>
                 <span className="liv-entry-name">{x.name}</span>
                 {d.comments.some((c) => c.fileId === x.id && !c.resolved) && <b>{d.comments.filter((c) => c.fileId === x.id && !c.resolved).length}</b>}
