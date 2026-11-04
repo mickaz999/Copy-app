@@ -30,6 +30,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [playing, setPlaying] = useState(false);
   // Format réel de la vidéo (largeur / hauteur), pour un lecteur à la bonne taille sans bandes noires
   const [ratio, setRatio] = useState(16 / 9);
+  const ratioFor = useRef("");
   const video = useRef<HTMLVideoElement>(null);
   const url = `/api/livraison/${params.token}`;
 
@@ -68,6 +69,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const comments = d.comments.filter((c) => c.version === cur?.v).sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
   const seek = (t: number) => { if (video.current) { video.current.currentTime = t; video.current.play().catch(() => {}); } };
   const approved = d.approvedV === cur?.v;
+  // Format connu dès l'image d'aperçu, avant que la vidéo ne se charge (sinon le lecteur change de taille au clic)
+  if (cur?.thumb && ratioFor.current !== cur.thumb) {
+    ratioFor.current = cur.thumb;
+    const img = new Image();
+    img.onload = () => img.naturalHeight && setRatio(img.naturalWidth / img.naturalHeight);
+    img.src = cur.thumb;
+  }
   const vertical = ratio < 1;
   // Réseaux choisis à la création du lien, sinon selon le format de la vidéo
   const mocks = MOCKS.filter(([k]) => k === "player" || (d.networks?.length ? d.networks.includes(k) : (vertical ? VERTICAL : HORIZONTAL).includes(k)));
@@ -110,7 +118,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <div className={`liv-stage mock-${isVideo ? mock : "player"}`}>
           {cur?.ready && (isVideo
             ? <div className="mock-screen" onClick={() => { if (mock !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
-              <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={mock === "player"} playsInline preload="metadata" loop={mock !== "player" && mock !== "youtube"}
+              <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={mock === "player"} playsInline preload="auto" loop={mock !== "player" && mock !== "youtube"}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
                 controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
@@ -169,9 +177,9 @@ export default function Livraison({ params }: { params: { token: string } }) {
               </div>
             </div>
           )}
-          {isVideo && mock === "player" && duration > 0 && (
+          {isVideo && mock === "player" && (
             <div className="liv-marks" style={{ width: `min(100% - 12px, calc(var(--liv-h) * ${ratio} - 12px))` }}>
-              {comments.filter((c) => c.time !== null).map((c) => (
+              {duration > 0 && comments.filter((c) => c.time !== null).map((c) => (
                 <button key={c.id} className={c.resolved ? "done" : ""} style={{ left: `${(c.time! / duration) * 100}%` }} title={`${tc(c.time!)} · ${c.author} : ${c.text}`} onClick={() => seek(c.time!)} />
               ))}
             </div>
