@@ -8,27 +8,57 @@ const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).pa
 const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * 864e5).toISOString().slice(0, 10);
 const subTitle = (c: DeliveryComment) => `${c.time !== null ? `${tc(c.time)} · ` : ""}${c.text}${c.author ? ` (${c.author})` : ""}`;
 
-// Retour client → sous-tâche de la tâche « Modifs V(n+1) » liée à la livraison (créée au premier retour)
+type VSub = Sub & { video?: number };
+const videoName = (d: Delivery, v: number) => {
+  const f = (JSON.parse(d.files || "[]") as { name: string }[])[v - 1];
+  // Nom exact du fichier sur Frame.io, pour s'y retrouver
+  return d.kind === "videos" ? f?.name || `Vidéo ${v}` : `V${v}`;
+};
+// Titre : « Modifs · projet · 4 vidéos à modifier » (vidéos ayant encore des retours non corrigés)
+function modifsTitle(d: Delivery, subs: VSub[]) {
+  const n = new Set(subs.filter((s) => !s.done).map((s) => s.video ?? 1)).size;
+  return `Modifs · ${d.title}${n ? ` · ${n} vidéo${n > 1 ? "s" : ""} à modifier` : ""}`;
+}
+
+// Une seule tâche « Modifs » ouverte par livraison : les tâches en double sont fusionnées dans la plus ancienne
+async function openModifsTask(d: Delivery) {
+  const open = await db.task.findMany({ where: { deliveryId: d.id, status: { not: "done" }, title: { startsWith: "Modifs" } }, orderBy: { createdAt: "asc" } });
+  if (open.length <= 1) return open[0] ?? null;
+  const [keep, ...rest] = open;
+  const subs: VSub[] = JSON.parse(keep.subtasks || "[]");
+  for (const t of rest) for (const s of JSON.parse(t.subtasks || "[]") as VSub[]) if (!subs.some((x) => x.id === s.id)) subs.push(s);
+  await db.task.update({ where: { id: keep.id }, data: { subtasks: JSON.stringify(subs), title: modifsTitle(d, subs) } });
+  await db.task.deleteMany({ where: { id: { in: rest.map((t) => t.id) } } });
+  return db.task.findUnique({ where: { id: keep.id } });
+}
+
+// Retour client → sous-tâche de la tâche « Modifs » de la livraison (créée au premier retour)
 export async function commentToTask(d: Delivery, c: DeliveryComment) {
-  const map: Record<string, string> = JSON.parse(d.tasks || "{}");
-  let task = map[c.version] ? await db.task.findUnique({ where: { id: map[c.version] } }) : null;
+  let task = await openModifsTask(d);
   if (!task) {
     const today = parisNow().day;
     task = await db.task.create({
       data: {
-        title: `Modifs V${c.version + 1} · ${d.title}`, category: "Clients", status: "todo",
+        title: `Modifs · ${d.title}`, category: "Clients", status: "todo",
         date: new Date(today), endDate: new Date(addDays(today, 2)), deliveryId: d.id,
-        notes: `Retours ${d.client ? `de ${d.client} ` : ""}sur la V${c.version}${d.mode === "frame" ? " (commentaires Frame.io)" : ""}.`,
+        notes: `Retours ${d.client ? `de ${d.client} ` : ""}${d.mode === "frame" ? "(commentaires Frame.io)" : "(lien de livraison)"}.`,
       },
     });
-    map[c.version] = task.id;
-    await db.delivery.update({ where: { id: d.id }, data: { tasks: JSON.stringify(map) } });
   }
-  const subs: Sub[] = JSON.parse(task.subtasks || "[]");
+  const subs: VSub[] = JSON.parse(task.subtasks || "[]");
   if (subs.some((s) => s.id === `c:${c.id}`)) return;
-  subs.push({ id: `c:${c.id}`, title: subTitle(c), done: c.resolved });
-  // Nouveau retour sur une tâche déjà terminée : elle repart en « à faire »
-  await db.task.update({ where: { id: task.id }, data: { subtasks: JSON.stringify(subs), ...(task.status === "done" ? { status: "todo" } : {}) } });
+  const many = d.kind === "videos" || (JSON.parse(d.files || "[]") as unknown[]).length > 1;
+  subs.push({ id: `c:${c.id}`, title: `${many ? `${videoName(d, c.version)} · ` : ""}${subTitle(c)}`, done: c.resolved, video: c.version });
+  await db.task.update({ where: { id: task.id }, data: { subtasks: JSON.stringify(subs), title: modifsTitle(d, subs) } });
+}
+
+// Fusion des tâches « Modifs » en double créées avant le regroupement
+export async function mergeModifsTasks() {
+  const ids = await db.task.groupBy({ by: ["deliveryId"], where: { deliveryId: { not: "" }, status: { not: "done" }, title: { startsWith: "Modifs" } }, _count: true });
+  for (const g of ids) if (g._count > 1) {
+    const d = await db.delivery.findUnique({ where: { id: g.deliveryId } });
+    if (d) await openModifsTask(d);
+  }
 }
 
 // Retour coché « corrigé » dans Livraisons → sous-tâche cochée
@@ -42,14 +72,20 @@ export async function syncCommentResolved(c: DeliveryComment) {
 }
 
 // Sous-tâche cochée dans le Planning → retour marqué « corrigé »
-export async function syncTaskToComments(task: { deliveryId: string; subtasks: string }) {
+export async function syncTaskToComments(task: { id: string; title: string; deliveryId: string; subtasks: string }) {
   if (!task.deliveryId) return;
+  const d = await db.delivery.findUnique({ where: { id: task.deliveryId } });
+  if (d && task.title.startsWith("Modifs")) {
+    const t = modifsTitle(d, JSON.parse(task.subtasks || "[]"));
+    if (t !== task.title) await db.task.update({ where: { id: task.id }, data: { title: t } });
+  }
   for (const s of JSON.parse(task.subtasks || "[]") as Sub[])
     if (s.id.startsWith("c:")) await db.deliveryComment.updateMany({ where: { id: s.id.slice(2), deliveryId: task.deliveryId }, data: { resolved: s.done } });
 }
 
 // Récupère les nouveaux commentaires laissés directement sur Frame.io (vidéos liées)
 export async function pullFrameComments(only?: string) {
+  await mergeModifsTasks().catch(() => {});
   const since = new Date(Date.now() - 90 * 864e5);
   const list = await db.delivery.findMany({ where: only ? { id: only } : { createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, take: 30 });
   let added = 0;

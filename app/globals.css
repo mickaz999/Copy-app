@@ -1202,3 +1202,5 @@ button.danger { color: #c4262c; }
 .liv-item.picked { border-color: var(--accent) !important; background: var(--accent-soft) !important; }
 .tv-frame { display: grid; gap: 4px; justify-items: center; }
 .tv-frame .tv-revision { width: 100%; }
+.seg-videos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg-videos button { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; }

@@ -1492,7 +1492,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
     try {
       let d: DeliveryLite;
       if (target.startsWith("new-")) {
-        d = await api<DeliveryLite>("livraisons", "POST", { title: base, client: "", accountId, files, mode: target === "new-frame" ? "frame" : "page" });
+        d = await api<DeliveryLite>("livraisons", "POST", { title: base, client: "", accountId, files, mode: target === "new-frame" ? "frame" : "page", kind: files.length > 1 ? "videos" : "versions" });
       } else {
         const cur = list!.find((x) => x.id === target)!;
         if (cur.accountId !== accountId) return setError("Choisis une vidéo du même compte Frame.io que cette livraison.");
@@ -1526,7 +1526,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
           <option value="new-frame">Nouveau suivi Frame « {base} » (agence)</option>
         </select>
       </label>
-      <p className="muted small">Choisis la ou les vidéos exportées (plusieurs = V suivantes dans l&apos;ordre des clics), ou ferme pour passer.</p>
+      <p className="muted small">Choisis la ou les vidéos exportées, ou ferme pour passer. Pour une nouvelle livraison, plusieurs vidéos = des vidéos différentes (modifiable dans Livraisons).</p>
       {error && <p className="neg small">{error}</p>}
     </FramePicker>
   );

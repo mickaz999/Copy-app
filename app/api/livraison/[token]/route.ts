@@ -23,7 +23,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
     }
   }));
   return NextResponse.json({
-    title: d.title, client: d.client, networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
+    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
 }
@@ -51,6 +51,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json(c);
   }
   if (b.action === "approve") {
+    if (d.kind === "videos") {
+      // Plusieurs vidéos : chacune se valide séparément
+      const list = Array.from(new Set([...(JSON.parse(d.approved || "[]") as number[]), version])).sort((a, b) => a - b);
+      await db.delivery.update({ where: { id: d.id }, data: { approved: JSON.stringify(list), ...(list.length === count ? { approvedAt: new Date() } : {}) } });
+      const name = (JSON.parse(d.files) as F[])[version - 1]?.name ?? `vidéo ${version}`;
+      await notify(`« ${name} » validée ✅`, `${author} · ${list.length}/${count} vidéos validées (${d.title}).`);
+      return NextResponse.json({ ok: true, approved: list });
+    }
     await db.delivery.update({ where: { id: d.id }, data: { approvedAt: new Date(), approvedV: version } });
     await notify(`« ${d.title} » validé ✅`, `${author} a validé la V${version}.`);
     return NextResponse.json({ ok: true, approvedV: version });

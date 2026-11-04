@@ -243,6 +243,8 @@ model Delivery {
   accountId  String   // compte Frame.io
   files      String   @default("[]") // versions, de la plus ancienne à la plus récente (JSON [{ fileId, name }])
   download   Boolean  @default(true) // téléchargement autorisé
+  kind       String   @default("versions") // versions = V1, V2… d'une même vidéo ; videos = plusieurs vidéos différentes
+  approved   String   @default("[]")       // vidéos validées (kind = videos), numéros
   mode       String   @default("page") // page = lien maderino ; frame = suivi des commentaires Frame.io seulement (agences)
   tasks      String   @default("{}")   // tâche « Modifs » liée par version ({ "1": taskId })
   networks   String   @default("[]") // aperçus proposés (reel, tiktok, short, youtube) ; vide = selon le format

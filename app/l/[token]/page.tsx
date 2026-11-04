@@ -5,7 +5,7 @@ import Logo from "@/components/Logo";
 
 type Version = { v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { title: string; client: string; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -68,7 +68,11 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const isVideo = !cur?.mediaType || cur.mediaType.startsWith("video");
   const comments = d.comments.filter((c) => c.version === cur?.v).sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
   const seek = (t: number) => { if (video.current) { video.current.currentTime = t; video.current.play().catch(() => {}); } };
-  const approved = d.approvedV === cur?.v;
+  // Plusieurs vidéos différentes (nom Frame.io) ou versions d'une même vidéo (V1, V2…)
+  const multi = d.kind === "videos";
+  const lab = (x?: Version) => (x ? (multi ? x.name : `V${x.v}`) : "");
+  const isOk = (n: number) => (multi ? d.approved.includes(n) : d.approvedV === n);
+  const approved = !!cur && isOk(cur.v);
   // Format connu dès l'image d'aperçu, avant que la vidéo ne se charge (sinon le lecteur change de taille au clic)
   if (cur?.thumb && ratioFor.current !== cur.thumb) {
     ratioFor.current = cur.thumb;
@@ -90,15 +94,17 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <h1>{d.title}</h1>
           {d.message && <p className="liv-msg">{d.message}</p>}
           <div className="liv-chips">
-            <span>Version {cur.v}{d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}</span>
+            <span>{multi ? `${d.versions.length} vidéos` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
-            {d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
+            {multi
+              ? d.approved.length === d.versions.length ? <span className="ok">✓ Toutes les vidéos validées</span> : <span className="wait">{d.approved.length}/{d.versions.length} vidéos validées</span>
+              : d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
           </div>
         </div>
         <div className="liv-cta">
           {approved
-            ? <span className="ok-pill"><CheckCircle2 size={15} /> V{cur.v} validée</span>
-            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider la V${cur.v} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider la V{cur.v}</button>}
+            ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
+            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? "Valider cette vidéo" : `Valider la V${cur.v}`}</button>}
           {cur?.original && <a href={cur.original} target="_blank" rel="noreferrer"><button><Download size={16} /> Télécharger</button></a>}
         </div>
       </header>
@@ -107,7 +113,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
         <div className="liv-player">
           <div className="liv-toolbar">
             {d.versions.length > 1
-              ? <div className="seg">{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} onClick={() => { setV(x.v); setNow(0); }}>V{x.v}{d.approvedV === x.v && " ✓"}</button>)}</div>
+              ? <div className={`seg ${multi ? "seg-videos" : ""}`}>{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>{lab(x)}{isOk(x.v) && " ✓"}</button>)}</div>
               : <span className="liv-file">{cur?.name}</span>}
             {cur?.ready && isVideo && !vertical && (
               <div className="seg">{mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
@@ -196,7 +202,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
         </div>
 
         <aside className="liv-side">
-          <h3><MessageSquare size={16} /> Retours · V{cur?.v}</h3>
+          <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
           <div className="liv-comments">
             {comments.length === 0 && <p className="muted small">Aucun retour pour l&apos;instant. Mets pause sur un moment précis et écris ton commentaire.</p>}
             {comments.map((c) => (
