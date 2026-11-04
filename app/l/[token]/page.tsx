@@ -75,6 +75,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
       <div className="liv-main">
         <div className="liv-player">
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
+          <div className="liv-stage">
           {cur?.ready && (isVideo
             ? <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls playsInline preload="metadata"
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} />
@@ -86,6 +87,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
               ))}
             </div>
           )}
+          </div>
           <div className="liv-actions">
             <span className="muted small">{cur?.name}</span>
             <span style={{ flex: 1 }} />

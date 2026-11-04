@@ -1053,7 +1053,10 @@ button.danger { color: #c4262c; }
 .liv-versions button.on { border-color: var(--accent) !important; color: var(--accent) !important; }
 .liv-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 .liv-player { position: relative; display: grid; gap: 10px; }
-.liv-player video, .liv-player img { width: 100%; max-height: 72vh; background: #000; border-radius: 16px; display: block; object-fit: contain; }
+/* La vidéo prend la taille de son format (16:9, vertical, carré…) sans bandes noires autour */
+.liv-stage { display: grid; gap: 10px; justify-self: center; max-width: 100%; width: fit-content; }
+.liv-player video, .liv-player img { display: block; width: auto; height: auto; max-width: 100%; max-height: 78vh; border-radius: 16px; background: #000; justify-self: center; }
+.liv-player video { min-width: min(320px, 100%); }
 .liv-wait { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 20px; border-radius: 16px; background: #1c1814; color: #f5f0ea; }
 .liv-marks { position: relative; height: 12px; margin: 0 6px; border-radius: 999px; background: rgba(28, 24, 20, .08); }
 .liv-marks button { position: absolute; top: 1px; width: 10px; height: 10px; padding: 0 !important; margin-left: -5px; border-radius: 50%; background: var(--accent) !important; border: 2px solid #fff !important; box-shadow: none !important; }
