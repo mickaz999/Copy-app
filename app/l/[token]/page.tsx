@@ -61,8 +61,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
     if (await post({ action: "comment", version: v, author, text, time: atTime && isVideo ? now : null })) setText("");
   }
 
-  if (error && !d) return <div className="rdv"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
-  if (!d) return <div className="rdv"><div className="rdv-card"><Logo /><p className="muted">Chargement…</p></div></div>;
+  if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
+  if (!d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="muted">Chargement…</p></div></div>;
 
   const cur = d.versions.find((x) => x.v === v) ?? d.versions[d.versions.length - 1];
   const isVideo = !cur?.mediaType || cur.mediaType.startsWith("video");
@@ -86,7 +86,9 @@ export default function Livraison({ params }: { params: { token: string } }) {
   if (!mocks.some(([k]) => k === mock)) setTimeout(() => setMock("player"));
 
   return (
-    <div className="liv">
+    <div className="liv dark">
+      {/* Fond : vignette de la vidéo floutée, en fondu vers le noir */}
+      <div className="liv-bg" style={cur?.thumb ? { backgroundImage: `url("${cur.thumb}")` } : undefined} />
       <div className="liv-top"><Logo /><span className="muted small">Livraison privée</span></div>
       <header className="liv-hero">
         <div className="liv-hero-text">

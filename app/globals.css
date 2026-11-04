@@ -1204,3 +1204,44 @@ button.danger { color: #c4262c; }
 .tv-frame .tv-revision { width: 100%; }
 .seg-videos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .seg-videos button { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; }
+
+/* Page de livraison en sombre, fond = vignette floutée qui se fond dans le noir */
+.liv.dark, .liv-dark-solo {
+  --text: #f4efe9; --muted: #a89e94; --border: rgba(255, 255, 255, .10);
+  --glass-bg: rgba(255, 255, 255, .06); --glass-bg-strong: rgba(255, 255, 255, .12); --glass-border: rgba(255, 255, 255, .10);
+  --accent-soft: rgba(255, 107, 0, .16);
+  color: var(--text); position: relative; isolation: isolate;
+}
+.liv-dark-solo { background: #0c0b0a; }
+.liv-dark-solo .rdv-card { background: #171513; }
+body:has(.liv.dark) { background: #0c0b0a !important; }
+.liv-bg { position: fixed; inset: -60px; z-index: -1; background: #0c0b0a center / cover no-repeat; filter: blur(90px) saturate(150%) brightness(.5); transform: scale(1.15); }
+.liv-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, transparent 0%, rgba(12, 11, 10, .55) 55%, #0c0b0a 100%), linear-gradient(180deg, rgba(12, 11, 10, .2), #0c0b0a 85%); }
+.liv.dark .logo .pt { background: var(--text); }
+.liv.dark .liv-hero { background: linear-gradient(135deg, rgba(255, 140, 60, .14), rgba(255, 255, 255, .03)), rgba(20, 18, 16, .55); border-color: var(--border); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.liv.dark .liv-player { background: rgba(255, 255, 255, .04); border-color: var(--border); }
+.liv.dark .liv-side { background: rgba(20, 18, 16, .6); border-color: var(--border); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.liv.dark .liv-comment { background: rgba(255, 255, 255, .05); border-color: var(--border); }
+.liv.dark .liv-chips span { background: rgba(255, 255, 255, .06); border-color: var(--border); color: var(--muted); }
+.liv.dark .liv-chips .ok { color: #5fd38f; background: rgba(47, 143, 91, .18); border-color: rgba(95, 211, 143, .3); }
+.liv.dark .liv-chips .wait { color: #ff9a4d; background: rgba(255, 107, 0, .14); border-color: rgba(255, 154, 77, .3); }
+.liv.dark .liv-msg { color: var(--text); opacity: .9; }
+.liv.dark button:not(.primary):not(.ghost), .liv.dark input:not([type=checkbox]), .liv.dark textarea { background: rgba(255, 255, 255, .06) !important; border-color: var(--border) !important; color: var(--text); box-shadow: none !important; }
+.liv.dark button:not(.primary):not(.ghost):hover { background: rgba(255, 255, 255, .12) !important; }
+.liv.dark input::placeholder, .liv.dark textarea::placeholder { color: #7d746b; }
+.liv.dark .seg { background: rgba(255, 255, 255, .06); }
+.liv.dark .seg button { background: transparent !important; color: var(--muted); }
+.liv.dark .seg button.on { background: rgba(255, 255, 255, .14) !important; color: var(--text) !important; }
+.liv.dark .liv-netlist button.on, .liv.dark .liv-when.on { background: var(--accent-soft) !important; border-color: var(--accent) !important; color: #ff9a4d !important; }
+.liv.dark .liv-marks { background: rgba(255, 255, 255, .1); }
+.liv.dark .liv-marks button { border-color: #0c0b0a !important; }
+.liv.dark .ok-pill { background: rgba(47, 143, 91, .2); color: #5fd38f; }
+.liv.dark .mock-yt-info, .liv.dark .mock-yt-row small { color: var(--text); }
+.liv.dark .mock-yt-row small { color: var(--muted); }
+.liv.dark .mock-yt-row em { background: #f1f1f1; color: #0f0f0f; }
+.liv.dark .mock-pill { background: rgba(255, 255, 255, .1); }
+.liv.dark .neg { color: #ff7b7b; }
+/* Téléphone (Instagram, TikTok, Shorts) : taille fixe, indépendante de l'aperçu et de la vidéo chargée */
+.liv-stage.mock-reel, .liv-stage.mock-tiktok, .liv-stage.mock-short { width: auto; justify-self: center; }
+.mock-reel .mock-screen, .mock-tiktok .mock-screen, .mock-short .mock-screen { width: min(340px, calc(var(--liv-h) * 9 / 19)) !important; max-width: calc(100vw - 64px); flex: none; }
+.liv.dark .mock-reel .mock-screen, .liv.dark .mock-tiktok .mock-screen, .liv.dark .mock-short .mock-screen { border-color: #2b2826; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
