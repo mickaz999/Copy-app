@@ -1,15 +1,18 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Download, MessageSquare, Clock, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play } from "lucide-react";
+import { CheckCircle2, Download, MessageSquare, Clock, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { title: string; client: string; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { title: string; client: string; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
+// Vertical : réseaux « courts » ; horizontal : YouTube seulement
 const MOCKS = [["player", "Lecteur"], ["reel", "Instagram"], ["tiktok", "TikTok"], ["short", "Shorts"], ["youtube", "YouTube"]] as const;
 type Mock = (typeof MOCKS)[number][0];
+const VERTICAL: Mock[] = ["player", "reel", "tiktok", "short"];
+const HORIZONTAL: Mock[] = ["player", "youtube"];
 
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -34,6 +37,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
     setD(j);
+    if (j.networks?.length) setMock((m) => (m === "player" ? j.networks[0] : m));
     setV((cur) => cur || j.versions.length);
   }).catch((e) => setError(e.message));
   useEffect(() => {
@@ -64,6 +68,10 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const comments = d.comments.filter((c) => c.version === cur?.v).sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
   const seek = (t: number) => { if (video.current) { video.current.currentTime = t; video.current.play().catch(() => {}); } };
   const approved = d.approvedV === cur?.v;
+  const vertical = ratio < 1;
+  // Réseaux choisis à la création du lien, sinon selon le format de la vidéo
+  const mocks = MOCKS.filter(([k]) => k === "player" || (d.networks?.length ? d.networks.includes(k) : (vertical ? VERTICAL : HORIZONTAL).includes(k)));
+  if (!mocks.some(([k]) => k === mock)) setTimeout(() => setMock("player"));
 
   return (
     <div className="liv">
@@ -93,10 +101,11 @@ export default function Livraison({ params }: { params: { token: string } }) {
             {d.versions.length > 1
               ? <div className="seg">{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} onClick={() => { setV(x.v); setNow(0); }}>V{x.v}{d.approvedV === x.v && " ✓"}</button>)}</div>
               : <span className="liv-file">{cur?.name}</span>}
-            {cur?.ready && isVideo && (
-              <div className="seg">{MOCKS.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
+            {cur?.ready && isVideo && !vertical && (
+              <div className="seg">{mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
             )}
           </div>
+          <div className={`liv-scene ${vertical && isVideo ? "vertical" : ""}`}>
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
           <div className={`liv-stage mock-${isVideo ? mock : "player"}`}>
           {cur?.ready && (isVideo
@@ -107,7 +116,27 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
                 style={mock === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
-              {mock !== "player" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
+              {mock !== "player" && mock !== "youtube" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
+              {mock === "youtube" && (
+                // Commandes façon lecteur YouTube
+                <div className={`yt-ctrl ${playing ? "" : "show"}`} onClick={(e) => e.stopPropagation()}>
+                  <div className="yt-bar" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); if (video.current && duration) video.current.currentTime = ((e.clientX - r.left) / r.width) * duration; }}>
+                    <i style={{ width: duration ? `${(now / duration) * 100}%` : 0 }} />
+                    {comments.filter((c) => c.time !== null && duration).map((c) => <b key={c.id} style={{ left: `${(c.time! / duration) * 100}%` }} />)}
+                  </div>
+                  <div className="yt-row">
+                    <button className="ghost" onClick={() => video.current && (video.current.paused ? video.current.play() : video.current.pause())}>{playing ? <Pause size={22} fill="#fff" /> : <Play size={22} fill="#fff" />}</button>
+                    <button className="ghost"><SkipForward size={20} fill="#fff" /></button>
+                    <button className="ghost" onClick={() => video.current && (video.current.muted = !video.current.muted)}><Volume2 size={21} /></button>
+                    <span className="yt-time">{tc(now)} / {tc(duration || 0)}</span>
+                    <span style={{ flex: 1 }} />
+                    <button className="ghost"><Subtitles size={20} /></button>
+                    <button className="ghost"><Settings size={20} /></button>
+                    <button className="ghost"><RectangleHorizontal size={20} /></button>
+                    <button className="ghost" onClick={(e) => (e.currentTarget.closest(".mock-screen") as HTMLElement)?.requestFullscreen?.()}><Maximize size={20} /></button>
+                  </div>
+                </div>
+              )}
               {(mock === "reel" || mock === "tiktok" || mock === "short") && (
                 <div className="mock-ui">
                   <div className="mock-side">
@@ -145,6 +174,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
               {comments.filter((c) => c.time !== null).map((c) => (
                 <button key={c.id} className={c.resolved ? "done" : ""} style={{ left: `${(c.time! / duration) * 100}%` }} title={`${tc(c.time!)} · ${c.author} : ${c.text}`} onClick={() => seek(c.time!)} />
               ))}
+            </div>
+          )}
+          </div>
+          {cur?.ready && isVideo && vertical && (
+            <div className="liv-netlist">
+              <span className="rdv-group-label">Aperçu</span>
+              {mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}
             </div>
           )}
           </div>

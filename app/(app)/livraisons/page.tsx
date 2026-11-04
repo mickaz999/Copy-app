@@ -9,9 +9,21 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[] };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[] };
 
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const NETS = [["reel", "Instagram"], ["tiktok", "TikTok"], ["short", "Shorts"], ["youtube", "YouTube"]];
+// Choix des aperçus réseaux proposés au client (aucun = automatique selon le format)
+function NetPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div className="field-line">Aperçus réseaux
+      <div className="net-pick">
+        {NETS.map(([k, label]) => <button key={k} type="button" className={value.includes(k) ? "on" : ""} onClick={() => onChange(value.includes(k) ? value.filter((x) => x !== k) : [...value, k])}>{label}</button>)}
+      </div>
+      <span className="muted small">{value.length ? "Le lien s'ouvre directement sur le premier choisi." : "Aucun choisi : automatique (Instagram, TikTok, Shorts en vertical ; YouTube en horizontal)."}</span>
+    </div>
+  );
+}
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
 
 // Explorateur Frame.io : choisir une vidéo dans un projet
@@ -62,7 +74,7 @@ function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (a
 export default function Livraisons() {
   const [info, setInfo] = useState<Info | null>(null);
   const [list, setList] = useState<Delivery[]>([]);
-  const [draft, setDraft] = useState<{ title: string; client: string; message: string; accountId: string; files: File[] } | null>(null);
+  const [draft, setDraft] = useState<{ title: string; client: string; message: string; networks: string[]; accountId: string; files: File[] } | null>(null);
   const [picking, setPicking] = useState<"new" | string | null>(null);
   const [open, setOpen] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -110,7 +122,7 @@ export default function Livraisons() {
       )}
       {info?.error && <section className="settings-card warn"><p>{info.error}</p><a href="/api/connect/frameio"><button><Link2 size={16} /> Reconnecter Frame.io</button></a></section>}
 
-      {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}><button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
+      {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}><button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", networks: [], accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
 
       {draft && (
         <section className="settings-card">
@@ -118,6 +130,7 @@ export default function Livraisons() {
           <label className="field-line">Titre du projet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Clip « Été 2026 »" /></label>
           <label className="field-line">Client<input value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} placeholder="Nom du client" /></label>
           <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses 🙌" /></label>
+          <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
           <div className="field-line">Vidéo(s)</div>
           {draft.files.map((f, i) => <div key={i} className="liv-item static"><Film size={15} /> V{i + 1} · {f.name}</div>)}
           <div className="row">
@@ -151,6 +164,7 @@ export default function Livraisons() {
               <div className="liv-detail">
                 <label className="field-line">Titre<input defaultValue={d.title} onBlur={async (e) => { if (e.target.value !== d.title) { await api(`livraisons/${d.id}`, "PATCH", { title: e.target.value }); load(); } }} /></label>
                 <label className="field-line">Client<input defaultValue={d.client} onBlur={async (e) => { if (e.target.value !== d.client) { await api(`livraisons/${d.id}`, "PATCH", { client: e.target.value }); load(); } }} /></label>
+                <NetPicker value={JSON.parse(d.networks || "[]")} onChange={async (networks) => { await api(`livraisons/${d.id}`, "PATCH", { networks }); load(); }} />
                 <label className="field-line">Message au client<textarea rows={2} defaultValue={d.message} onBlur={async (e) => { if (e.target.value !== d.message) { await api(`livraisons/${d.id}`, "PATCH", { message: e.target.value }); load(); } }} /></label>
                 {files.map((f, i) => {
                   const cs = d.comments.filter((c) => c.version === i + 1);

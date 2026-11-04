@@ -22,7 +22,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
     }
   }));
   return NextResponse.json({
-    title: d.title, client: d.client, message: d.message, createdAt: d.createdAt, download: d.download, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
+    title: d.title, client: d.client, networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
 }

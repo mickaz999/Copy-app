@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { nets } from "@/lib/frameio";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof b.client === "string") data.client = b.client.slice(0, 200);
   if (typeof b.message === "string") data.message = b.message.slice(0, 2000);
   if (typeof b.download === "boolean") data.download = b.download;
+  if (Array.isArray(b.networks)) data.networks = JSON.stringify(nets(b.networks));
   if (Array.isArray(b.files)) { data.files = JSON.stringify(b.files.map((f: any) => ({ fileId: String(f.fileId), name: String(f.name ?? "") }))); data.approvedAt = null; data.approvedV = 0; }
   return NextResponse.json(await db.delivery.update({ where: { id: params.id }, data }));
 }

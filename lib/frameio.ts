@@ -61,3 +61,6 @@ export async function fileMedia(accountId: string, fileId: string) {
     status: (f?.status ?? "") as string,
   };
 }
+
+// Aperçus réseaux autorisés pour une livraison
+export const nets = (v: unknown) => (Array.isArray(v) ? v : []).filter((n) => ["reel", "tiktok", "short", "youtube"].includes(n));

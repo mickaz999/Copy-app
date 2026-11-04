@@ -1170,3 +1170,30 @@ button.danger { color: #c4262c; }
   .seg button { padding: 6px 9px !important; flex: none; }
   .liv-side { position: static; max-height: none; }
 }
+
+/* Scène : vertical = lecteur à gauche, choix du réseau à droite */
+.liv-scene { display: grid; gap: 14px; min-width: 0; }
+.liv-scene.vertical { grid-template-columns: minmax(0, 1fr) 170px; align-items: center; }
+.liv-netlist { display: grid; gap: 6px; align-content: center; }
+.liv-netlist button { justify-content: flex-start; padding: 10px 14px !important; font-weight: 600; border-radius: 12px; }
+.liv-netlist button.on { color: var(--accent) !important; border-color: var(--accent) !important; background: var(--accent-soft) !important; }
+@media (max-width: 900px) {
+  .liv-scene.vertical { grid-template-columns: minmax(0, 1fr); }
+  .liv-netlist { grid-template-columns: repeat(4, minmax(0, 1fr)); order: -1; }
+  .liv-netlist .rdv-group-label { display: none; }
+  .liv-netlist button { justify-content: center; padding: 8px 4px !important; font-size: 12.5px; }
+}
+/* Lecteur façon YouTube */
+.yt-ctrl { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 12px 6px; background: linear-gradient(transparent, rgba(0, 0, 0, .65)); color: #fff; opacity: 0; transition: opacity .2s; font-family: Roboto, Arial, sans-serif; }
+.mock-screen:hover .yt-ctrl, .yt-ctrl.show { opacity: 1; }
+.yt-bar { position: relative; height: 4px; margin: 8px 0 4px; background: rgba(255, 255, 255, .3); cursor: pointer; transition: height .1s; }
+.yt-bar:hover { height: 6px; }
+.yt-bar i { position: absolute; inset: 0 auto 0 0; background: #f00; }
+.yt-bar b { position: absolute; top: 0; bottom: 0; width: 3px; background: #ffd400; }
+.yt-row { display: flex; align-items: center; gap: 4px; }
+.yt-row button { background: none !important; background-image: none !important; border: none !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-radius: 0 !important; color: #fff !important; padding: 6px !important; min-height: 0; }
+.yt-time { font-size: 13px; margin-left: 6px; }
+.mock-youtube .mock-screen video { cursor: pointer; }
+.net-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.net-pick button { font-size: 13px; padding: 6px 12px !important; border-radius: 999px; }
+.net-pick button.on { color: var(--accent) !important; border-color: var(--accent) !important; background: var(--accent-soft) !important; }
