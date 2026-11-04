@@ -92,6 +92,19 @@ export default function Livraison({ params }: { params: { token: string } }) {
   // Réseaux choisis à la création du lien, sinon selon le format de la vidéo
   const mocks = MOCKS.filter(([k]) => k === "player" || (d.networks?.length ? d.networks.includes(k) : (vertical ? VERTICAL : HORIZONTAL).includes(k)));
   if (!mocks.some(([k]) => k === mock)) setTimeout(() => setMock("player"));
+  // Livraison de photos (ou mixte) : galerie de vignettes ; téléchargement de tout d'un coup
+  const isImg = (x: Version) => x.mediaType.startsWith("image");
+  const gallery = d.versions.length > 1 && d.versions.some(isImg);
+  const noun = d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos";
+  const files = multi ? d.versions.filter((x) => x.original) : [];
+  async function downloadAll() {
+    for (const x of files) {
+      const a = document.createElement("a");
+      a.href = x.original; a.download = x.name; a.target = "_blank"; a.rel = "noreferrer";
+      document.body.appendChild(a); a.click(); a.remove();
+      await new Promise((ok) => setTimeout(ok, 700));
+    }
+  }
   const nets = mocks.filter(([k]) => k !== "player" && k !== "youtube");
   const dual = wide && vertical && isVideo && !!cur?.ready && nets.length > 0;
   if (dual && !nets.some(([k]) => k === mock2)) setTimeout(() => setMock2(nets[0][0]));
@@ -101,7 +114,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   return (
     <div className="liv dark">
       {/* Fond : vignette de la vidéo floutée, en fondu vers le noir */}
-      <div className="liv-bg" style={cur?.thumb ? { backgroundImage: `url("${cur.thumb}")` } : undefined}>
+      <div className="liv-bg" style={cur?.thumb || (cur && !isVideo) ? { backgroundImage: `url("${cur.thumb || cur.play}")` } : undefined}>
         {/* Sans vignette Frame.io, on prend une image de la vidéo elle-même */}
         {!cur?.thumb && cur?.play && isVideo && <video key={cur.v} src={`${cur.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden />}
       </div>
@@ -112,25 +125,28 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <h1>{d.title}</h1>
           {d.message && <p className="liv-msg">{d.message}</p>}
           <div className="liv-chips">
-            <span>{multi ? `${d.versions.length} vidéos` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
+            <span>{multi ? `${d.versions.length} ${d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos"}` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
             {multi
-              ? d.approved.length === d.versions.length ? <span className="ok">✓ Toutes les vidéos validées</span> : <span className="wait">{d.approved.length}/{d.versions.length} vidéos validées</span>
+              ? d.approved.length === d.versions.length ? <span className="ok">✓ Toutes les {noun} validées</span> : <span className="wait">{d.approved.length}/{d.versions.length} {noun} validé{noun === "fichiers" ? "s" : "es"}</span>
               : d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
           </div>
         </div>
         <div className="liv-cta">
           {approved
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
-            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? "Valider cette vidéo" : `Valider la V${cur.v}`}</button>}
-          {cur?.original && <a href={cur.original} target="_blank" rel="noreferrer"><button><Download size={16} /> Télécharger</button></a>}
+            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
+          {cur?.original && <a href={cur.original} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
+          {files.length > 1 && <button onClick={downloadAll}><Download size={16} /> Tout télécharger ({files.length})</button>}
         </div>
       </header>
 
       <div className="liv-main">
         <div className="liv-player">
           <div className="liv-toolbar">
-            {d.versions.length > 1
+            {gallery
+              ? <span className="liv-file">{cur?.name} · {d.versions.findIndex((x) => x.v === cur.v) + 1}/{d.versions.length}</span>
+              : d.versions.length > 1
               ? <div className={`seg ${multi ? "seg-videos" : ""}`}>{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>{lab(x)}{isOk(x.v) && " ✓"}</button>)}</div>
               : <span className="liv-file">{cur?.name}</span>}
             {cur?.ready && isVideo && !vertical && (
@@ -219,13 +235,25 @@ export default function Livraison({ params }: { params: { token: string } }) {
             </div>
           )}
           </div>
-          {d.versions.length > 1 && <span className="liv-file center">{cur?.name}</span>}
+          {gallery
+            ? (
+              <div className="liv-gallery">
+                {d.versions.map((x) => (
+                  <button key={x.v} className={`ghost ${x.v === cur.v ? "on" : ""}`} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>
+                    {isImg(x) || x.thumb ? <img src={x.thumb || x.play} alt={x.name} loading="lazy" /> : <span className="liv-g-vid"><Play size={18} fill="#fff" /></span>}
+                    {isOk(x.v) && <i>✓</i>}
+                    {comments.length >= 0 && d.comments.some((c) => c.version === x.v && !c.resolved) && <b>{d.comments.filter((c) => c.version === x.v && !c.resolved).length}</b>}
+                  </button>
+                ))}
+              </div>
+            )
+            : d.versions.length > 1 && <span className="liv-file center">{cur?.name}</span>}
         </div>
 
         <aside className="liv-side">
           <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
           <div className="liv-comments">
-            {comments.length === 0 && <p className="muted small">Aucun retour pour l&apos;instant. Mets pause sur un moment précis et écris ton commentaire.</p>}
+            {comments.length === 0 && <p className="muted small">{isVideo ? "Aucun retour pour l'instant. Mets pause sur un moment précis et écris ton commentaire." : "Aucun retour pour l'instant. Écris ton commentaire sur cette photo."}</p>}
             {comments.map((c) => (
               <div key={c.id} className={`liv-comment ${c.resolved ? "done" : ""}`}>
                 <div className="liv-c-head">

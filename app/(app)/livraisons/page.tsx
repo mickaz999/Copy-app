@@ -17,7 +17,7 @@ function KindPicker({ value, onChange }: { value: string; onChange: (k: string) 
     <div className="field-line">Ces fichiers sont…
       <div className="seg liv-mode">
         <button type="button" className={value !== "videos" ? "on" : ""} onClick={() => onChange("versions")}>Des versions (V1, V2…)</button>
-        <button type="button" className={value === "videos" ? "on" : ""} onClick={() => onChange("videos")}>Des vidéos différentes</button>
+        <button type="button" className={value === "videos" ? "on" : ""} onClick={() => onChange("videos")}>Des vidéos / photos différentes</button>
       </div>
     </div>
   );
@@ -64,7 +64,8 @@ export default function Livraisons() {
   }
 
   async function pick(accountId: string, f: File[]) {
-    if (picking === "new") setDraft((d) => d && { ...d, accountId, files: [...d.files, ...f] });
+    // Photos ou plusieurs fichiers d'un coup : par défaut, des fichiers différents (pas des versions)
+    if (picking === "new") setDraft((d) => d && { ...d, accountId, files: [...d.files, ...f], kind: d.files.length + f.length > 1 && (f.length > 1 || /\.(jpe?g|png|heic|webp|tiff?)$/i.test(f[0]?.name ?? "")) ? "videos" : d.kind });
     else {
       const d = list.find((x) => x.id === picking)!;
       if (d.accountId !== accountId) { setMsg({ ok: false, text: "Choisis une vidéo du même compte Frame.io." }); return; }
