@@ -28,6 +28,15 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [busy, setBusy] = useState(false);
   const [mock, setMock] = useState<Mock>("player");
   const [playing, setPlaying] = useState(false);
+  // Sur ordinateur, vidéo verticale : lecteur + aperçu réseau côte à côte
+  const [wide, setWide] = useState(false);
+  const [mock2, setMock2] = useState<Mock>("reel");
+  useEffect(() => {
+    const m = window.matchMedia("(min-width: 1100px)");
+    const on = () => setWide(m.matches);
+    on(); m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, []);
   // Format réel de la vidéo (largeur / hauteur), pour un lecteur à la bonne taille sans bandes noires
   const [ratio, setRatio] = useState(16 / 9);
   const ratioFor = useRef("");
@@ -38,7 +47,6 @@ export default function Livraison({ params }: { params: { token: string } }) {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
     setD(j);
-    if (j.networks?.length) setMock((m) => (m === "player" ? j.networks[0] : m));
     setV((cur) => cur || j.versions.length);
   }).catch((e) => setError(e.message));
   useEffect(() => {
@@ -84,11 +92,19 @@ export default function Livraison({ params }: { params: { token: string } }) {
   // Réseaux choisis à la création du lien, sinon selon le format de la vidéo
   const mocks = MOCKS.filter(([k]) => k === "player" || (d.networks?.length ? d.networks.includes(k) : (vertical ? VERTICAL : HORIZONTAL).includes(k)));
   if (!mocks.some(([k]) => k === mock)) setTimeout(() => setMock("player"));
+  const nets = mocks.filter(([k]) => k !== "player" && k !== "youtube");
+  const dual = wide && vertical && isVideo && !!cur?.ready && nets.length > 0;
+  if (dual && !nets.some(([k]) => k === mock2)) setTimeout(() => setMock2(nets[0][0]));
+  // Lecteur principal : toujours le lecteur de base en mode côte à côte
+  const pm: Mock = dual ? "player" : mock;
 
   return (
     <div className="liv dark">
       {/* Fond : vignette de la vidéo floutée, en fondu vers le noir */}
-      <div className="liv-bg" style={cur?.thumb ? { backgroundImage: `url("${cur.thumb}")` } : undefined} />
+      <div className="liv-bg" style={cur?.thumb ? { backgroundImage: `url("${cur.thumb}")` } : undefined}>
+        {/* Sans vignette Frame.io, on prend une image de la vidéo elle-même */}
+        {!cur?.thumb && cur?.play && isVideo && <video key={cur.v} src={`${cur.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden />}
+      </div>
       <div className="liv-top"><Logo /><span className="muted small">Livraison privée</span></div>
       <header className="liv-hero">
         <div className="liv-hero-text">
@@ -121,19 +137,19 @@ export default function Livraison({ params }: { params: { token: string } }) {
               <div className="seg">{mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
             )}
           </div>
-          <div className={`liv-scene ${vertical && isVideo ? "vertical" : ""}`}>
+          <div className={`liv-scene ${vertical && isVideo ? "vertical" : ""} ${dual ? "dual" : ""}`}>
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
-          <div className={`liv-stage mock-${isVideo ? mock : "player"}`}>
+          <div className={`liv-stage mock-${isVideo ? pm : "player"}`}>
           {cur?.ready && (isVideo
-            ? <div className="mock-screen" onClick={() => { if (mock !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
-              <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={mock === "player"} playsInline preload="auto" loop={mock !== "player" && mock !== "youtube"}
+            ? <div className="mock-screen" onClick={() => { if (pm !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
+              <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
                 controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
-                style={mock === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
-              {mock !== "player" && mock !== "youtube" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
-              {mock === "youtube" && (
+                style={pm === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
+              {pm !== "player" && pm !== "youtube" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
+              {pm === "youtube" && (
                 // Commandes façon lecteur YouTube
                 <div className={`yt-ctrl ${playing ? "" : "show"}`} onClick={(e) => e.stopPropagation()}>
                   <div className="yt-bar" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); if (video.current && duration) video.current.currentTime = ((e.clientX - r.left) / r.width) * duration; }}>
@@ -153,17 +169,17 @@ export default function Livraison({ params }: { params: { token: string } }) {
                   </div>
                 </div>
               )}
-              {(mock === "reel" || mock === "tiktok" || mock === "short") && (
+              {(pm === "reel" || pm === "tiktok" || pm === "short") && (
                 <div className="mock-ui">
                   <div className="mock-side">
-                    <span><Heart size={26} />{mock === "short" ? "12 k" : "24,3 k"}</span>
+                    <span><Heart size={26} />{pm === "short" ? "12 k" : "24,3 k"}</span>
                     <span><MessageCircle size={26} />318</span>
-                    {mock === "reel" ? <span><Send size={24} /></span> : <span><Share2 size={24} />Partager</span>}
-                    {mock !== "short" && <span><Bookmark size={24} /></span>}
+                    {pm === "reel" ? <span><Send size={24} /></span> : <span><Share2 size={24} />Partager</span>}
+                    {pm !== "short" && <span><Bookmark size={24} /></span>}
                     <span><MoreHorizontal size={22} /></span>
                   </div>
                   <div className="mock-caption">
-                    <b><span className="mock-avatar">{(d.client || "M")[0]}</span>{(d.client || "maderino").toLowerCase().replace(/\s+/g, "")} {mock !== "tiktok" && <em>{mock === "short" ? "S'abonner" : "Suivre"}</em>}</b>
+                    <b><span className="mock-avatar">{(d.client || "M")[0]}</span>{(d.client || "maderino").toLowerCase().replace(/\s+/g, "")} {pm !== "tiktok" && <em>{pm === "short" ? "S'abonner" : "Suivre"}</em>}</b>
                     <span>{d.title} ✨</span>
                     <span className="mock-music"><Music2 size={12} /> Son original · {d.client || "maderino"}</span>
                   </div>
@@ -172,7 +188,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
               )}
             </div>
             : <img src={cur.play} alt={cur.name} draggable={d.download} onContextMenu={(e) => !d.download && e.preventDefault()} />)}
-          {isVideo && mock === "youtube" && (
+          {isVideo && pm === "youtube" && (
             <div className="mock-yt-info">
               <b>{d.title}</b>
               <div className="mock-yt-row">
@@ -185,7 +201,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
               </div>
             </div>
           )}
-          {isVideo && mock === "player" && (
+          {isVideo && pm === "player" && (
             <div className="liv-marks" style={{ width: `min(100% - 12px, calc(var(--liv-h) * ${ratio} - 12px))` }}>
               {duration > 0 && comments.filter((c) => c.time !== null).map((c) => (
                 <button key={c.id} className={c.resolved ? "done" : ""} style={{ left: `${(c.time! / duration) * 100}%` }} title={`${tc(c.time!)} · ${c.author} : ${c.text}`} onClick={() => seek(c.time!)} />
@@ -193,10 +209,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
             </div>
           )}
           </div>
+          {dual && <MockPhone key={`${cur.v}-${mock2}`} kind={mock2} src={cur.play} poster={cur.thumb} d={d} />}
           {cur?.ready && isVideo && vertical && (
             <div className="liv-netlist">
               <span className="rdv-group-label">Aperçu</span>
-              {mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}
+              {dual
+                ? nets.map(([k, label]) => <button key={k} className={mock2 === k ? "on" : ""} onClick={() => setMock2(k)}>{label}</button>)
+                : mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}
             </div>
           )}
           </div>
@@ -236,6 +255,39 @@ export default function Livraison({ params }: { params: { token: string } }) {
         </aside>
       </div>
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
+    </div>
+  );
+}
+
+// Aperçu réseau affiché à côté du lecteur (vidéo verticale, sur ordinateur)
+function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: string; d: Data }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [now, setNow] = useState(0);
+  const [duration, setDuration] = useState(0);
+  return (
+    <div className={`liv-stage mock-${kind}`}>
+      <div className="mock-screen" onClick={() => ref.current && (ref.current.paused ? ref.current.play() : ref.current.pause())}>
+        <video ref={ref} src={src} poster={poster || undefined} playsInline preload="metadata" loop
+          onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onContextMenu={(e) => !d.download && e.preventDefault()}
+          onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} />
+        {!playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
+        <div className="mock-ui">
+          <div className="mock-side">
+            <span><Heart size={26} />{kind === "short" ? "12 k" : "24,3 k"}</span>
+            <span><MessageCircle size={26} />318</span>
+            {kind === "reel" ? <span><Send size={24} /></span> : <span><Share2 size={24} />Partager</span>}
+            {kind !== "short" && <span><Bookmark size={24} /></span>}
+            <span><MoreHorizontal size={22} /></span>
+          </div>
+          <div className="mock-caption">
+            <b><span className="mock-avatar">{(d.client || "M")[0]}</span>{(d.client || "maderino").toLowerCase().replace(/\s+/g, "")} {kind !== "tiktok" && <em>{kind === "short" ? "S'abonner" : "Suivre"}</em>}</b>
+            <span>{d.title} ✨</span>
+            <span className="mock-music"><Music2 size={12} /> Son original · {d.client || "maderino"}</span>
+          </div>
+          <div className="mock-progress"><i style={{ width: duration ? `${(now / duration) * 100}%` : 0 }} /></div>
+        </div>
+      </div>
     </div>
   );
 }
