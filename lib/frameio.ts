@@ -56,6 +56,8 @@ export async function fileMedia(accountId: string, fileId: string) {
     name: (f?.name ?? "") as string,
     mediaType: (f?.media_type ?? "") as string,
     play: url("high_quality") || url("efficient") || url("original"),
+    // Version allégée : lue tant que le téléchargement n'est pas débloqué
+    light: url("efficient") || url("high_quality") || url("original"),
     original: url("original"),
     thumb: url("thumbnail"),
     status: (f?.status ?? "") as string,

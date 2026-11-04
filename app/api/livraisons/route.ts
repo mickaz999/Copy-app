@@ -19,6 +19,12 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const b0 = await req.clone().json().catch(() => ({}));
+  // Appliquer « téléchargement après validation » à toutes les livraisons existantes
+  if (b0.action === "dl-approved-all") {
+    const r = await db.delivery.updateMany({ where: { dlApproved: false, download: true }, data: { dlApproved: true } });
+    return NextResponse.json({ updated: r.count });
+  }
   const b = await req.json();
   const files = Array.isArray(b.files) ? b.files.map((f: any) => ({ fileId: String(f.fileId), name: String(f.name ?? "") })) : [];
   if (!b.title || !b.accountId || !files.length) return NextResponse.json({ error: "Titre, compte et au moins une vidéo requis." }, { status: 400 });

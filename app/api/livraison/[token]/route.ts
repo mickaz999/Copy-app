@@ -17,7 +17,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   const versions = await Promise.all(files.map(async (f, i) => {
     try {
       const m = await fileMedia(d.accountId, f.fileId);
-      return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: m.play, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), ready: !!m.play };
+      return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), ready: !!m.play };
     } catch {
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }

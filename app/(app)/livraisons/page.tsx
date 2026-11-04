@@ -91,7 +91,11 @@ export default function Livraisons() {
       )}
       {info?.error && <section className="settings-card warn"><p>{info.error}</p><a href="/api/connect/frameio"><button><Link2 size={16} /> Reconnecter Frame.io</button></a></section>}
 
-      {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}><button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", networks: [], mode: "page", kind: "versions", accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
+      {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}>
+        {list.some((d) => d.mode !== "frame" && d.download && !d.dlApproved) && (
+          <button onClick={async () => { if (!confirm("Passer toutes les livraisons en « téléchargement après validation » ?")) return; const r = await api<{ updated: number }>("livraisons", "POST", { action: "dl-approved-all" }); setMsg({ ok: true, text: `${r.updated} livraison(s) passée(s) en « après validation ».` }); load(); }}>Tout passer en « après validation »</button>
+        )}
+        <button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", networks: [], mode: "page", kind: "versions", accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
 
       {draft && (
         <section className="settings-card">
