@@ -62,7 +62,8 @@ export async function fileMedia(accountId: string, fileId: string) {
     play: url("high_quality") || url("efficient") || url("original"),
     // Version allégée : lue tant que le téléchargement n'est pas débloqué
     light: url("efficient") || url("high_quality") || url("original"),
-    original: url("original"),
+    // Fichier original tel qu'envoyé (download_url force le téléchargement ; jamais une version recompressée)
+    original: l.original?.download_url ?? "",
     thumb: url("thumbnail"),
     status: (f?.status ?? "") as string,
   };

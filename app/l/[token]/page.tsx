@@ -179,7 +179,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
               <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
-                controlsList={cur.original ? undefined : "nodownload"} disablePictureInPicture={!cur.original} onContextMenu={(e) => !cur.original && e.preventDefault()}
+                // Le lecteur lit une version recompressée par Frame.io : le téléchargement passe uniquement par le bouton (fichier original)
+                controlsList="nodownload" disablePictureInPicture={!cur.original} onContextMenu={(e) => e.preventDefault()}
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
                 style={pm === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
               {pm !== "player" && pm !== "youtube" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
@@ -417,7 +418,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
             <div className="liv-fileview">
               {!media && <div className="liv-wait">Chargement…</div>}
               {media && (isVid(media.mediaType)
-                ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList={media.canDownload ? undefined : "nodownload"} onContextMenu={(e) => !media.canDownload && e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
+                ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList="nodownload" onContextMenu={(e) => e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
                 : <img src={media.play} alt={file.name} onContextMenu={(e) => !media.canDownload && e.preventDefault()} />)}
               <div className="liv-actions">
                 <span className="liv-file">{file.name}</span>
