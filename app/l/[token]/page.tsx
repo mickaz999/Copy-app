@@ -78,8 +78,10 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <div className="liv-stage">
           {cur?.ready && (isVideo
             ? <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls playsInline preload="metadata"
+                // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
+                controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} />
-            : <img src={cur.play} alt={cur.name} />)}
+            : <img src={cur.play} alt={cur.name} draggable={d.download} onContextMenu={(e) => !d.download && e.preventDefault()} />)}
           {isVideo && duration > 0 && (
             <div className="liv-marks">
               {comments.filter((c) => c.time !== null).map((c) => (
