@@ -44,12 +44,12 @@ function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (a
             {items?.map((it) => it.type === "folder" || it.type === "version_stack"
               // Dossier ou pile de versions : on entre dedans
               ? <button key={it.id} className="liv-item" onClick={() => setPath([...path, { id: it.id, name: it.name, stack: it.type === "version_stack" }])}>{it.type === "folder" ? <Folder size={16} /> : <Layers size={16} />} {it.name}{it.type === "version_stack" && <span className="muted small">pile de versions</span>}</button>
-              : <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, [{ fileId: it.id, name: it.version ? `${it.name} (V${it.version})` : it.name }])}>
+              : <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, [{ fileId: it.id, name: it.name }])}>
                   {it.version > 0 ? <b className="liv-vtag">V{it.version}</b> : <Film size={16} />} {it.name}
                   <span className="muted small">{it.version > 0 ? `envoyée le ${when(it.createdAt)}` : it.mediaType || it.type}</span>
                 </button>)}
             {folder?.stack && items && items.length > 1 && (
-              <button className="primary" onClick={() => onPick(project.accountId, items.filter((x) => x.type !== "folder").map((x) => ({ fileId: x.id, name: `${x.name} (V${x.version})` })))}>Ajouter toutes les versions (V1 → V{items.length})</button>
+              <button className="primary" onClick={() => onPick(project.accountId, items.filter((x) => x.type !== "folder").map((x) => ({ fileId: x.id, name: x.name })))}>Ajouter toutes les versions (V1 → V{items.length})</button>
             )}
           </>
         )}

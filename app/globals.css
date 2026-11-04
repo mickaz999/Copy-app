@@ -1055,8 +1055,11 @@ button.danger { color: #c4262c; }
 .liv-player { position: relative; display: grid; gap: 10px; }
 /* La vidéo prend la taille de son format (16:9, vertical, carré…) sans bandes noires autour */
 .liv-stage { display: grid; gap: 10px; justify-self: center; max-width: 100%; width: fit-content; }
-.liv-player video, .liv-player img { display: block; width: auto; height: auto; max-width: 100%; max-height: 78vh; border-radius: 16px; background: #000; justify-self: center; }
-.liv-player video { min-width: min(320px, 100%); }
+/* Hauteur fixe : la largeur suit le format, sans changer de taille au lancement de la lecture */
+.liv-player video, .liv-player img { display: block; height: min(72vh, 720px); width: auto; max-width: 100%; object-fit: contain; border-radius: 16px; background: #000; justify-self: center; }
+@media (max-width: 900px) { .liv-player video, .liv-player img { height: auto; max-height: 70vh; width: 100%; } }
+.liv-form .check { display: inline-flex; align-items: center; gap: 5px; flex-direction: row; }
+.liv-form .check input { width: auto; }
 .liv-wait { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 20px; border-radius: 16px; background: #1c1814; color: #f5f0ea; }
 .liv-marks { position: relative; height: 12px; margin: 0 6px; border-radius: 999px; background: rgba(28, 24, 20, .08); }
 .liv-marks button { position: absolute; top: 1px; width: 10px; height: 10px; padding: 0 !important; margin-left: -5px; border-radius: 50%; background: var(--accent) !important; border: 2px solid #fff !important; box-shadow: none !important; }
