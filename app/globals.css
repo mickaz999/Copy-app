@@ -1299,3 +1299,21 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .liv-fileview { display: grid; gap: 10px; }
 .liv-fileview video, .liv-fileview img { width: auto; max-width: 100%; height: min(60vh, 600px) !important; justify-self: center; border-radius: 14px; background: #000; object-fit: contain; }
 @media (max-width: 900px) { .liv-fileview video, .liv-fileview img { height: auto !important; max-height: 60vh; } .liv-browser { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Dossier livré : dossiers en liste compacte, fichiers en vignettes */
+.liv-folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.liv-folder { display: grid !important; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 10px 12px !important; border-radius: 12px; background: rgba(255, 255, 255, .04) !important; border: 1px solid var(--border) !important; text-align: left; color: var(--text) !important; }
+.liv-folder:hover { background: rgba(255, 255, 255, .09) !important; }
+.liv-folder > svg:first-child { color: var(--accent); }
+.liv-folder > svg:last-child { color: var(--muted); }
+.liv-folder span { display: grid; min-width: 0; }
+.liv-folder b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.liv-folder small { font-size: 11.5px; color: var(--muted); }
+.liv-browser { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.liv-entry { padding: 8px !important; gap: 4px; }
+.liv-thumb { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 10; border-radius: 9px; overflow: hidden; background: rgba(0, 0, 0, .35); }
+.liv-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.liv-thumb i { position: absolute; right: 6px; bottom: 6px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(0, 0, 0, .55); }
+.liv-entry small { font-size: 11px; }
+.liv-player .rdv-group-label { margin-top: 2px; }
+@media (max-width: 900px) { .liv-folders { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .liv-browser { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } }

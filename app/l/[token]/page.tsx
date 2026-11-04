@@ -331,7 +331,12 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
 }
 
 // Livraison d'un dossier Frame.io : navigation dans les sous-dossiers, aperçu, retours et téléchargement par fichier
-type Item = { id: string; name: string; type: string; mediaType: string; version: number; sig: string };
+type Item = { id: string; name: string; type: string; mediaType: string; version: number; sig: string; thumb?: string; updatedAt?: string };
+const ago = (iso?: string) => {
+  if (!iso) return "";
+  const days = Math.floor((Date.now() - Date.parse(iso)) / 864e5);
+  return days <= 0 ? "aujourd'hui" : days === 1 ? "hier" : days < 30 ? `il y a ${days} j` : new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+};
 type Media = { name: string; mediaType: string; play: string; thumb: string; canDownload: boolean };
 function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: () => Promise<unknown> }) {
   const base = `/api/livraison/${token}`;
@@ -425,15 +430,38 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           {error && <p className="neg">{error}</p>}
           {!data && !error && <p className="muted">Chargement…</p>}
           {data?.items.length === 0 && <p className="muted">Dossier vide.</p>}
-          <div className="liv-browser">
-            {data?.items.map((x) => (
-              <button key={x.id} className={`ghost liv-entry ${file?.id === x.id ? "on" : ""}`} onClick={() => x.type === "folder" || x.type === "version_stack" ? (setFile(null), setPath([...path, { id: x.id, name: x.name, sig: x.sig, stack: x.type === "version_stack" }])) : setFile(x)}>
-                <span className="liv-entry-ic">{icon(x)}</span>
-                <span className="liv-entry-name">{x.name}</span>
-                {d.comments.some((c) => c.fileId === x.id && !c.resolved) && <b>{d.comments.filter((c) => c.fileId === x.id && !c.resolved).length}</b>}
-              </button>
-            ))}
-          </div>
+          {data && data.items.some((x) => x.type === "folder") && (
+            <>
+              <span className="rdv-group-label">Dossiers</span>
+              <div className="liv-folders">
+                {data.items.filter((x) => x.type === "folder").map((x) => (
+                  <button key={x.id} className="ghost liv-folder" onClick={() => { setFile(null); setPath([...path, { id: x.id, name: x.name, sig: x.sig }]); }}>
+                    <Folder size={20} />
+                    <span><b>{x.name}</b><small>{ago(x.updatedAt)}</small></span>
+                    <ChevronRight size={16} />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {data && data.items.some((x) => x.type !== "folder") && (
+            <>
+              <span className="rdv-group-label">Fichiers</span>
+              <div className="liv-browser">
+                {data.items.filter((x) => x.type !== "folder").map((x) => (
+                  <button key={x.id} className={`ghost liv-entry ${file?.id === x.id ? "on" : ""}`} onClick={() => x.type === "version_stack" ? (setFile(null), setPath([...path, { id: x.id, name: x.name, sig: x.sig, stack: true }])) : setFile(x)}>
+                    <span className="liv-thumb">
+                      {x.thumb ? <img src={x.thumb} alt="" loading="lazy" /> : <span className="liv-entry-ic">{icon(x)}</span>}
+                      {!x.mediaType.startsWith("image") && x.thumb && <i><Play size={14} fill="#fff" /></i>}
+                    </span>
+                    <span className="liv-entry-name">{x.name}</span>
+                    <small className="muted">{ago(x.updatedAt)}</small>
+                    {d.comments.some((c) => c.fileId === x.id && !c.resolved) && <b>{d.comments.filter((c) => c.fileId === x.id && !c.resolved).length}</b>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <aside className="liv-side">

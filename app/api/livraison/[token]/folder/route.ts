@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { folderChildren } from "@/lib/frameio";
+import { fileMedia, folderChildren } from "@/lib/frameio";
 import { checkItem, signItem } from "@/lib/sign";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,15 @@ export async function GET(req: Request, { params }: { params: { token: string } 
       const last = versions.filter((v) => v.type !== "folder").pop();
       return last ? { ...last, name: x.name || last.name } : x;
     }));
-    const out = items.map(({ id, name, type, mediaType, version }) => ({ id, name, type, mediaType, version, sig: signItem(params.token, id) }));
+    // Vignettes manquantes : demandées fichier par fichier (40 max)
+    let budget = 40;
+    await Promise.all(items.map(async (x) => {
+      if (x.type === "folder" || x.thumb || budget-- <= 0) return;
+      x.thumb = await fileMedia(d.accountId, x.id).then((m) => m.thumb).catch(() => "");
+    }));
+    // Dossiers d'abord, puis fichiers ; chacun du plus récemment modifié au plus ancien
+    items.sort((a, b) => Number(b.type === "folder") - Number(a.type === "folder") || b.updatedAt.localeCompare(a.updatedAt));
+    const out = items.map(({ id, name, type, mediaType, version, thumb, updatedAt }) => ({ id, name, type, mediaType, version, thumb, updatedAt, sig: signItem(params.token, id) }));
     return NextResponse.json({ items: out });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
