@@ -35,8 +35,8 @@ export async function listProjects() {
 }
 
 // Contenu d'un dossier Frame.io (dossiers, fichiers, piles de versions)
-export async function folderChildren(accountId: string, folderId: string) {
-  const { data = [] } = await fio(`/accounts/${accountId}/folders/${folderId}/children?page_size=100`);
+export async function folderChildren(accountId: string, folderId: string, stack = false) {
+  const { data = [] } = await fio(`/accounts/${accountId}/${stack ? "version_stacks" : "folders"}/${folderId}/children?page_size=100`);
   return (data as any[]).map((x) => ({ id: x.id as string, name: (x.name ?? "") as string, type: (x.type ?? "file") as string, mediaType: (x.media_type ?? "") as string }));
 }
 

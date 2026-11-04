@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2 } from "lucide-react";
+import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
@@ -16,7 +16,7 @@ const errorText = (e: unknown) => { const raw = (e as Error).message; try { retu
 // Explorateur Frame.io : choisir une vidéo dans un projet
 function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (accountId: string, f: File) => void; onClose: () => void }) {
   const [project, setProject] = useState<Project | null>(null);
-  const [path, setPath] = useState<{ id: string; name: string }[]>([]);
+  const [path, setPath] = useState<{ id: string; name: string; stack?: boolean }[]>([]);
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState("");
   const folder = path[path.length - 1];
@@ -24,7 +24,7 @@ function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (a
   useEffect(() => {
     if (!project || !folder) return;
     setItems(null); setError("");
-    api<Item[]>(`frameio/browse?accountId=${project.accountId}&folderId=${folder.id}`).then(setItems).catch((e) => setError(errorText(e)));
+    api<Item[]>(`frameio/browse?accountId=${project.accountId}&folderId=${folder.id}${folder.stack ? "&stack=1" : ""}`).then(setItems).catch((e) => setError(errorText(e)));
   }, [project, folder?.id]);
 
   return (
@@ -40,11 +40,10 @@ function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (a
             {error && <p className="neg small">{error}</p>}
             {!items && !error && <p className="muted">Chargement…</p>}
             {items?.length === 0 && <p className="muted">Dossier vide.</p>}
-            {items?.map((it) => it.type === "folder"
-              ? <button key={it.id} className="liv-item" onClick={() => setPath([...path, { id: it.id, name: it.name }])}><Folder size={16} /> {it.name}</button>
-              : it.type === "file"
-                ? <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, { fileId: it.id, name: it.name })}><Film size={16} /> {it.name} <span className="muted small">{it.mediaType}</span></button>
-                : <span key={it.id} className="liv-item muted small">{it.name} ({it.type === "version_stack" ? "pile de versions : ouvre-la dans Frame et choisis un fichier" : it.type})</span>)}
+            {items?.map((it) => it.type === "folder" || it.type === "version_stack"
+              // Dossier ou pile de versions : on entre dedans
+              ? <button key={it.id} className="liv-item" onClick={() => setPath([...path, { id: it.id, name: it.name, stack: it.type === "version_stack" }])}>{it.type === "folder" ? <Folder size={16} /> : <Layers size={16} />} {it.name}{it.type === "version_stack" && <span className="muted small">pile de versions</span>}</button>
+              : <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, { fileId: it.id, name: it.name })}><Film size={16} /> {it.name} <span className="muted small">{it.mediaType || it.type}</span></button>)}
           </>
         )}
         <button onClick={onClose}>Fermer</button>

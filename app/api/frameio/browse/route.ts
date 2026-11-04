@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   try {
-    return NextResponse.json(await folderChildren(q.get("accountId") ?? "", q.get("folderId") ?? ""));
+    return NextResponse.json(await folderChildren(q.get("accountId") ?? "", q.get("folderId") ?? "", q.get("stack") === "1"));
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
