@@ -51,6 +51,14 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
           <>
             <button className="rdv-back" onClick={() => path.length > 1 ? setPath(path.slice(0, -1)) : (setProject(null), setPath([]))}><ChevronLeft size={16} /> {path.map((p) => p.name).join(" / ")}</button>
             {!items && !error && <p className="muted">Chargement…</p>}
+            {items && items.some((x) => x.type !== "folder" && x.type !== "version_stack") && (
+              // Coche d'un coup tous les fichiers du dossier (dans l'ordre affiché), ou les décoche
+              <button className="liv-item" onClick={() => {
+                const all = items.filter((x) => x.type !== "folder" && x.type !== "version_stack").map((x) => ({ fileId: x.id, name: x.name }));
+                const every = all.every((f) => sel.some((x) => x.fileId === f.fileId));
+                setSel(every ? sel.filter((x) => !all.some((f) => f.fileId === x.fileId)) : [...sel, ...all.filter((f) => !sel.some((x) => x.fileId === f.fileId))]);
+              }}><Check size={16} /> Tout le dossier ({items.filter((x) => x.type !== "folder" && x.type !== "version_stack").length} fichiers)</button>
+            )}
             {items?.length === 0 && <p className="muted">Dossier vide.</p>}
             {items?.map((it) => it.type === "folder" || it.type === "version_stack"
               ? <button key={it.id} className="liv-item" onClick={() => setPath([...path, { id: it.id, name: it.name, stack: it.type === "version_stack" }])}>{it.type === "folder" ? <Folder size={16} /> : <Layers size={16} />} {it.name}{it.type === "version_stack" && <span className="muted small">pile de versions</span>}</button>
