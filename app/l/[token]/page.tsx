@@ -119,7 +119,12 @@ export default function Livraison({ params }: { params: { token: string } }) {
             <input placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />
             <textarea required rows={3} placeholder={isVideo && atTime ? `Ton retour à ${tc(now)}…` : "Ton retour…"} value={text} onChange={(e) => setText(e.target.value)} />
             <div className="row">
-              {isVideo && <label className="check small"><input type="checkbox" checked={atTime} onChange={(e) => setAtTime(e.target.checked)} /> <Clock size={13} /> à {tc(now)}</label>}
+              {isVideo && (
+                // Bascule : retour lié au moment de la vidéo, ou retour général
+                <button type="button" className={`liv-when ${atTime ? "on" : ""}`} onClick={() => setAtTime(!atTime)} title="Touche pour changer">
+                  <Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Retour général"}
+                </button>
+              )}
               <span style={{ flex: 1 }} />
               <button className="primary" disabled={busy || !text.trim()}>Envoyer</button>
             </div>
