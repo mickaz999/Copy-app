@@ -5,7 +5,8 @@ import { api } from "@/lib/api";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
-type Item = { id: string; name: string; type: string; mediaType: string };
+type Item = { id: string; name: string; type: string; mediaType: string; createdAt: string; version: number };
+const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
 type Delivery = { id: string; token: string; title: string; client: string; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[] };
@@ -14,7 +15,7 @@ const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).pa
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
 
 // Explorateur Frame.io : choisir une vidéo dans un projet
-function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (accountId: string, f: File) => void; onClose: () => void }) {
+function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (accountId: string, f: File[]) => void; onClose: () => void }) {
   const [project, setProject] = useState<Project | null>(null);
   const [path, setPath] = useState<{ id: string; name: string; stack?: boolean }[]>([]);
   const [items, setItems] = useState<Item[] | null>(null);
@@ -43,7 +44,13 @@ function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (a
             {items?.map((it) => it.type === "folder" || it.type === "version_stack"
               // Dossier ou pile de versions : on entre dedans
               ? <button key={it.id} className="liv-item" onClick={() => setPath([...path, { id: it.id, name: it.name, stack: it.type === "version_stack" }])}>{it.type === "folder" ? <Folder size={16} /> : <Layers size={16} />} {it.name}{it.type === "version_stack" && <span className="muted small">pile de versions</span>}</button>
-              : <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, { fileId: it.id, name: it.name })}><Film size={16} /> {it.name} <span className="muted small">{it.mediaType || it.type}</span></button>)}
+              : <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, [{ fileId: it.id, name: it.version ? `${it.name} (V${it.version})` : it.name }])}>
+                  {it.version > 0 ? <b className="liv-vtag">V{it.version}</b> : <Film size={16} />} {it.name}
+                  <span className="muted small">{it.version > 0 ? `envoyée le ${when(it.createdAt)}` : it.mediaType || it.type}</span>
+                </button>)}
+            {folder?.stack && items && items.length > 1 && (
+              <button className="primary" onClick={() => onPick(project.accountId, items.filter((x) => x.type !== "folder").map((x) => ({ fileId: x.id, name: `${x.name} (V${x.version})` })))}>Ajouter toutes les versions (V1 → V{items.length})</button>
+            )}
           </>
         )}
         <button onClick={onClose}>Fermer</button>
@@ -76,13 +83,13 @@ export default function Livraisons() {
     } catch (e) { setMsg({ ok: false, text: errorText(e) }); }
   }
 
-  async function pick(accountId: string, f: File) {
-    if (picking === "new") setDraft((d) => d && { ...d, accountId, files: [...d.files, f] });
+  async function pick(accountId: string, f: File[]) {
+    if (picking === "new") setDraft((d) => d && { ...d, accountId, files: [...d.files, ...f] });
     else {
       const d = list.find((x) => x.id === picking)!;
       if (d.accountId !== accountId) { setMsg({ ok: false, text: "Choisis une vidéo du même compte Frame.io." }); return; }
-      await api(`livraisons/${d.id}`, "PATCH", { files: [...filesOf(d), f] });
-      setMsg({ ok: true, text: `V${filesOf(d).length + 1} ajoutée à « ${d.title} ». Le client la voit avec le même lien.` }); load();
+      await api(`livraisons/${d.id}`, "PATCH", { files: [...filesOf(d), ...f] });
+      setMsg({ ok: true, text: `V${filesOf(d).length + f.length} ajoutée à « ${d.title} ». Le client la voit avec le même lien.` }); load();
     }
     setPicking(null);
   }

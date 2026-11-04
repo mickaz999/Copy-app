@@ -37,7 +37,14 @@ export async function listProjects() {
 // Contenu d'un dossier Frame.io (dossiers, fichiers, piles de versions)
 export async function folderChildren(accountId: string, folderId: string, stack = false) {
   const { data = [] } = await fio(`/accounts/${accountId}/${stack ? "version_stacks" : "folders"}/${folderId}/children?page_size=100`);
-  return (data as any[]).map((x) => ({ id: x.id as string, name: (x.name ?? "") as string, type: (x.type ?? "file") as string, mediaType: (x.media_type ?? "") as string }));
+  const items = (data as any[]).map((x) => ({
+    id: x.id as string, name: (x.name ?? "") as string, type: (x.type ?? "file") as string, mediaType: (x.media_type ?? "") as string,
+    createdAt: (x.created_at ?? x.inserted_at ?? "") as string,
+    version: 0,
+  }));
+  // Pile de versions : de la plus ancienne (V1) à la plus récente
+  if (stack) items.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).forEach((x, i) => { x.version = i + 1; });
+  return items;
 }
 
 // Liens de lecture et de téléchargement d'un fichier (adresses temporaires signées par Frame.io)

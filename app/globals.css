@@ -1077,3 +1077,4 @@ button.danger { color: #c4262c; }
 .liv-admin-c { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 .liv-admin-c.done span { text-decoration: line-through; color: var(--muted); }
 @media (max-width: 900px) { .liv-main { grid-template-columns: 1fr; } .liv-side { max-height: none; } }
+.liv-vtag { font-size: 12px; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 1px 6px; }
