@@ -33,3 +33,24 @@ export async function listProjects() {
   }
   return out;
 }
+
+// Contenu d'un dossier Frame.io (dossiers, fichiers, piles de versions)
+export async function folderChildren(accountId: string, folderId: string) {
+  const { data = [] } = await fio(`/accounts/${accountId}/folders/${folderId}/children?page_size=100`);
+  return (data as any[]).map((x) => ({ id: x.id as string, name: (x.name ?? "") as string, type: (x.type ?? "file") as string, mediaType: (x.media_type ?? "") as string }));
+}
+
+// Liens de lecture et de téléchargement d'un fichier (adresses temporaires signées par Frame.io)
+export async function fileMedia(accountId: string, fileId: string) {
+  const { data: f } = await fio(`/accounts/${accountId}/files/${fileId}?include=media_links.high_quality,media_links.efficient,media_links.original,media_links.thumbnail`);
+  const l = f?.media_links ?? {};
+  const url = (k: string) => l[k]?.download_url ?? l[k]?.url ?? "";
+  return {
+    name: (f?.name ?? "") as string,
+    mediaType: (f?.media_type ?? "") as string,
+    play: url("high_quality") || url("efficient") || url("original"),
+    original: url("original"),
+    thumb: url("thumbnail"),
+    status: (f?.status ?? "") as string,
+  };
+}

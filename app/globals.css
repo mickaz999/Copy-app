@@ -1042,3 +1042,38 @@ button.danger { color: #c4262c; }
 .tv-sub:hover button { opacity: 1; }
 .tv-sub.add { color: var(--muted); }
 .tv-subs-finish { justify-content: center; margin-top: 4px; }
+
+/* Livraisons (façon Frame.io) */
+.liv { min-height: 100vh; padding: max(20px, env(safe-area-inset-top)) 16px 40px; max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; align-content: start; }
+.liv-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.liv-title { display: grid; flex: 1; min-width: 200px; }
+.liv-title h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.03em; }
+.liv-versions { display: flex; gap: 6px; }
+.liv-versions button { font-weight: 700; border-radius: 10px; }
+.liv-versions button.on { border-color: var(--accent) !important; color: var(--accent) !important; }
+.liv-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.liv-player { position: relative; display: grid; gap: 10px; }
+.liv-player video, .liv-player img { width: 100%; max-height: 72vh; background: #000; border-radius: 16px; display: block; object-fit: contain; }
+.liv-wait { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 20px; border-radius: 16px; background: #1c1814; color: #f5f0ea; }
+.liv-marks { position: relative; height: 12px; margin: 0 6px; border-radius: 999px; background: rgba(28, 24, 20, .08); }
+.liv-marks button { position: absolute; top: 1px; width: 10px; height: 10px; padding: 0 !important; margin-left: -5px; border-radius: 50%; background: var(--accent) !important; border: 2px solid #fff !important; box-shadow: none !important; }
+.liv-marks button.done { background: var(--green) !important; }
+.liv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.liv-side { display: grid; gap: 10px; background: rgba(250, 246, 240, .96); border: 1px solid var(--border); border-radius: 18px; padding: 14px; max-height: 80vh; grid-template-rows: auto 1fr auto; }
+.liv-side h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.liv-comments { display: grid; gap: 8px; overflow-y: auto; align-content: start; min-height: 60px; }
+.liv-comment { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; }
+.liv-comment.done { opacity: .6; }
+.liv-comment p { margin: 4px 0 0; white-space: pre-line; font-size: 14px; }
+.liv-c-head { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.liv-tc { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft) !important; border: none !important; box-shadow: none !important; padding: 1px 7px !important; border-radius: 6px; }
+.liv-form { display: grid; gap: 8px; }
+.liv-form input, .liv-form textarea { width: 100%; font-size: 15px; }
+.liv-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; justify-content: flex-start; }
+.liv-item.static { font-size: 14px; }
+.liv-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; }
+.liv-detail { display: grid; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.liv-vblock { display: grid; gap: 6px; }
+.liv-admin-c { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.liv-admin-c.done span { text-decoration: line-through; color: var(--muted); }
+@media (max-width: 900px) { .liv-main { grid-template-columns: 1fr; } .liv-side { max-height: none; } }

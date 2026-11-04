@@ -231,3 +231,30 @@ model Appointment {
 
   @@index([start])
 }
+
+// Livraison client : page publique (/l/<token>) qui lit des vidéos hébergées sur Frame.io
+model Delivery {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  title      String
+  client     String   @default("")
+  accountId  String   // compte Frame.io
+  files      String   @default("[]") // versions, de la plus ancienne à la plus récente (JSON [{ fileId, name }])
+  download   Boolean  @default(true) // téléchargement autorisé
+  approvedAt DateTime?
+  approvedV  Int      @default(0)    // numéro de la version validée
+  createdAt  DateTime @default(now())
+  comments   DeliveryComment[]
+}
+
+model DeliveryComment {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  version    Int      // 1 = V1
+  author     String
+  text       String
+  time       Float?   // seconde de la vidéo (commentaire horodaté)
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
