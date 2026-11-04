@@ -238,6 +238,7 @@ model Delivery {
   token      String   @unique
   title      String
   client     String   @default("")
+  message    String   @default("") // mot affiché au client en haut de la page
   accountId  String   // compte Frame.io
   files      String   @default("[]") // versions, de la plus ancienne à la plus récente (JSON [{ fileId, name }])
   download   Boolean  @default(true) // téléchargement autorisé

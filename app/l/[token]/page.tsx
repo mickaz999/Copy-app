@@ -5,7 +5,7 @@ import Logo from "@/components/Logo";
 
 type Version = { v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { title: string; client: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { title: string; client: string; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -59,11 +59,17 @@ export default function Livraison({ params }: { params: { token: string } }) {
 
   return (
     <div className="liv">
-      <header className="liv-head">
-        <Logo />
-        <div className="liv-title">
+      <div className="liv-top"><Logo /><span className="muted small">Livraison privée</span></div>
+      <header className="liv-hero">
+        <div className="liv-hero-text">
+          <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
           <h1>{d.title}</h1>
-          {d.client && <span className="muted">pour {d.client}</span>}
+          {d.message && <p className="liv-msg">{d.message}</p>}
+          <div className="liv-chips">
+            <span>Version {cur.v}{d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}</span>
+            <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+            {d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
+          </div>
         </div>
         {d.versions.length > 1 && (
           <div className="liv-versions">
@@ -132,6 +138,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           </form>
         </aside>
       </div>
+      <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );
 }
