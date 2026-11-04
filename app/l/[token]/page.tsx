@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, MessageSquare, Clock, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
-type Version = { v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
+type Version = { locked?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
 type Data = { title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
@@ -144,6 +144,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
             : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
           {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
+          {cur?.locked && <span className="liv-locked" title="Le téléchargement s'ouvre une fois validé"><Download size={15} /> Téléchargement après validation</span>}
           {files.length > 1 && <button onClick={downloadAll}><Download size={16} /> Tout télécharger ({files.length})</button>}
         </div>
       </header>
@@ -175,7 +176,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
               <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
-                controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
+                controlsList={cur.original ? undefined : "nodownload"} disablePictureInPicture={!cur.original} onContextMenu={(e) => !cur.original && e.preventDefault()}
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
                 style={pm === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
               {pm !== "player" && pm !== "youtube" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
@@ -217,7 +218,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 </div>
               )}
             </div>
-            : <img src={cur.play} alt={cur.name} draggable={d.download} onContextMenu={(e) => !d.download && e.preventDefault()} />)}
+            : <img src={cur.play} alt={cur.name} draggable={!!cur.original} onContextMenu={(e) => !cur.original && e.preventDefault()} />)}
           {isVideo && pm === "youtube" && (
             <div className="mock-yt-info">
               <b>{d.title}</b>
@@ -303,7 +304,7 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
     <div className={`liv-stage mock-${kind}`}>
       <div className="mock-screen" onClick={() => ref.current && (ref.current.paused ? ref.current.play() : ref.current.pause())}>
         <video ref={ref} src={src} poster={poster || undefined} playsInline preload="metadata" loop
-          onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onContextMenu={(e) => !d.download && e.preventDefault()}
+          onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onContextMenu={(e) => e.preventDefault()}
           onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} />
         {!playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
         <div className="mock-ui">

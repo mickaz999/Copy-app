@@ -23,6 +23,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof b.client === "string") data.client = b.client.slice(0, 200);
   if (typeof b.message === "string") data.message = b.message.slice(0, 2000);
   if (typeof b.download === "boolean") data.download = b.download;
+  if (typeof b.dlApproved === "boolean") data.dlApproved = b.dlApproved;
   if (b.kind === "videos" || b.kind === "versions") data.kind = b.kind;
   if (Array.isArray(b.networks)) data.networks = JSON.stringify(nets(b.networks));
   if (Array.isArray(b.files)) { data.files = JSON.stringify(b.files.map((f: any) => ({ fileId: String(f.fileId), name: String(f.name ?? "") }))); data.approvedAt = null; data.approvedV = 0; }

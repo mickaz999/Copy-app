@@ -62,5 +62,12 @@ export async function fileMedia(accountId: string, fileId: string) {
   };
 }
 
+// Téléchargement permis pour ce fichier (n = 1 pour V1 ou la 1re vidéo)
+export function canDownload(d: { download: boolean; dlApproved: boolean; kind: string; approvedV: number; approved: string }, n: number) {
+  if (!d.download) return false;
+  if (!d.dlApproved) return true;
+  return d.kind === "videos" ? (JSON.parse(d.approved || "[]") as number[]).includes(n) : d.approvedV === n;
+}
+
 // Aperçus réseaux autorisés pour une livraison
 export const nets = (v: unknown) => (Array.isArray(v) ? v : []).filter((n) => ["reel", "tiktok", "short", "youtube"].includes(n));

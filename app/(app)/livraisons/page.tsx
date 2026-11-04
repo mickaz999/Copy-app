@@ -10,7 +10,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlApproved: boolean };
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
 function KindPicker({ value, onChange }: { value: string; onChange: (k: string) => void }) {
   return (
@@ -150,7 +150,15 @@ export default function Livraisons() {
                     <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
                   </>}
               <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>
-              {d.mode !== "frame" && <label className="check small"><input type="checkbox" checked={d.download} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { download: e.target.checked }); load(); }} /> Téléchargement autorisé</label>}
+              {d.mode !== "frame" && (
+                <label className="field-line liv-dl">Téléchargement
+                  <select value={!d.download ? "never" : d.dlApproved ? "approved" : "always"} onChange={async (e) => { const v = e.target.value; await api(`livraisons/${d.id}`, "PATCH", { download: v !== "never", dlApproved: v === "approved" }); load(); }}>
+                    <option value="always">Toujours</option>
+                    <option value="approved">Après validation</option>
+                    <option value="never">Jamais</option>
+                  </select>
+                </label>
+              )}
             </div>
             {open === d.id && (
               <div className="liv-detail">

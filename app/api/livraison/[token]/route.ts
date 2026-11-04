@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { fileMedia } from "@/lib/frameio";
+import { canDownload, fileMedia } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
 
@@ -17,13 +17,13 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   const versions = await Promise.all(files.map(async (f, i) => {
     try {
       const m = await fileMedia(d.accountId, f.fileId);
-      return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: m.play, thumb: m.thumb, original: d.download ? m.original : "", ready: !!m.play };
+      return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: m.play, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), ready: !!m.play };
     } catch {
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }
   }));
   return NextResponse.json({
-    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
+    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlApproved: d.dlApproved, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
 }
