@@ -1135,3 +1135,38 @@ button.danger { color: #c4262c; }
 .mock-yt-row small { color: var(--muted); font-size: 12px; }
 .mock-yt-row em { font-style: normal; background: #0f0f0f; color: #fff; border-radius: 999px; padding: 8px 15px; font-size: 14px; font-weight: 600; }
 .mock-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, .06); border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600; }
+
+/* Livraison : agencement v2 (en-tête + CTA, scène vidéo avec barre d'outils, retours à droite) */
+.liv-hero { align-items: center; }
+.liv-cta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.liv-cta button { padding: 11px 18px !important; font-weight: 700; }
+.liv-main { grid-template-columns: minmax(0, 1fr) 360px; }
+.liv-player { background: rgba(28, 24, 20, .045); border: 1px solid var(--border); border-radius: 22px; padding: 14px; gap: 14px; min-height: min(80vh, 820px); align-content: start; }
+.liv-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(28, 24, 20, .06); }
+.seg button { border: none !important; background: transparent !important; box-shadow: none !important; padding: 6px 12px !important; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.seg button.on { background: #fff !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(28, 24, 20, .12) !important; }
+.liv-file { font-size: 13px; color: var(--muted); font-weight: 600; }
+.liv-file.center { justify-self: center; }
+.liv-stage { justify-self: center; align-self: center; }
+.liv-player { --liv-h: min(66vh, 680px); }
+.liv-player img { height: var(--liv-h); }
+.liv-player .mock-player video { height: auto; max-height: none; }
+.liv-stage.mock-player, .mock-player .mock-screen { width: 100%; min-width: 0; display: grid; justify-items: center; }
+.mock-player .mock-screen video { min-width: 0; max-width: 100%; }
+.liv-player { min-height: 0; grid-template-columns: minmax(0, 1fr); }
+.liv-side { position: sticky; top: 16px; max-height: calc(100vh - 32px); }
+@media (max-width: 900px) {
+  .liv-main { grid-template-columns: minmax(0, 1fr); }
+  .liv-player { min-width: 0; }
+  .liv-hero { padding: 18px; }
+  .liv-cta { width: 100%; }
+  .liv-cta > * { flex: 1; }
+  .liv-cta button { width: 100%; justify-content: center; }
+  .liv-player { min-height: 0; padding: 10px; }
+  .liv-toolbar { justify-content: center; }
+  .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
+  .liv-player { --liv-h: 62vh; }
+  .seg button { padding: 6px 9px !important; flex: none; }
+  .liv-side { position: static; max-height: none; }
+}

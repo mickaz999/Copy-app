@@ -25,6 +25,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [busy, setBusy] = useState(false);
   const [mock, setMock] = useState<Mock>("player");
   const [playing, setPlaying] = useState(false);
+  // Format réel de la vidéo (largeur / hauteur), pour un lecteur à la bonne taille sans bandes noires
+  const [ratio, setRatio] = useState(16 / 9);
   const video = useRef<HTMLVideoElement>(null);
   const url = `/api/livraison/${params.token}`;
 
@@ -77,21 +79,25 @@ export default function Livraison({ params }: { params: { token: string } }) {
             {d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
           </div>
         </div>
-        {d.versions.length > 1 && (
-          <div className="liv-versions">
-            {d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} onClick={() => { setV(x.v); setNow(0); }}>V{x.v}{d.approvedV === x.v && " ✓"}</button>)}
-          </div>
-        )}
+        <div className="liv-cta">
+          {approved
+            ? <span className="ok-pill"><CheckCircle2 size={15} /> V{cur.v} validée</span>
+            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider la V${cur.v} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider la V{cur.v}</button>}
+          {cur?.original && <a href={cur.original} target="_blank" rel="noreferrer"><button><Download size={16} /> Télécharger</button></a>}
+        </div>
       </header>
 
       <div className="liv-main">
         <div className="liv-player">
+          <div className="liv-toolbar">
+            {d.versions.length > 1
+              ? <div className="seg">{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} onClick={() => { setV(x.v); setNow(0); }}>V{x.v}{d.approvedV === x.v && " ✓"}</button>)}</div>
+              : <span className="liv-file">{cur?.name}</span>}
+            {cur?.ready && isVideo && (
+              <div className="seg">{MOCKS.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
+            )}
+          </div>
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
-          {cur?.ready && isVideo && (
-            <div className="liv-mocks">
-              {MOCKS.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}
-            </div>
-          )}
           <div className={`liv-stage mock-${isVideo ? mock : "player"}`}>
           {cur?.ready && (isVideo
             ? <div className="mock-screen" onClick={() => { if (mock !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
@@ -99,7 +105,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
                 controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
-                onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} />
+                onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
+                style={mock === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
               {mock !== "player" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
               {(mock === "reel" || mock === "tiktok" || mock === "short") && (
                 <div className="mock-ui">
@@ -134,21 +141,14 @@ export default function Livraison({ params }: { params: { token: string } }) {
             </div>
           )}
           {isVideo && mock === "player" && duration > 0 && (
-            <div className="liv-marks">
+            <div className="liv-marks" style={{ width: `min(100% - 12px, calc(var(--liv-h) * ${ratio} - 12px))` }}>
               {comments.filter((c) => c.time !== null).map((c) => (
                 <button key={c.id} className={c.resolved ? "done" : ""} style={{ left: `${(c.time! / duration) * 100}%` }} title={`${tc(c.time!)} · ${c.author} : ${c.text}`} onClick={() => seek(c.time!)} />
               ))}
             </div>
           )}
           </div>
-          <div className="liv-actions">
-            <span className="muted small">{cur?.name}</span>
-            <span style={{ flex: 1 }} />
-            {cur?.original && <a href={cur.original} target="_blank" rel="noreferrer"><button><Download size={16} /> Télécharger</button></a>}
-            {approved
-              ? <span className="ok-pill"><CheckCircle2 size={15} /> V{cur.v} validée</span>
-              : <button className="primary" disabled={busy} onClick={() => confirm(`Valider la V${cur.v} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider la V{cur.v}</button>}
-          </div>
+          {d.versions.length > 1 && <span className="liv-file center">{cur?.name}</span>}
         </div>
 
         <aside className="liv-side">
