@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, MessageSquare, Clock, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
-type Version = { locked?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
+type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
 type Data = { title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
@@ -140,11 +140,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
           </div>
         </div>
         <div className="liv-cta">
-          {approved
+          {cur?.old
+            ? <span className="liv-locked">Ancienne version · voir la V{d.versions.length}</span>
+            : approved
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
             : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
           {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
-          {cur?.locked && <span className="liv-locked" title="Le téléchargement s'ouvre une fois validé"><Download size={15} /> Téléchargement après validation</span>}
+          {cur?.locked && !cur.old && <span className="liv-locked" title="Le téléchargement s'ouvre une fois validé"><Download size={15} /> Téléchargement après validation</span>}
           {files.length > 1 && <button onClick={downloadAll}><Download size={16} /> Tout télécharger ({files.length})</button>}
         </div>
       </header>
