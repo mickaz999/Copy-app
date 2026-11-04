@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
+import FramePicker from "@/components/FramePicker";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
@@ -26,50 +27,6 @@ function NetPicker({ value, onChange }: { value: string[]; onChange: (v: string[
 }
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
 
-// Explorateur Frame.io : choisir une vidéo dans un projet
-function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (accountId: string, f: File[]) => void; onClose: () => void }) {
-  const [project, setProject] = useState<Project | null>(null);
-  const [path, setPath] = useState<{ id: string; name: string; stack?: boolean }[]>([]);
-  const [items, setItems] = useState<Item[] | null>(null);
-  const [error, setError] = useState("");
-  const folder = path[path.length - 1];
-
-  useEffect(() => {
-    if (!project || !folder) return;
-    setItems(null); setError("");
-    api<Item[]>(`frameio/browse?accountId=${project.accountId}&folderId=${folder.id}${folder.stack ? "&stack=1" : ""}`).then(setItems).catch((e) => setError(errorText(e)));
-  }, [project, folder?.id]);
-
-  return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal appt-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Choisir une vidéo sur Frame.io</h3>
-        {!project && projects.map((p) => (
-          <button key={p.id} className="liv-item" onClick={() => { setProject(p); setPath([{ id: p.rootFolderId, name: p.name }]); }}><Folder size={16} /> {p.name} <span className="muted small">{p.workspace}</span></button>
-        ))}
-        {project && (
-          <>
-            <button className="rdv-back" onClick={() => path.length > 1 ? setPath(path.slice(0, -1)) : (setProject(null), setPath([]))}><ChevronLeft size={16} /> {path.map((p) => p.name).join(" / ")}</button>
-            {error && <p className="neg small">{error}</p>}
-            {!items && !error && <p className="muted">Chargement…</p>}
-            {items?.length === 0 && <p className="muted">Dossier vide.</p>}
-            {items?.map((it) => it.type === "folder" || it.type === "version_stack"
-              // Dossier ou pile de versions : on entre dedans
-              ? <button key={it.id} className="liv-item" onClick={() => setPath([...path, { id: it.id, name: it.name, stack: it.type === "version_stack" }])}>{it.type === "folder" ? <Folder size={16} /> : <Layers size={16} />} {it.name}{it.type === "version_stack" && <span className="muted small">pile de versions</span>}</button>
-              : <button key={it.id} className="liv-item" onClick={() => onPick(project.accountId, [{ fileId: it.id, name: it.name }])}>
-                  {it.version > 0 ? <b className="liv-vtag">V{it.version}</b> : <Film size={16} />} {it.name}
-                  <span className="muted small">{it.version > 0 ? `envoyée le ${when(it.createdAt)}` : it.mediaType || it.type}</span>
-                </button>)}
-            {folder?.stack && items && items.length > 1 && (
-              <button className="primary" onClick={() => onPick(project.accountId, items.filter((x) => x.type !== "folder").map((x) => ({ fileId: x.id, name: x.name })))}>Ajouter toutes les versions (V1 → V{items.length})</button>
-            )}
-          </>
-        )}
-        <button onClick={onClose}>Fermer</button>
-      </div>
-    </div>
-  );
-}
 
 export default function Livraisons() {
   const [info, setInfo] = useState<Info | null>(null);
@@ -211,7 +168,7 @@ export default function Livraisons() {
       })}
       {info?.connected && !list.length && !draft && <p className="muted">Aucune livraison pour l&apos;instant.</p>}
 
-      {picking && info && <Picker projects={info.projects} onPick={pick} onClose={() => setPicking(null)} />}
+      {picking && info && <FramePicker projects={info.projects} onPick={pick} onClose={() => setPicking(null)} />}
     </div>
   );
 }

@@ -1199,3 +1199,4 @@ button.danger { color: #c4262c; }
 .net-pick button.on { color: var(--accent) !important; border-color: var(--accent) !important; background: var(--accent-soft) !important; }
 .liv-mode { align-self: start; }
 .liv-task { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--text); text-decoration: none; font-size: 14px; font-weight: 600; }
+.liv-item.picked { border-color: var(--accent) !important; background: var(--accent-soft) !important; }

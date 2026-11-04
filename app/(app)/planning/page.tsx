@@ -3,9 +3,10 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { api, isoDay } from "@/lib/api";
 import { REPEATS, nextDate } from "@/lib/repeat";
 import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
+import FramePicker, { FrameFile } from "@/components/FramePicker";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 
-type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; subtasks?: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
+type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; subtasks?: string; deliveryId?: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
 
 type View = "month" | "days5" | "board" | "list";
 const VIEWS: View[] = ["month", "days5", "board", "list"];
@@ -359,8 +360,12 @@ export default function Planning() {
   // Occurrences à venir des tâches d'un seul jour, affichées en discret
   const ghostsOn = (k: string) => visible.filter((t) => !multiTask(t) && occurrences(t, k).includes(k));
 
+  // Tâche Clients terminée : demander quelle(s) vidéo(s) Frame.io correspondent
+  const [linking, setLinking] = useState<Task | null>(null);
   async function move(id: string, patch: Partial<Task>) {
     if (!id) return;
+    const before = tasks.find((t) => t.id === id);
+    if (patch.status === "done" && before && before.status !== "done" && before.category === "Clients") setLinking({ ...before, ...patch });
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     await saveTask(id, patch);
   }
@@ -975,6 +980,8 @@ export default function Planning() {
         />
       )}
 
+      {linking && <LinkVideos task={linking} onClose={() => setLinking(null)} onLinked={(deliveryId) => setTasks((ts) => ts.map((t) => (t.id === linking.id ? { ...t, deliveryId } : t)))} />}
+
       {showCals && (
         <CalendarsModal
           notice={notice}
@@ -1457,5 +1464,62 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onS
         </div>
       </div>
     </div>
+  );
+}
+
+// Fin d'une tâche Clients : rattacher la ou les vidéos exportées sur Frame.io à une livraison
+type DeliveryLite = { id: string; token: string; title: string; client: string; mode: string; accountId: string; files: string };
+function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => void; onLinked: (deliveryId: string) => void }) {
+  const [list, setList] = useState<DeliveryLite[] | null>(null);
+  const [target, setTarget] = useState(task.deliveryId || "");
+  const [done, setDone] = useState<{ text: string; link: string } | null>(null);
+  const [error, setError] = useState("");
+  const base = task.title.replace(/^Modifs V\d+ · /, "");
+  useEffect(() => {
+    api<DeliveryLite[]>("livraisons").then((l) => { setList(l); if (!task.deliveryId) setTarget(l.find((d) => d.title === base)?.id ?? "new-page"); }).catch(() => setList([]));
+  }, []);
+
+  async function pick(accountId: string, files: FrameFile[]) {
+    setError("");
+    try {
+      let d: DeliveryLite;
+      if (target.startsWith("new-")) {
+        d = await api<DeliveryLite>("livraisons", "POST", { title: base, client: "", accountId, files, mode: target === "new-frame" ? "frame" : "page" });
+      } else {
+        const cur = list!.find((x) => x.id === target)!;
+        if (cur.accountId !== accountId) return setError("Choisis une vidéo du même compte Frame.io que cette livraison.");
+        d = await api<DeliveryLite>(`livraisons/${cur.id}`, "PATCH", { files: [...JSON.parse(cur.files || "[]"), ...files] });
+      }
+      await api(`tasks/${task.id}`, "PATCH", { deliveryId: d.id });
+      onLinked(d.id);
+      const n = JSON.parse(d.files || "[]").length;
+      const link = d.mode === "frame" ? "" : `${window.location.origin}/l/${d.token}`;
+      if (link) navigator.clipboard?.writeText(link).catch(() => {});
+      setDone({ text: d.mode === "frame" ? `Vidéo liée au suivi Frame « ${d.title} » (V${n}). Les commentaires arriveront dans le Planning.` : `V${n} ajoutée à « ${d.title} ». Lien copié : envoie-le au client.`, link });
+    } catch (e) { setError(errorText(e)); }
+  }
+
+  if (done) return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal appt-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>C&apos;est lié ✅</h3>
+        <p>{done.text}</p>
+        {done.link && <a className="link small" href={done.link} target="_blank" rel="noreferrer">{done.link}</a>}
+        <button className="primary" onClick={onClose}>OK</button>
+      </div>
+    </div>
+  );
+  return (
+    <FramePicker title={`« ${task.title} » terminée 🎉 Quelle(s) vidéo(s) Frame correspondent ?`} onPick={pick} onClose={onClose}>
+      <label className="field-line">Ajouter à
+        <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={!list}>
+          {list?.map((d) => <option key={d.id} value={d.id}>Nouvelle version de « {d.title} »{d.client ? ` · ${d.client}` : ""}{d.mode === "frame" ? " (suivi Frame)" : ""}</option>)}
+          <option value="new-page">Nouvelle livraison « {base} » (lien maderino)</option>
+          <option value="new-frame">Nouveau suivi Frame « {base} » (agence)</option>
+        </select>
+      </label>
+      <p className="muted small">Choisis la ou les vidéos exportées (plusieurs = V suivantes dans l&apos;ordre des clics), ou ferme pour passer.</p>
+      {error && <p className="neg small">{error}</p>}
+    </FramePicker>
   );
 }

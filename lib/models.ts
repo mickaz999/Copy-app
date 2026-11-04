@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 // Champs modifiables par modèle (le reste est ignoré)
 const fields = {
   pages: ["title", "icon", "content", "parentId"],
-  tasks: ["title", "notes", "status", "category", "date", "endDate", "props", "repeat", "repeatUntil", "startTime", "endTime", "subtasks"],
+  tasks: ["title", "notes", "status", "category", "date", "endDate", "props", "repeat", "repeatUntil", "startTime", "endTime", "subtasks", "deliveryId"],
   properties: ["name", "type", "options", "order"],
   boards: ["name", "data"],
   calendars: ["name", "url", "color"],
