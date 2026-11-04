@@ -332,7 +332,7 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
 }
 
 // Livraison d'un dossier Frame.io : navigation dans les sous-dossiers, aperçu, retours et téléchargement par fichier
-type Item = { id: string; name: string; type: string; mediaType: string; version: number; sig: string; thumb?: string; updatedAt?: string };
+type Item = { id: string; name: string; type: string; mediaType: string; version: number; sig: string; thumb?: string; updatedAt?: string; count?: number };
 const ago = (iso?: string) => {
   if (!iso) return "";
   const days = Math.floor((Date.now() - Date.parse(iso)) / 864e5);
@@ -404,7 +404,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
         </div>
       </header>
 
-      <div className="liv-main">
+      <div className={`liv-main ${file ? "" : "solo"}`}>
         <div className="liv-player">
           <div className="liv-crumbs">
             {path.map((p, i, all) => (
@@ -437,9 +437,13 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
               <div className="liv-folders">
                 {data.items.filter((x) => x.type === "folder").map((x) => (
                   <button key={x.id} className="ghost liv-folder" onClick={() => { setFile(null); setPath([...path, { id: x.id, name: x.name, sig: x.sig }]); }}>
-                    <Folder size={20} />
-                    <span><b>{x.name}</b><small>{ago(x.updatedAt)}</small></span>
-                    <ChevronRight size={16} />
+                    <span className="liv-cover">
+                      {x.thumb ? <img src={x.thumb} alt="" loading="lazy" /> : <Folder size={34} />}
+                    </span>
+                    <span className="liv-folder-info">
+                      <b>{x.name}</b>
+                      <small>{x.count !== undefined ? `${x.count} élément${x.count > 1 ? "s" : ""} · ` : ""}{ago(x.updatedAt)}</small>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -465,7 +469,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           )}
         </div>
 
-        <aside className="liv-side">
+        {file && <aside className="liv-side">
           <h3><MessageSquare size={16} /> Retours{file ? ` · ${file.name}` : ""}</h3>
           <div className="liv-comments">
             {!file && <p className="muted small">Ouvre un fichier pour voir ou laisser des retours.</p>}
@@ -488,7 +492,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
               </div>
             </form>
           )}
-        </aside>
+        </aside>}
       </div>
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>

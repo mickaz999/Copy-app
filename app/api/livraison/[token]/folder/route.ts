@@ -4,6 +4,23 @@ import { fileMedia, folderChildren } from "@/lib/frameio";
 import { checkItem, signItem } from "@/lib/sign";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
+
+// Couverture d'un dossier (1re image trouvée) + nombre d'éléments, gardée 10 min en mémoire
+const covers = new Map<string, { at: number; cover: string; count: number }>();
+async function cover(accountId: string, folderId: string) {
+  const hit = covers.get(folderId);
+  if (hit && Date.now() - hit.at < 10 * 60_000) return hit;
+  const kids = await folderChildren(accountId, folderId).catch(() => []);
+  const media = kids.filter((k) => k.type !== "folder");
+  let img = media.find((k) => k.thumb)?.thumb ?? "";
+  if (!img && media[0]) img = await fileMedia(accountId, media[0].id).then((m) => m.thumb).catch(() => "");
+  // Dossier sans fichier direct : couverture du premier sous-dossier
+  if (!img) { const sub = kids.find((k) => k.type === "folder"); if (sub) img = (await cover(accountId, sub.id)).cover; }
+  const out = { at: Date.now(), cover: img, count: kids.length };
+  covers.set(folderId, out);
+  return out;
+}
 
 // Livraison d'un dossier : contenu d'un (sous-)dossier, lu en direct sur Frame.io.
 // Chaque élément renvoyé est signé ; on ne peut ouvrir que le dossier livré ou un élément signé.
@@ -30,7 +47,12 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     }));
     // Dossiers d'abord, puis fichiers ; chacun du plus récemment modifié au plus ancien
     items.sort((a, b) => Number(b.type === "folder") - Number(a.type === "folder") || b.updatedAt.localeCompare(a.updatedAt));
-    const out = items.map(({ id, name, type, mediaType, version, thumb, updatedAt }) => ({ id, name, type, mediaType, version, thumb, updatedAt, sig: signItem(params.token, id) }));
+    const counts: Record<string, number> = {};
+    await Promise.all(items.filter((x) => x.type === "folder").slice(0, 30).map(async (x) => {
+      const c = await cover(d.accountId, x.id);
+      x.thumb = c.cover; counts[x.id] = c.count;
+    }));
+    const out = items.map(({ id, name, type, mediaType, version, thumb, updatedAt }) => ({ id, name, type, mediaType, version, thumb, updatedAt, count: counts[id], sig: signItem(params.token, id) }));
     return NextResponse.json({ items: out });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
