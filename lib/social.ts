@@ -42,9 +42,14 @@ export const callbackUrl = (req: Request, p: Provider) => `${new URL(req.url).or
 
 export async function saveCode(p: Provider, code: string, redirect: string) {
   const c = PROVIDERS[p];
-  const t = await (await fetch(c.token, form({
+  let t = await (await fetch(c.token, form({
     client_id: c.clientId(), client_secret: c.clientSecret(), code, grant_type: "authorization_code", redirect_uri: redirect,
   }))).json();
+  // Certains serveurs (Adobe) veulent les identifiants en en-tête Basic plutôt que dans le corps
+  if (t.error === "invalid_client") {
+    const basic = Buffer.from(`${c.clientId()}:${c.clientSecret()}`).toString("base64");
+    t = await (await fetch(c.token, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${basic}` }, body: new URLSearchParams({ code, grant_type: "authorization_code", redirect_uri: redirect }) })).json();
+  }
   if (!t.refresh_token) throw new Error(JSON.stringify(t).slice(0, 300));
   const data = { refreshToken: t.refresh_token, accessToken: t.access_token, expiresAt: new Date(Date.now() + t.expires_in * 1000) };
   await db.apiToken.upsert({ where: { provider: p }, create: { provider: p, ...data }, update: data });
