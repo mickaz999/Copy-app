@@ -156,7 +156,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
               <div className="seg">{mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
             )}
           </div>
-          <div className={`liv-scene ${vertical && isVideo ? "vertical" : ""} ${dual ? "dual" : ""}`}>
+          <div className={`liv-scene ${vertical && isVideo ? "vertical" : ""} ${dual ? "dual" : ""}`} style={dual ? { ["--ratio" as string]: ratio } : undefined}>
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
           <div className={`liv-stage mock-${isVideo ? pm : "player"}`}>
           {cur?.ready && (isVideo
