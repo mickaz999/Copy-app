@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { runCron } from "@/lib/notify";
+import { pullFrameComments } from "@/lib/deliveryTasks";
+import { frameConnected } from "@/lib/frameio";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -11,7 +13,10 @@ export async function GET(req: Request) {
   const ok = secret && (req.headers.get("authorization") === `Bearer ${secret}` || url.searchParams.get("key") === secret);
   if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try {
-    return NextResponse.json({ ok: true, log: await runCron(url.origin) });
+    const log = await runCron(url.origin);
+    // Commentaires laissés directement sur Frame.io → tâches « Modifs »
+    if (await frameConnected()) await pullFrameComments().then((n) => n && log.push(`${n} retour(s) Frame.io`)).catch((e) => log.push(`Frame.io : ${e.message}`));
+    return NextResponse.json({ ok: true, log });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }

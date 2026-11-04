@@ -1197,3 +1197,5 @@ button.danger { color: #c4262c; }
 .net-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .net-pick button { font-size: 13px; padding: 6px 12px !important; border-radius: 999px; }
 .net-pick button.on { color: var(--accent) !important; border-color: var(--accent) !important; background: var(--accent-soft) !important; }
+.liv-mode { align-self: start; }
+.liv-task { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--text); text-decoration: none; font-size: 14px; font-weight: 600; }

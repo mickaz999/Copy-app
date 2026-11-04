@@ -3,6 +3,7 @@ import { clean, delegate, ModelName } from "@/lib/models";
 import { db } from "@/lib/db";
 import { addDaysISO, daysBetween, nextDate } from "@/lib/repeat";
 import { removeTaskBlock, syncTaskBlock } from "@/lib/block";
+import { syncTaskToComments } from "@/lib/deliveryTasks";
 
 type P = { params: { model: string; id: string } };
 
@@ -20,6 +21,8 @@ export async function PATCH(req: Request, { params }: P) {
   if (params.model === "tasks") {
     // Horaire, date ou titre modifiés : le créneau bloqué dans Google suit
     if (["date", "endDate", "startTime", "endTime", "title"].some((k) => k in data) || item.blockEventId) await syncTaskBlock(item.id).catch(() => {});
+    // Tâche « Modifs » d'une livraison : sous-tâches cochées = retours corrigés
+    if ("subtasks" in data && item.deliveryId) await syncTaskToComments(item).catch(() => {});
     return NextResponse.json({ ...item, spawned: await spawnNext(item) });
   }
   return NextResponse.json(item);

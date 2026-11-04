@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { fileMedia } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
+import { commentToTask } from "@/lib/deliveryTasks";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (!text) return NextResponse.json({ error: "Écris ton commentaire." }, { status: 400 });
     const time = Number.isFinite(Number(b.time)) && b.time !== null && b.time !== "" ? Math.max(0, Number(b.time)) : null;
     const c = await db.deliveryComment.create({ data: { deliveryId: d.id, version, author, text, time } });
+    await commentToTask(d, c).catch(() => {});
     await notify(`Retour sur « ${d.title} »`, `${author} (V${version}) : ${text.slice(0, 120)}`);
     return NextResponse.json(c);
   }

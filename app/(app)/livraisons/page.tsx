@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers } from "lucide-react";
+import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
@@ -9,7 +9,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[] };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[] };
 
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const NETS = [["reel", "Instagram"], ["tiktok", "TikTok"], ["short", "Shorts"], ["youtube", "YouTube"]];
@@ -74,7 +74,7 @@ function Picker({ projects, onPick, onClose }: { projects: Project[]; onPick: (a
 export default function Livraisons() {
   const [info, setInfo] = useState<Info | null>(null);
   const [list, setList] = useState<Delivery[]>([]);
-  const [draft, setDraft] = useState<{ title: string; client: string; message: string; networks: string[]; accountId: string; files: File[] } | null>(null);
+  const [draft, setDraft] = useState<{ title: string; client: string; message: string; networks: string[]; mode: string; accountId: string; files: File[] } | null>(null);
   const [picking, setPicking] = useState<"new" | string | null>(null);
   const [open, setOpen] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -122,22 +122,31 @@ export default function Livraisons() {
       )}
       {info?.error && <section className="settings-card warn"><p>{info.error}</p><a href="/api/connect/frameio"><button><Link2 size={16} /> Reconnecter Frame.io</button></a></section>}
 
-      {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}><button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", networks: [], accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
+      {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}><button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", networks: [], mode: "page", accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
 
       {draft && (
         <section className="settings-card">
           <h3>Nouvelle livraison</h3>
+          <div className="seg liv-mode">
+            <button type="button" className={draft.mode === "page" ? "on" : ""} onClick={() => setDraft({ ...draft, mode: "page" })}>Lien maderino</button>
+            <button type="button" className={draft.mode === "frame" ? "on" : ""} onClick={() => setDraft({ ...draft, mode: "frame" })}>Suivi Frame (agence)</button>
+          </div>
+          <p className="muted small">{draft.mode === "page"
+            ? "Le client reçoit ta page à tes couleurs. Ses retours créent une tâche « Modifs » dans le Planning."
+            : "Tu continues à partager le lien Frame.io de l'agence. L'app lit les commentaires laissés sur Frame (toutes les 5 min) et les ajoute à une tâche « Modifs » dans le Planning."}</p>
           <label className="field-line">Titre du projet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Clip « Été 2026 »" /></label>
           <label className="field-line">Client<input value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} placeholder="Nom du client" /></label>
-          <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses 🙌" /></label>
-          <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
+          {draft.mode === "page" && <>
+            <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses 🙌" /></label>
+            <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
+          </>}
           <div className="field-line">Vidéo(s)</div>
           {draft.files.map((f, i) => <div key={i} className="liv-item static"><Film size={15} /> V{i + 1} · {f.name}</div>)}
           <div className="row">
             <button onClick={() => setPicking("new")}><Plus size={15} /> {draft.files.length ? "Ajouter une version" : "Choisir sur Frame.io"}</button>
             <span style={{ flex: 1 }} />
             <button onClick={() => setDraft(null)}>Annuler</button>
-            <button className="primary" disabled={!draft.title.trim() || !draft.files.length} onClick={create}>Créer le lien</button>
+            <button className="primary" disabled={!draft.title.trim() || !draft.files.length} onClick={create}>{draft.mode === "frame" ? "Suivre" : "Créer le lien"}</button>
           </div>
         </section>
       )}
@@ -154,17 +163,30 @@ export default function Livraisons() {
               </div>
               {d.approvedV ? <span className="ok-pill"><CheckCircle2 size={14} /> V{d.approvedV} validée</span> : todo ? <span className="late-pill"><MessageSquare size={12} /> {todo}</span> : null}
             </div>
+            {d.linked.map((t) => (
+              <a key={t.id} className="liv-task" href="/planning">
+                <span>📋 {t.title}</span>
+                <span className="muted small">{t.status === "done" ? "terminée ✓" : t.total ? `${t.done}/${t.total} retours corrigés` : "à faire"}</span>
+              </a>
+            ))}
             <div className="row">
-              <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
-              <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
+              {d.mode === "frame"
+                ? <>
+                    <span className="ok-pill">Suivi Frame</span>
+                    <button onClick={async () => { try { const r = await api<{ added: number }>(`livraisons/${d.id}`, "PATCH", { action: "sync" }); setMsg({ ok: true, text: r.added ? `${r.added} nouveau(x) retour(s) Frame ajouté(s) au Planning.` : "Aucun nouveau commentaire sur Frame." }); load(); } catch (e) { setMsg({ ok: false, text: errorText(e) }); } }}><RefreshCw size={15} /> Vérifier Frame</button>
+                  </>
+                : <>
+                    <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
+                    <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
+                  </>}
               <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>
-              <label className="check small"><input type="checkbox" checked={d.download} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { download: e.target.checked }); load(); }} /> Téléchargement autorisé</label>
+              {d.mode !== "frame" && <label className="check small"><input type="checkbox" checked={d.download} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { download: e.target.checked }); load(); }} /> Téléchargement autorisé</label>}
             </div>
             {open === d.id && (
               <div className="liv-detail">
                 <label className="field-line">Titre<input defaultValue={d.title} onBlur={async (e) => { if (e.target.value !== d.title) { await api(`livraisons/${d.id}`, "PATCH", { title: e.target.value }); load(); } }} /></label>
                 <label className="field-line">Client<input defaultValue={d.client} onBlur={async (e) => { if (e.target.value !== d.client) { await api(`livraisons/${d.id}`, "PATCH", { client: e.target.value }); load(); } }} /></label>
-                <NetPicker value={JSON.parse(d.networks || "[]")} onChange={async (networks) => { await api(`livraisons/${d.id}`, "PATCH", { networks }); load(); }} />
+                {d.mode !== "frame" && <NetPicker value={JSON.parse(d.networks || "[]")} onChange={async (networks) => { await api(`livraisons/${d.id}`, "PATCH", { networks }); load(); }} />}
                 <label className="field-line">Message au client<textarea rows={2} defaultValue={d.message} onBlur={async (e) => { if (e.target.value !== d.message) { await api(`livraisons/${d.id}`, "PATCH", { message: e.target.value }); load(); } }} /></label>
                 {files.map((f, i) => {
                   const cs = d.comments.filter((c) => c.version === i + 1);
