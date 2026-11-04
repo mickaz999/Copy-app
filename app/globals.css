@@ -1284,3 +1284,18 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .liv-locked { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 10px 14px; border: 1px dashed var(--border); border-radius: 999px; }
 .liv-dl { display: inline-flex !important; flex-direction: row; align-items: center; gap: 8px; }
 .liv-dl select { max-width: 180px; }
+/* Livraison d'un dossier */
+.liv-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.liv-crumbs span { display: inline-flex; align-items: center; gap: 2px; }
+.liv-crumbs button { padding: 4px 6px !important; color: var(--muted); }
+.liv-crumbs button:disabled { color: var(--text); opacity: 1; }
+.liv-browser { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.liv-entry { position: relative; display: grid !important; justify-items: start; gap: 6px; padding: 12px !important; border-radius: 14px; background: rgba(255, 255, 255, .05) !important; border: 1px solid var(--border) !important; text-align: left; }
+.liv-entry.on { border-color: var(--accent) !important; }
+.liv-entry:hover { background: rgba(255, 255, 255, .1) !important; }
+.liv-entry-ic { color: var(--accent); }
+.liv-entry-name { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.3; }
+.liv-entry b { position: absolute; top: 8px; right: 8px; font-size: 11px; color: #fff; background: var(--accent); border-radius: 999px; padding: 1px 6px; }
+.liv-fileview { display: grid; gap: 10px; }
+.liv-fileview video, .liv-fileview img { width: auto; max-width: 100%; height: min(60vh, 600px) !important; justify-self: center; border-radius: 14px; background: #000; object-fit: contain; }
+@media (max-width: 900px) { .liv-fileview video, .liv-fileview img { height: auto !important; max-height: 60vh; } .liv-browser { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

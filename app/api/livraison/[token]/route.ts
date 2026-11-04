@@ -23,8 +23,9 @@ export async function GET(_: Request, { params }: { params: { token: string } })
     }
   }));
   return NextResponse.json({
-    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlApproved: d.dlApproved, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
-    comments: d.comments.map((c) => ({ id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
+    folderId: d.folderId,
+    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
+    comments: d.comments.map((c) => ({ fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
 }
 
@@ -45,7 +46,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     const text = String(b.text ?? "").trim().slice(0, 3000);
     if (!text) return NextResponse.json({ error: "Écris ton commentaire." }, { status: 400 });
     const time = Number.isFinite(Number(b.time)) && b.time !== null && b.time !== "" ? Math.max(0, Number(b.time)) : null;
-    const c = await db.deliveryComment.create({ data: { deliveryId: d.id, version, author, text, time } });
+    const c = await db.deliveryComment.create({ data: { deliveryId: d.id, version: d.kind === "folder" ? 1 : version, author, text, time, fileId: String(b.fileId ?? "").slice(0, 100), fileName: String(b.fileName ?? "").slice(0, 300) } });
     await commentToTask(d, c).catch(() => {});
     await notify(`Retour sur « ${d.title} »`, `${author} (V${version}) : ${text.slice(0, 120)}`);
     return NextResponse.json(c);

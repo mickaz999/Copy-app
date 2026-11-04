@@ -243,8 +243,10 @@ model Delivery {
   accountId  String   // compte Frame.io
   files      String   @default("[]") // versions, de la plus ancienne à la plus récente (JSON [{ fileId, name }])
   download   Boolean  @default(true) // téléchargement autorisé
-  dlApproved Boolean  @default(true) // téléchargement seulement après validation de la version / vidéo
-  kind       String   @default("versions") // versions = V1, V2… d'une même vidéo ; videos = plusieurs vidéos différentes
+  dlApproved Boolean  @default(true) // ancien réglage, remplacé par dlMode
+  dlMode     String   @default("approved") // téléchargement : approved = après validation (défaut, y compris livraisons existantes) | always | never
+  kind       String   @default("versions") // versions = V1, V2… d'une même vidéo ; videos = plusieurs vidéos différentes ; folder = dossier Frame.io (sous-dossiers compris)
+  folderId   String   @default("")         // dossier Frame.io livré (kind = folder)
   approved   String   @default("[]")       // vidéos validées (kind = videos), numéros
   mode       String   @default("page") // page = lien maderino ; frame = suivi des commentaires Frame.io seulement (agences)
   tasks      String   @default("{}")   // tâche « Modifs » liée par version ({ "1": taskId })
@@ -266,5 +268,7 @@ model DeliveryComment {
   resolved   Boolean  @default(false)
   source     String   @default("page") // page | frame
   externalId String   @default("")     // id du commentaire Frame.io
+  fileId     String   @default("")     // fichier commenté (livraison d'un dossier)
+  fileName   String   @default("")
   createdAt  DateTime @default(now())
 }

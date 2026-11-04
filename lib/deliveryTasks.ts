@@ -8,7 +8,7 @@ const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).pa
 const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * 864e5).toISOString().slice(0, 10);
 const subTitle = (c: DeliveryComment) => `${c.time !== null ? `${tc(c.time)} · ` : ""}${c.text}${c.author ? ` (${c.author})` : ""}`;
 
-type VSub = Sub & { video?: number };
+type VSub = Sub & { video?: number | string };
 const videoName = (d: Delivery, v: number) => {
   const f = (JSON.parse(d.files || "[]") as { name: string }[])[v - 1];
   // Nom exact du fichier sur Frame.io, pour s'y retrouver
@@ -48,7 +48,8 @@ export async function commentToTask(d: Delivery, c: DeliveryComment) {
   const subs: VSub[] = JSON.parse(task.subtasks || "[]");
   if (subs.some((s) => s.id === `c:${c.id}`)) return;
   const many = d.kind === "videos" || (JSON.parse(d.files || "[]") as unknown[]).length > 1;
-  subs.push({ id: `c:${c.id}`, title: `${many ? `${videoName(d, c.version)} · ` : ""}${subTitle(c)}`, done: c.resolved, video: c.version });
+  const label = c.fileName || (many ? videoName(d, c.version) : "");
+  subs.push({ id: `c:${c.id}`, title: `${label ? `${label} · ` : ""}${subTitle(c)}`, done: c.resolved, video: c.fileId || c.version });
   await db.task.update({ where: { id: task.id }, data: { subtasks: JSON.stringify(subs), title: modifsTitle(d, subs) } });
 }
 

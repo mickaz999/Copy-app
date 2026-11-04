@@ -11,8 +11,9 @@ const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day:
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
 
 // Explorateur Frame.io : choisir une ou plusieurs vidéos (dans l'ordre des clics : V1, V2…)
-export default function FramePicker({ title = "Choisir sur Frame.io", projects: given, onPick, onClose, children }: {
-  title?: string; projects?: FrameProject[]; onPick: (accountId: string, files: FrameFile[]) => void; onClose: () => void; children?: React.ReactNode;
+export default function FramePicker({ title = "Choisir sur Frame.io", projects: given, onPick, onPickFolder, onClose, children }: {
+  title?: string; projects?: FrameProject[]; onPick: (accountId: string, files: FrameFile[]) => void;
+  onPickFolder?: (accountId: string, folder: { id: string; name: string }) => void; onClose: () => void; children?: React.ReactNode;
 }) {
   const [projects, setProjects] = useState<FrameProject[] | null>(given ?? null);
   const [project, setProject] = useState<FrameProject | null>(null);
@@ -71,6 +72,10 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
         <div className="row">
           <button onClick={onClose}>Fermer</button>
           <span style={{ flex: 1 }} />
+          {onPickFolder && project && folder && !folder.stack && !sel.length && (
+            // Livrer le dossier entier, sous-dossiers compris (lu en direct : ce qui y est ajouté ensuite apparaît aussi)
+            <button onClick={() => onPickFolder(project.accountId, { id: folder.id, name: folder.name })}><Folder size={15} /> Livrer ce dossier entier</button>
+          )}
           <button className="primary" disabled={!sel.length || !project} onClick={() => onPick(project!.accountId, sel)}>Ajouter {sel.length > 1 ? `(${sel.length})` : ""}</button>
         </div>
       </div>

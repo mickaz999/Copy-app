@@ -19,16 +19,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const b0 = await req.clone().json().catch(() => ({}));
-  // Appliquer « téléchargement après validation » à toutes les livraisons existantes
-  if (b0.action === "dl-approved-all") {
-    const r = await db.delivery.updateMany({ where: { dlApproved: false, download: true }, data: { dlApproved: true } });
-    return NextResponse.json({ updated: r.count });
-  }
   const b = await req.json();
   const files = Array.isArray(b.files) ? b.files.map((f: any) => ({ fileId: String(f.fileId), name: String(f.name ?? "") })) : [];
-  if (!b.title || !b.accountId || !files.length) return NextResponse.json({ error: "Titre, compte et au moins une vidéo requis." }, { status: 400 });
+  if (!b.title || !b.accountId || (!files.length && !b.folderId)) return NextResponse.json({ error: "Titre, compte et au moins une vidéo requis." }, { status: 400 });
   return NextResponse.json(await db.delivery.create({
-    data: { token: randomBytes(12).toString("base64url"), title: String(b.title).slice(0, 200), client: String(b.client ?? "").slice(0, 200), message: String(b.message ?? "").slice(0, 2000), accountId: String(b.accountId), files: JSON.stringify(files), download: b.download !== false, mode: b.mode === "frame" ? "frame" : "page", kind: b.kind === "videos" ? "videos" : "versions", networks: JSON.stringify(nets(b.networks)) },
+    data: { token: randomBytes(12).toString("base64url"), title: String(b.title).slice(0, 200), client: String(b.client ?? "").slice(0, 200), message: String(b.message ?? "").slice(0, 2000), accountId: String(b.accountId), files: JSON.stringify(files), download: b.download !== false, mode: b.mode === "frame" ? "frame" : "page", kind: b.folderId ? "folder" : b.kind === "videos" ? "videos" : "versions", folderId: String(b.folderId ?? ""), networks: JSON.stringify(nets(b.networks)) },
   }));
 }

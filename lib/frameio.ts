@@ -65,13 +65,37 @@ export async function fileMedia(accountId: string, fileId: string) {
 }
 
 // Téléchargement permis pour ce fichier (n = 1 pour V1 ou la 1re vidéo)
-export function canDownload(d: { download: boolean; dlApproved: boolean; kind: string; approvedV: number; approved: string; files: string }, n: number) {
-  if (!d.download) return false;
+export function canDownload(d: { download: boolean; dlMode: string; kind: string; approvedV: number; approved: string; files: string }, n: number) {
+  if (!d.download || d.dlMode === "never") return false;
   // Versions : seule la dernière se télécharge, les anciennes restent consultables (retours) mais bloquées
   if (d.kind !== "videos" && n < (JSON.parse(d.files || "[]") as unknown[]).length) return false;
-  if (!d.dlApproved) return true;
+  if (d.dlMode === "always") return true;
   return d.kind === "videos" ? (JSON.parse(d.approved || "[]") as number[]).includes(n) : d.approvedV === n;
 }
 
 // Aperçus réseaux autorisés pour une livraison
 export const nets = (v: unknown) => (Array.isArray(v) ? v : []).filter((n) => ["reel", "tiktok", "short", "youtube"].includes(n));
+
+// Un dossier ou fichier se trouve-t-il dans le dossier livré ? (remonte les parents, résultat mis en cache)
+const inside = new Map<string, boolean>();
+export async function isInside(accountId: string, rootId: string, id: string, type: "folder" | "file") {
+  if (id === rootId) return true;
+  const key = `${rootId}:${id}`;
+  if (inside.has(key)) return inside.get(key)!;
+  let cur = id, kind: string = type, ok = false;
+  for (let i = 0; i < 15 && cur; i++) {
+    const path = kind === "file" ? `/accounts/${accountId}/files/${cur}` : kind === "version_stack" ? `/accounts/${accountId}/version_stacks/${cur}` : `/accounts/${accountId}/folders/${cur}`;
+    const { data } = await fio(path).catch(() => ({ data: null }));
+    const parent = data?.parent_id;
+    if (!parent) break;
+    if (parent === rootId) { ok = true; break; }
+    cur = parent; kind = "folder";
+  }
+  inside.set(key, ok);
+  return ok;
+}
+
+export async function folderInfo(accountId: string, folderId: string) {
+  const { data } = await fio(`/accounts/${accountId}/folders/${folderId}`);
+  return { id: data?.id as string, name: (data?.name ?? "") as string, parentId: (data?.parent_id ?? "") as string };
+}

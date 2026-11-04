@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Download, MessageSquare, Clock, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
+import { CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
-type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Comment = { fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
+type Data = { folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -73,6 +73,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
 
   if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
   if (!d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="muted">Chargement…</p></div></div>;
+  if (d.kind === "folder") return <FolderDelivery d={d} token={params.token} reload={load} />;
 
   const cur = d.versions.find((x) => x.v === v) ?? d.versions[d.versions.length - 1];
   const isVideo = !cur?.mediaType || cur.mediaType.startsWith("video");
@@ -325,6 +326,140 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
           <div className="mock-progress"><i style={{ width: duration ? `${(now / duration) * 100}%` : 0 }} /></div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Livraison d'un dossier Frame.io : navigation dans les sous-dossiers, aperçu, retours et téléchargement par fichier
+type Item = { id: string; name: string; type: string; mediaType: string; version: number };
+type Media = { name: string; mediaType: string; play: string; thumb: string; canDownload: boolean };
+function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: () => Promise<unknown> }) {
+  const base = `/api/livraison/${token}`;
+  const [loc, setLoc] = useState<{ id: string; stack?: boolean; name?: string }>({ id: "" });
+  const [data, setData] = useState<{ path: { id: string; name: string }[]; items: Item[] } | null>(null);
+  const [error, setError] = useState("");
+  const [file, setFile] = useState<Item | null>(null);
+  const [media, setMedia] = useState<Media | null>(null);
+  const [author, setAuthor] = useState("");
+  const [text, setText] = useState("");
+  const [now, setNow] = useState(0);
+  const [atTime, setAtTime] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { try { setAuthor(localStorage.getItem("liv-author") ?? ""); } catch {} }, []);
+  useEffect(() => {
+    setData(null); setError("");
+    fetch(`${base}/folder?id=${loc.id}${loc.stack ? "&stack=1" : ""}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setData(loc.stack ? { path: [...(data?.path ?? []), { id: loc.id, name: loc.name ?? "" }], items: j.items } : j); }).catch((e) => setError(e.message));
+  }, [loc.id]);
+  useEffect(() => {
+    setMedia(null); setNow(0);
+    if (file) fetch(`${base}/file?id=${file.id}`).then((r) => r.json()).then(setMedia).catch(() => {});
+  }, [file?.id]);
+
+  const files = data?.items.filter((x) => x.type !== "folder" && x.type !== "version_stack") ?? [];
+  const isVid = (m?: string) => !m || m.startsWith("video");
+  const icon = (x: Item) => x.type === "folder" ? <Folder size={22} /> : x.type === "version_stack" ? <Layers size={22} /> : x.mediaType.startsWith("image") ? <FileImage size={22} /> : <Film size={22} />;
+  const dl = (id: string) => `${base}/file?id=${id}&download=1`;
+  async function downloadFolder() {
+    for (const f of files) {
+      const el = document.createElement("iframe"); el.style.display = "none"; el.src = dl(f.id);
+      document.body.appendChild(el); setTimeout(() => el.remove(), 120_000);
+      await new Promise((ok) => setTimeout(ok, 1200));
+    }
+  }
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    setBusy(true);
+    const r = await fetch(base, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "comment", author, text, fileId: file.id, fileName: file.name, time: atTime && isVid(media?.mediaType) ? now : null }) });
+    setBusy(false);
+    if (r.ok) { setText(""); try { localStorage.setItem("liv-author", author); } catch {} reload(); }
+  }
+  const cs = d.comments.filter((c) => c.fileId === file?.id).sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
+
+  return (
+    <div className="liv dark">
+      <div className="liv-bg" style={media?.thumb || (media && !isVid(media.mediaType)) ? { backgroundImage: `url("${media.thumb || media.play}")` } : undefined} />
+      <div className="liv-top"><Logo /><span className="muted small">Livraison privée</span></div>
+      <header className="liv-hero">
+        <div className="liv-hero-text">
+          <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
+          <h1>{d.title}</h1>
+          {d.message && <p className="liv-msg">{d.message}</p>}
+          <div className="liv-chips">
+            <span>Dossier</span>
+            <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+          </div>
+        </div>
+        <div className="liv-cta">
+          {d.download && files.length > 0 && <button onClick={downloadFolder}><Download size={16} /> Télécharger ce dossier ({files.length})</button>}
+        </div>
+      </header>
+
+      <div className="liv-main">
+        <div className="liv-player">
+          <div className="liv-crumbs">
+            {(data?.path ?? []).map((p, i, all) => (
+              <span key={p.id}>
+                <button className="ghost" disabled={i === all.length - 1} onClick={() => { setFile(null); setLoc({ id: i === 0 ? "" : p.id }); }}>{p.name}</button>
+                {i < all.length - 1 && <ChevronRight size={14} />}
+              </span>
+            ))}
+          </div>
+          {file && (
+            <div className="liv-fileview">
+              {!media && <div className="liv-wait">Chargement…</div>}
+              {media && (isVid(media.mediaType)
+                ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList={media.canDownload ? undefined : "nodownload"} onContextMenu={(e) => !media.canDownload && e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
+                : <img src={media.play} alt={file.name} onContextMenu={(e) => !media.canDownload && e.preventDefault()} />)}
+              <div className="liv-actions">
+                <span className="liv-file">{file.name}</span>
+                <span style={{ flex: 1 }} />
+                {media?.canDownload && <a href={dl(file.id)} target="_blank" rel="noreferrer"><button><Download size={15} /> Télécharger</button></a>}
+                <button onClick={() => setFile(null)}>Fermer</button>
+              </div>
+            </div>
+          )}
+          {error && <p className="neg">{error}</p>}
+          {!data && !error && <p className="muted">Chargement…</p>}
+          {data?.items.length === 0 && <p className="muted">Dossier vide.</p>}
+          <div className="liv-browser">
+            {data?.items.map((x) => (
+              <button key={x.id} className={`ghost liv-entry ${file?.id === x.id ? "on" : ""}`} onClick={() => x.type === "folder" || x.type === "version_stack" ? (setFile(null), setLoc({ id: x.id, stack: x.type === "version_stack", name: x.name })) : setFile(x)}>
+                <span className="liv-entry-ic">{icon(x)}</span>
+                <span className="liv-entry-name">{x.name}</span>
+                {d.comments.some((c) => c.fileId === x.id && !c.resolved) && <b>{d.comments.filter((c) => c.fileId === x.id && !c.resolved).length}</b>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <aside className="liv-side">
+          <h3><MessageSquare size={16} /> Retours{file ? ` · ${file.name}` : ""}</h3>
+          <div className="liv-comments">
+            {!file && <p className="muted small">Ouvre un fichier pour voir ou laisser des retours.</p>}
+            {file && cs.length === 0 && <p className="muted small">Aucun retour sur ce fichier.</p>}
+            {cs.map((c) => (
+              <div key={c.id} className={`liv-comment ${c.resolved ? "done" : ""}`}>
+                <div className="liv-c-head">{c.time !== null && <span className="liv-tc">{tc(c.time)}</span>}<b>{c.author}</b>{c.resolved && <span className="ok-pill small">corrigé</span>}</div>
+                <p>{c.text}</p>
+              </div>
+            ))}
+          </div>
+          {file && (
+            <form className="liv-form" onSubmit={send}>
+              <input placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />
+              <textarea required rows={3} placeholder="Ton retour…" value={text} onChange={(e) => setText(e.target.value)} />
+              <div className="row">
+                {isVid(media?.mediaType) && <button type="button" className={`liv-when ${atTime ? "on" : ""}`} onClick={() => setAtTime(!atTime)}><Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Retour général"}</button>}
+                <span style={{ flex: 1 }} />
+                <button className="primary" disabled={busy || !text.trim()}>Envoyer</button>
+              </div>
+            </form>
+          )}
+        </aside>
+      </div>
+      <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );
 }

@@ -9,8 +9,8 @@ type Info = { configured: boolean; connected: boolean; projects: Project[]; erro
 type Item = { id: string; name: string; type: string; mediaType: string; createdAt: string; version: number };
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
-type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlApproved: boolean };
+type Comment = { fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string };
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
 function KindPicker({ value, onChange }: { value: string; onChange: (k: string) => void }) {
   return (
@@ -42,7 +42,7 @@ const errorText = (e: unknown) => { const raw = (e as Error).message; try { retu
 export default function Livraisons() {
   const [info, setInfo] = useState<Info | null>(null);
   const [list, setList] = useState<Delivery[]>([]);
-  const [draft, setDraft] = useState<{ title: string; client: string; message: string; networks: string[]; mode: string; kind: string; accountId: string; files: File[] } | null>(null);
+  const [draft, setDraft] = useState<{ title: string; client: string; message: string; networks: string[]; mode: string; kind: string; accountId: string; files: File[]; folderId?: string; folderName?: string } | null>(null);
   const [picking, setPicking] = useState<"new" | string | null>(null);
   const [open, setOpen] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -92,9 +92,6 @@ export default function Livraisons() {
       {info?.error && <section className="settings-card warn"><p>{info.error}</p><a href="/api/connect/frameio"><button><Link2 size={16} /> Reconnecter Frame.io</button></a></section>}
 
       {info?.connected && !draft && <div className="row" style={{ marginBottom: 16 }}>
-        {list.some((d) => d.mode !== "frame" && d.download && !d.dlApproved) && (
-          <button onClick={async () => { if (!confirm("Passer toutes les livraisons en « téléchargement après validation » ?")) return; const r = await api<{ updated: number }>("livraisons", "POST", { action: "dl-approved-all" }); setMsg({ ok: true, text: `${r.updated} livraison(s) passée(s) en « après validation ».` }); load(); }}>Tout passer en « après validation »</button>
-        )}
         <button className="primary" onClick={() => setDraft({ title: "", client: "", message: "", networks: [], mode: "page", kind: "versions", accountId: "", files: [] })}><Plus size={16} /> Nouvelle livraison</button></div>}
 
       {draft && (
@@ -114,13 +111,14 @@ export default function Livraisons() {
             <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
           </>}
           <div className="field-line">Vidéo(s)</div>
+          {draft.folderId && <div className="liv-item static"><Folder size={15} /> Dossier « {draft.folderName} » (sous-dossiers compris, à jour en direct)</div>}
           {draft.files.map((f, i) => <div key={i} className="liv-item static"><Film size={15} /> {draft.kind === "videos" ? f.name : `V${i + 1} · ${f.name}`}</div>)}
           {draft.files.length > 1 && <KindPicker value={draft.kind} onChange={(kind) => setDraft({ ...draft, kind })} />}
           <div className="row">
-            <button onClick={() => setPicking("new")}><Plus size={15} /> {draft.files.length ? "Ajouter une version" : "Choisir sur Frame.io"}</button>
+            {!draft.folderId && <button onClick={() => setPicking("new")}><Plus size={15} /> {draft.files.length ? "Ajouter une version" : "Choisir sur Frame.io"}</button>}
             <span style={{ flex: 1 }} />
             <button onClick={() => setDraft(null)}>Annuler</button>
-            <button className="primary" disabled={!draft.title.trim() || !draft.files.length} onClick={create}>{draft.mode === "frame" ? "Suivre" : "Créer le lien"}</button>
+            <button className="primary" disabled={!draft.title.trim() || (!draft.files.length && !draft.folderId)} onClick={create}>{draft.mode === "frame" ? "Suivre" : "Créer le lien"}</button>
           </div>
         </section>
       )}
@@ -133,7 +131,7 @@ export default function Livraisons() {
             <div className="liv-row" onClick={() => setOpen(open === d.id ? "" : d.id)}>
               <div>
                 <b>{d.title}</b>{d.client && <span className="muted"> · {d.client}</span>}
-                <div className="muted small">{d.kind === "videos" ? `${files.length} vidéos` : `V${files.length}`} · {d.comments.length} retour{d.comments.length > 1 ? "s" : ""}{todo ? ` (${todo} à traiter)` : ""}</div>
+                <div className="muted small">{d.kind === "folder" ? "Dossier Frame (en direct)" : d.kind === "videos" ? `${files.length} vidéos` : `V${files.length}`} · {d.comments.length} retour{d.comments.length > 1 ? "s" : ""}{todo ? ` (${todo} à traiter)` : ""}</div>
               </div>
               {d.kind === "videos" && JSON.parse(d.approved || "[]").length ? <span className="ok-pill"><CheckCircle2 size={14} /> {JSON.parse(d.approved).length}/{files.length} validées</span> : d.approvedV ? <span className="ok-pill"><CheckCircle2 size={14} /> V{d.approvedV} validée</span> : todo ? <span className="late-pill"><MessageSquare size={12} /> {todo}</span> : null}
             </div>
@@ -153,10 +151,10 @@ export default function Livraisons() {
                     <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
                     <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
                   </>}
-              <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>
+              {d.kind !== "folder" && <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>}
               {d.mode !== "frame" && (
                 <label className="field-line liv-dl">Téléchargement
-                  <select value={!d.download ? "never" : d.dlApproved ? "approved" : "always"} onChange={async (e) => { const v = e.target.value; await api(`livraisons/${d.id}`, "PATCH", { download: v !== "never", dlApproved: v === "approved" }); load(); }}>
+                  <select value={!d.download ? "never" : d.dlMode} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { dlMode: e.target.value }); load(); }}>
                     <option value="always">Toujours</option>
                     <option value="approved">Après validation</option>
                     <option value="never">Jamais</option>
@@ -171,6 +169,18 @@ export default function Livraisons() {
                 {files.length > 1 && <KindPicker value={d.kind} onChange={async (kind) => { await api(`livraisons/${d.id}`, "PATCH", { kind }); load(); }} />}
                 {d.mode !== "frame" && <NetPicker value={JSON.parse(d.networks || "[]")} onChange={async (networks) => { await api(`livraisons/${d.id}`, "PATCH", { networks }); load(); }} />}
                 <label className="field-line">Message au client<textarea rows={2} defaultValue={d.message} onBlur={async (e) => { if (e.target.value !== d.message) { await api(`livraisons/${d.id}`, "PATCH", { message: e.target.value }); load(); } }} /></label>
+                {d.kind === "folder" && (
+                  <div className="liv-vblock">
+                    <b>Retours sur le dossier</b>
+                    {d.comments.length === 0 && <p className="muted small">Aucun retour.</p>}
+                    {d.comments.map((c) => (
+                      <label key={c.id} className={`liv-admin-c ${c.resolved ? "done" : ""}`}>
+                        <input type="checkbox" checked={c.resolved} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { commentId: c.id, resolved: e.target.checked }); load(); }} />
+                        <span>{c.fileName && <b>{c.fileName} · </b>}{c.time !== null && <b className="liv-tc">{tc(c.time)}</b>} <b>{c.author}</b> : {c.text}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
                 {files.map((f, i) => {
                   const cs = d.comments.filter((c) => c.version === i + 1);
                   return (
@@ -194,7 +204,8 @@ export default function Livraisons() {
       })}
       {info?.connected && !list.length && !draft && <p className="muted">Aucune livraison pour l&apos;instant.</p>}
 
-      {picking && info && <FramePicker projects={info.projects} onPick={pick} onClose={() => setPicking(null)} />}
+      {picking && info && <FramePicker projects={info.projects} onPick={pick} onClose={() => setPicking(null)}
+        onPickFolder={picking === "new" ? (accountId, f) => { setDraft((d) => d && { ...d, accountId, files: [], folderId: f.id, folderName: f.name, kind: "folder", mode: "page", title: d.title || f.name }); setPicking(null); } : undefined} />}
     </div>
   );
 }
