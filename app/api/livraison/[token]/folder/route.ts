@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 // Couverture d'un dossier (1re image trouvée) + nombre d'éléments, gardée 10 min en mémoire
-const covers = new Map<string, { at: number; cover: string; count: number }>();
+const covers = new Map<string, { at: number; cover: string; count: number; latest: string }>();
 // Image d'un élément : fichier → sa vignette ; pile de versions → vignette de la dernière version
 async function thumbOf(accountId: string, k: { id: string; type: string; thumb: string }) {
   if (k.thumb) return k.thumb;
@@ -17,7 +17,7 @@ async function thumbOf(accountId: string, k: { id: string; type: string; thumb: 
   }
   return fileMedia(accountId, k.id).then((m) => m.thumb).catch(() => "");
 }
-async function cover(accountId: string, folderId: string, depth = 0): Promise<{ at: number; cover: string; count: number }> {
+async function cover(accountId: string, folderId: string, depth = 0): Promise<{ at: number; cover: string; count: number; latest: string }> {
   const hit = covers.get(folderId);
   // Couverture trouvée : gardée 10 min ; introuvable : on réessaie au bout d'1 min (vignette Frame pas encore prête)
   if (hit && Date.now() - hit.at < (hit.cover ? 10 : 1) * 60_000) return hit;
@@ -26,7 +26,10 @@ async function cover(accountId: string, folderId: string, depth = 0): Promise<{ 
   for (const k of kids.filter((k) => k.type !== "folder").slice(0, 3)) if ((img = await thumbOf(accountId, k))) break;
   // Rien d'affichable directement : couverture d'un sous-dossier (2 niveaux max)
   if (!img && depth < 2) for (const sub of kids.filter((k) => k.type === "folder").slice(0, 2)) if ((img = (await cover(accountId, sub.id, depth + 1)).cover)) break;
-  const out = { at: Date.now(), cover: img, count: kids.length };
+  // Date réelle du dossier : celle de l'élément le plus récent qu'il contient (Frame.io date le dossier lui-même)
+  let latest = kids.reduce((m, k) => (k.updatedAt > m ? k.updatedAt : m), "");
+  if (depth < 1) for (const sub of kids.filter((k) => k.type === "folder").slice(0, 5)) { const l = (await cover(accountId, sub.id, depth + 1)).latest; if (l > latest) latest = l; }
+  const out = { at: Date.now(), cover: img, count: kids.length, latest };
   covers.set(folderId, out);
   return out;
 }
@@ -58,7 +61,9 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     await Promise.all(items.filter((x) => x.type === "folder").slice(0, 30).map(async (x) => {
       const c = await cover(d.accountId, x.id);
       x.thumb = c.cover; counts[x.id] = c.count;
+      if (c.latest) x.updatedAt = c.latest;
     }));
+    items.sort((a, b) => Number(b.type === "folder") - Number(a.type === "folder") || b.updatedAt.localeCompare(a.updatedAt));
     const out = items.map(({ id, name, type, mediaType, version, thumb, updatedAt }) => ({ id, name, type, mediaType, version, thumb, updatedAt, count: counts[id], sig: signItem(params.token, id) }));
     return NextResponse.json({ items: out });
   } catch (e) {
