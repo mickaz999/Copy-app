@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { api, isoDay } from "@/lib/api";
 import { REPEATS, nextDate } from "@/lib/repeat";
-import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
+import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, Clapperboard, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import FramePicker, { FrameFile } from "@/components/FramePicker";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 
@@ -847,6 +847,7 @@ export default function Planning() {
             onClose={() => setViewing(null)}
             onEdit={() => { setViewing(null); setEdit({ ...t, date: day(t), endDate: endDay(t) }); }}
             onStatus={(st) => move(t.id, { status: st })}
+            onLinkVideos={() => { setViewing(null); setLinking(t); }}
             onSubs={(subs) => {
               // Première sous-tâche cochée : la tâche passe « en cours »
               const patch: Partial<Task> = { subtasks: JSON.stringify(subs) };
@@ -1355,10 +1356,10 @@ function revisionTitle(title: string) {
   return { title: `Modifs V${version} · ${m ? m[2] : title}`, version };
 }
 
-function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onSubs, onDelete, onRevision }: {
+function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onSubs, onDelete, onRevision, onLinkVideos }: {
   t: Task; color: string; late: number; filled: Prop[]; vals: Record<string, unknown>;
   onClose: () => void; onEdit: () => void; onStatus: (s: string) => void; onSubs: (subs: Sub[]) => void; onDelete: () => void;
-  onRevision: (feedback: string) => void;
+  onRevision: (feedback: string) => void; onLinkVideos: () => void;
 }) {
   const [revising, setRevising] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -1436,6 +1437,13 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onS
 
         {t.notes && <div className="tv-notes">{t.notes}</div>}
 
+        {t.category === "Clients" && (
+          <div className="tv-frame">
+            <button className="tv-revision" onClick={onLinkVideos}><Clapperboard size={16} /> {t.deliveryId ? "Ajouter une vidéo Frame à la livraison" : "Lier une vidéo Frame"}</button>
+            {t.deliveryId && <a className="link small" href="/livraisons">Voir la livraison liée →</a>}
+          </div>
+        )}
+
         {t.category === "Clients" && !revising && (
           <button className="tv-revision" onClick={() => setRevising(true)}>
             <MessageSquareReply size={16} /> Retour client · créer « {revisionTitle(t.title).title.split(" · ")[0]} »
@@ -1510,7 +1518,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
     </div>
   );
   return (
-    <FramePicker title={`« ${task.title} » terminée 🎉 Quelle(s) vidéo(s) Frame correspondent ?`} onPick={pick} onClose={onClose}>
+    <FramePicker title={task.status === "done" ? `« ${task.title} » terminée 🎉 Quelle(s) vidéo(s) Frame correspondent ?` : `Vidéo(s) Frame pour « ${task.title} »`} onPick={pick} onClose={onClose}>
       <label className="field-line">Ajouter à
         <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={!list}>
           {list?.map((d) => <option key={d.id} value={d.id}>Nouvelle version de « {d.title} »{d.client ? ` · ${d.client}` : ""}{d.mode === "frame" ? " (suivi Frame)" : ""}</option>)}
