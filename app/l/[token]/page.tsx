@@ -97,13 +97,16 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const gallery = d.versions.length > 1 && d.versions.some(isImg);
   const noun = d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos";
   const files = multi ? d.versions.filter((x) => x.original) : [];
+  // Téléchargement via l'app : lien Frame.io recréé au clic ; cadre invisible = pas d'onglet ouvert
+  const dl = (n: number) => `${url}/download?v=${n}`;
+  const fetchFile = (n: number) => {
+    const f = document.createElement("iframe");
+    f.style.display = "none"; f.src = dl(n);
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 120_000);
+  };
   async function downloadAll() {
-    for (const x of files) {
-      const a = document.createElement("a");
-      a.href = x.original; a.download = x.name; a.target = "_blank"; a.rel = "noreferrer";
-      document.body.appendChild(a); a.click(); a.remove();
-      await new Promise((ok) => setTimeout(ok, 700));
-    }
+    for (const x of files) { fetchFile(x.v); await new Promise((ok) => setTimeout(ok, 1200)); }
   }
   const nets = mocks.filter(([k]) => k !== "player" && k !== "youtube");
   const dual = wide && vertical && isVideo && !!cur?.ready && nets.length > 0;
@@ -136,7 +139,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           {approved
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
             : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
-          {cur?.original && <a href={cur.original} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
+          {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
           {files.length > 1 && <button onClick={downloadAll}><Download size={16} /> Tout télécharger ({files.length})</button>}
         </div>
       </header>
