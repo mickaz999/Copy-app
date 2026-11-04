@@ -25,10 +25,20 @@ export const PROVIDERS = {
     scope: "channel:read:subscriptions moderator:read:followers bits:read",
     extra: { force_verify: "true" } as Record<string, string>,
   },
+  // Frame.io V4 (connexion Adobe), pour les pages de livraison client
+  frameio: {
+    authorize: "https://ims-na1.adobelogin.com/ims/authorize/v2",
+    token: "https://ims-na1.adobelogin.com/ims/token/v3",
+    clientId: () => process.env.FRAMEIO_CLIENT_ID ?? "",
+    clientSecret: () => process.env.FRAMEIO_CLIENT_SECRET ?? "",
+    scope: "openid,email,profile,offline_access,additional_info.roles",
+    extra: {} as Record<string, string>,
+  },
 };
 export type Provider = keyof typeof PROVIDERS;
 
-export const callbackUrl = (req: Request, p: Provider) => `${new URL(req.url).origin}/api/connect/${p}/callback`;
+// Frame.io : adresse de retour déclarée dans la console Adobe
+export const callbackUrl = (req: Request, p: Provider) => `${new URL(req.url).origin}${p === "frameio" ? "/api/frameio/callback" : `/api/connect/${p}/callback`}`;
 
 export async function saveCode(p: Provider, code: string, redirect: string) {
   const c = PROVIDERS[p];
@@ -40,7 +50,7 @@ export async function saveCode(p: Provider, code: string, redirect: string) {
   await db.apiToken.upsert({ where: { provider: p }, create: { provider: p, ...data }, update: data });
 }
 
-async function userToken(p: Provider) {
+export async function userToken(p: Provider) {
   const row = await db.apiToken.findUnique({ where: { provider: p } });
   if (!row) return null;
   if (row.accessToken && row.expiresAt.getTime() > Date.now() + 60_000) return row.accessToken;

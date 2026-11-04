@@ -15,6 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { provider: st
   if (!q.get("state") || q.get("state") !== req.cookies.get("c_state")?.value) return page("Session expirée", "Recommence la connexion.");
   try {
     await saveCode(p, q.get("code") ?? "", callbackUrl(req, p));
+    if (p === "frameio") return Response.redirect(new URL("/livraisons?frameio=ok", req.url));
     return page(`✅ ${p === "youtube" ? "YouTube" : "Twitch"} connecté`, "Les stats avancées apparaîtront dans le prochain rapport. Tu peux fermer cette page.");
   } catch (e) {
     return page("Erreur", (e as Error).message);
