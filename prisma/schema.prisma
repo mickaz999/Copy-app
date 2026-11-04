@@ -37,6 +37,7 @@ model Task {
   repeatUntil   DateTime?
   repeatSpawned Boolean   @default(false) // la tâche suivante a déjà été créée
   props     String    @default("{}") // valeurs des propriétés perso (JSON)
+  subtasks  String    @default("[]") // sous-tâches (JSON [{ id, title, done }])
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }

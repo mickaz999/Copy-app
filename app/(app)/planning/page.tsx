@@ -5,7 +5,7 @@ import { REPEATS, nextDate } from "@/lib/repeat";
 import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 
-type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
+type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; subtasks?: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
 
 type View = "month" | "days5" | "board" | "list";
 const VIEWS: View[] = ["month", "days5", "board", "list"];
@@ -58,6 +58,20 @@ function timeOver(t: Task) {
   return n.getHours() * 60 + n.getMinutes() >= end;
 }
 const latePill = (t: Task) => daysLate(t) > 0 ? `${daysLate(t)} j de retard` : timeOver(t) ? "en retard" : "";
+// Sous-tâches (checklist) et progression
+type Sub = { id: string; title: string; done: boolean };
+const subsOf = (t: Pick<Task, "subtasks">): Sub[] => { try { return JSON.parse(t.subtasks || "[]"); } catch { return []; } };
+function Progress({ t, small }: { t: Task; small?: boolean }) {
+  const subs = subsOf(t);
+  if (!subs.length) return null;
+  const done = subs.filter((s) => s.done).length;
+  return (
+    <span className={`progress ${small ? "small" : ""} ${done === subs.length ? "full" : ""}`} title={`${done} sur ${subs.length} sous-tâches faites`}>
+      <span className="bar"><span style={{ width: `${(done / subs.length) * 100}%` }} /></span>
+      <span className="n">{done}/{subs.length}</span>
+    </span>
+  );
+}
 // Couleur de la catégorie (le « projet ») : bordure + fond teinté de la vignette
 const catColor = (t: Pick<Task, "category">) => COLORS[t.category] ?? "#ff6a00";
 const catStyle = (t: Pick<Task, "category">) => ({ borderLeftColor: catColor(t), ["--cat" as string]: catColor(t) }) as React.CSSProperties;
@@ -519,6 +533,7 @@ export default function Planning() {
         {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
       </span>
       <span className="chip-text">{t.startTime && <b className="chip-time">{t.startTime}</b>}{t.title}</span>
+      <Progress t={t} small />
       {!late && !timeOver(t) && <Countdown t={t} />}
       {!late && timeOver(t) && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> en retard</span>}
       {late && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> {lateLabel(lateDays(t))}</span>}
@@ -775,6 +790,7 @@ export default function Planning() {
               {visible.filter((t) => t.status === s.key).map((t) => (
                 <div key={t.id} className="card task-card" style={catStyle(t)} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)} onClick={() => setViewing(t)}>
                   <div>{t.title}{latePill(t) && <span className="late-pill" style={{ marginLeft: 6 }}><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}{!latePill(t) && <Countdown t={t} />}</div>
+                  <Progress t={t} />
                   <div className="row" style={{ marginTop: 4 }}>
                     <span className="tag" style={{ color: COLORS[t.category] }}>{t.category}</span>
                     {t.date && <span className="muted">{fmtDay(t.date)}{t.endDate && t.endDate.slice(0, 10) !== t.date.slice(0, 10) ? ` → ${fmtDay(t.endDate)}` : ""}</span>}
@@ -826,6 +842,12 @@ export default function Planning() {
             onClose={() => setViewing(null)}
             onEdit={() => { setViewing(null); setEdit({ ...t, date: day(t), endDate: endDay(t) }); }}
             onStatus={(st) => move(t.id, { status: st })}
+            onSubs={(subs) => {
+              // Première sous-tâche cochée : la tâche passe « en cours »
+              const patch: Partial<Task> = { subtasks: JSON.stringify(subs) };
+              if (t.status === "todo" && subs.some((s) => s.done)) patch.status = "doing";
+              move(t.id, patch);
+            }}
             onDelete={async () => { setViewing(null); setTasks((ts) => ts.filter((x) => x.id !== t.id)); await api(`tasks/${t.id}`, "DELETE"); }}
             onRevision={async (feedback) => {
               // Retour client : la version livrée passe en Terminé, une tâche « Modifs Vn » est créée sur 3 jours
@@ -1278,6 +1300,7 @@ function TaskTable({ tasks, props, onPatch, onSetProp, onAddOption, onOpen, onNe
               <td className="title-cell">
                 <input id={`t-${t.id}`} className="cell-input" placeholder="Sans titre" value={t.title} onChange={(e) => onPatch(t.id, { title: e.target.value })} />
                 {!latePill(t) && <Countdown t={t} />}
+                <Progress t={t} small />
                 {latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
                 <button className="ghost open-btn" title="Ouvrir la tâche" onClick={() => onOpen(t)}>Ouvrir</button>
               </td>
@@ -1325,14 +1348,24 @@ function revisionTitle(title: string) {
   return { title: `Modifs V${version} · ${m ? m[2] : title}`, version };
 }
 
-function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onDelete, onRevision }: {
+function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onSubs, onDelete, onRevision }: {
   t: Task; color: string; late: number; filled: Prop[]; vals: Record<string, unknown>;
-  onClose: () => void; onEdit: () => void; onStatus: (s: string) => void; onDelete: () => void;
+  onClose: () => void; onEdit: () => void; onStatus: (s: string) => void; onSubs: (subs: Sub[]) => void; onDelete: () => void;
   onRevision: (feedback: string) => void;
 }) {
   const [revising, setRevising] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [confirmDel, setConfirmDel] = useState(false);
+  const [newSub, setNewSub] = useState("");
+  const subs = subsOf(t);
+  const subsDone = subs.filter((s) => s.done).length;
+  const addSub = (text = newSub) => {
+    // Plusieurs lignes collées d'un coup = plusieurs sous-tâches
+    const titles = text.split("\n").map((x) => x.trim()).filter(Boolean);
+    if (!titles.length) return;
+    onSubs([...subs, ...titles.map((title) => ({ id: Math.random().toString(36).slice(2, 10), title, done: false }))]);
+    setNewSub("");
+  };
   const longDay = (iso: string) => new Date(iso.slice(0, 10) + "T12:00:00Z").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   const s0 = t.date?.slice(0, 10), e0 = t.endDate?.slice(0, 10);
   const show = (p: Prop) => {
@@ -1371,6 +1404,28 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onD
           {t.repeat && <><dt><Repeat size={14} /> Répétition</dt><dd>{REPEATS[t.repeat]}{t.repeatUntil ? ` · jusqu'au ${longDay(t.repeatUntil)}` : ""}</dd></>}
           {filled.map((p) => <Fragment key={p.id}><dt>{PROP_ICONS[p.type]} {p.name}</dt><dd>{show(p)}</dd></Fragment>)}
         </dl>
+
+        <div className="tv-subs">
+          <div className="tv-subs-head">
+            <b>Sous-tâches</b>
+            {subs.length > 0 && <Progress t={t} />}
+          </div>
+          {subs.map((s, i) => (
+            <div key={s.id} className={`tv-sub ${s.done ? "done" : ""}`}>
+              <input type="checkbox" checked={s.done} onChange={() => onSubs(subs.map((x) => x.id === s.id ? { ...x, done: !x.done } : x))} />
+              <input className="tv-sub-title" value={s.title} onChange={(e) => onSubs(subs.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} />
+              <button className="ghost" title="Monter" disabled={i === 0} onClick={() => { const c = [...subs]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; onSubs(c); }}><ArrowUp size={13} /></button>
+              <button className="ghost" title="Supprimer" onClick={() => onSubs(subs.filter((x) => x.id !== s.id))}><X size={13} /></button>
+            </div>
+          ))}
+          <div className="tv-sub add">
+            <Plus size={14} />
+            <input placeholder="Ajouter une sous-tâche…" value={newSub} onChange={(e) => setNewSub(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSub()} onPaste={(e) => { const txt = e.clipboardData.getData("text"); if (txt.includes("\n")) { e.preventDefault(); addSub(txt); } }} />
+          </div>
+          {subs.length > 0 && subsDone === subs.length && t.status !== "done" && (
+            <button className="primary tv-subs-finish" onClick={() => onStatus("done")}><Check size={15} /> Tout est fait : marquer la tâche terminée</button>
+          )}
+        </div>
 
         {t.notes && <div className="tv-notes">{t.notes}</div>}
 

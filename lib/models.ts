@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 // Champs modifiables par modèle (le reste est ignoré)
 const fields = {
   pages: ["title", "icon", "content", "parentId"],
-  tasks: ["title", "notes", "status", "category", "date", "endDate", "props", "repeat", "repeatUntil", "startTime", "endTime"],
+  tasks: ["title", "notes", "status", "category", "date", "endDate", "props", "repeat", "repeatUntil", "startTime", "endTime", "subtasks"],
   properties: ["name", "type", "options", "order"],
   boards: ["name", "data"],
   calendars: ["name", "url", "color"],
@@ -26,6 +26,7 @@ export function clean(name: ModelName, body: Record<string, unknown>) {
     if (f === "amount") v = Number(v) || 0;
     if (f === "order") v = Number(v) || 0;
     if ((f === "props" || f === "options" || f === "data") && typeof v !== "string") v = JSON.stringify(v ?? {});
+    if (f === "subtasks" && typeof v !== "string") v = JSON.stringify(Array.isArray(v) ? v : []);
     out[f] = v;
   }
   return out;
