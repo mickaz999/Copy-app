@@ -1215,9 +1215,10 @@ button.danger { color: #c4262c; }
 .liv-dark-solo { background: #0c0b0a; }
 .liv-dark-solo .rdv-card { background: #171513; }
 body:has(.liv.dark) { background: #0c0b0a !important; }
-.liv-bg { position: fixed; inset: -60px; z-index: -1; background: #0c0b0a center / cover no-repeat; filter: blur(80px) saturate(160%) brightness(.7); transform: scale(1.15); }
+.liv-bg { position: fixed; inset: -60px; z-index: -1; background: #0c0b0a center / cover no-repeat; filter: blur(22px) saturate(130%) brightness(.75); transform: scale(1.08); }
 .liv-bg video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.liv-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, transparent 0%, rgba(12, 11, 10, .35) 60%, rgba(12, 11, 10, .85) 100%), linear-gradient(180deg, transparent 30%, #0c0b0a 95%); }
+/* Voile léger : on devine l'image, le texte reste lisible ; fondu au noir en bas */
+.liv-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(12, 11, 10, .3) 0%, rgba(12, 11, 10, .5) 55%, #0c0b0a 100%); }
 .liv.dark .logo .pt { background: var(--text); }
 .liv.dark .liv-hero { background: linear-gradient(135deg, rgba(255, 140, 60, .14), rgba(255, 255, 255, .03)), rgba(20, 18, 16, .55); border-color: var(--border); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
 .liv.dark .liv-player { background: rgba(255, 255, 255, .04); border-color: var(--border); }
