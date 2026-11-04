@@ -14,9 +14,16 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   const id = q.get("id") || d.folderId;
   if (id !== d.folderId && !checkItem(params.token, id, q.get("sig") ?? "")) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
   try {
-    const items = (await folderChildren(d.accountId, id, q.get("stack") === "1"))
-      .map(({ id, name, type, mediaType, version }) => ({ id, name, type, mediaType, version, sig: signItem(params.token, id) }));
-    return NextResponse.json({ items });
+    const raw = await folderChildren(d.accountId, id, q.get("stack") === "1");
+    // Pile de versions (V1, V2, V3…) : on ne montre que la dernière version, comme un simple fichier
+    const items = await Promise.all(raw.map(async (x) => {
+      if (x.type !== "version_stack") return x;
+      const versions = await folderChildren(d.accountId, x.id, true).catch(() => []);
+      const last = versions.filter((v) => v.type !== "folder").pop();
+      return last ? { ...last, name: x.name || last.name } : x;
+    }));
+    const out = items.map(({ id, name, type, mediaType, version }) => ({ id, name, type, mediaType, version, sig: signItem(params.token, id) }));
+    return NextResponse.json({ items: out });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
