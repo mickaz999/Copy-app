@@ -1,11 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Download, MessageSquare, Clock } from "lucide-react";
+import { CheckCircle2, Download, MessageSquare, Clock, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
 type Data = { title: string; client: string; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+
+// Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
+const MOCKS = [["player", "Lecteur"], ["reel", "Instagram"], ["tiktok", "TikTok"], ["short", "Shorts"], ["youtube", "YouTube"]] as const;
+type Mock = (typeof MOCKS)[number][0];
 
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -19,6 +23,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [now, setNow] = useState(0);
   const [duration, setDuration] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [mock, setMock] = useState<Mock>("player");
+  const [playing, setPlaying] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const url = `/api/livraison/${params.token}`;
 
@@ -81,14 +87,53 @@ export default function Livraison({ params }: { params: { token: string } }) {
       <div className="liv-main">
         <div className="liv-player">
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
-          <div className="liv-stage">
+          {cur?.ready && isVideo && (
+            <div className="liv-mocks">
+              {MOCKS.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}
+            </div>
+          )}
+          <div className={`liv-stage mock-${isVideo ? mock : "player"}`}>
           {cur?.ready && (isVideo
-            ? <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls playsInline preload="metadata"
+            ? <div className="mock-screen" onClick={() => { if (mock !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
+              <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={mock === "player"} playsInline preload="metadata" loop={mock !== "player" && mock !== "youtube"}
+                onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
                 controlsList={d.download ? undefined : "nodownload"} disablePictureInPicture={!d.download} onContextMenu={(e) => !d.download && e.preventDefault()}
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} />
+              {mock !== "player" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
+              {(mock === "reel" || mock === "tiktok" || mock === "short") && (
+                <div className="mock-ui">
+                  <div className="mock-side">
+                    <span><Heart size={26} />{mock === "short" ? "12 k" : "24,3 k"}</span>
+                    <span><MessageCircle size={26} />318</span>
+                    {mock === "reel" ? <span><Send size={24} /></span> : <span><Share2 size={24} />Partager</span>}
+                    {mock !== "short" && <span><Bookmark size={24} /></span>}
+                    <span><MoreHorizontal size={22} /></span>
+                  </div>
+                  <div className="mock-caption">
+                    <b><span className="mock-avatar">{(d.client || "M")[0]}</span>{(d.client || "maderino").toLowerCase().replace(/\s+/g, "")} {mock !== "tiktok" && <em>{mock === "short" ? "S'abonner" : "Suivre"}</em>}</b>
+                    <span>{d.title} ✨</span>
+                    <span className="mock-music"><Music2 size={12} /> Son original · {d.client || "maderino"}</span>
+                  </div>
+                  <div className="mock-progress"><i style={{ width: duration ? `${(now / duration) * 100}%` : 0 }} /></div>
+                </div>
+              )}
+            </div>
             : <img src={cur.play} alt={cur.name} draggable={d.download} onContextMenu={(e) => !d.download && e.preventDefault()} />)}
-          {isVideo && duration > 0 && (
+          {isVideo && mock === "youtube" && (
+            <div className="mock-yt-info">
+              <b>{d.title}</b>
+              <div className="mock-yt-row">
+                <span className="mock-avatar big">{(d.client || "M")[0]}</span>
+                <div><b>{d.client || "maderino"}</b><small>12,4 k abonnés</small></div>
+                <em>S&apos;abonner</em>
+                <span style={{ flex: 1 }} />
+                <span className="mock-pill"><ThumbsUp size={15} /> 1,2 k <ThumbsDown size={15} /></span>
+                <span className="mock-pill"><Share2 size={15} /> Partager</span>
+              </div>
+            </div>
+          )}
+          {isVideo && mock === "player" && duration > 0 && (
             <div className="liv-marks">
               {comments.filter((c) => c.time !== null).map((c) => (
                 <button key={c.id} className={c.resolved ? "done" : ""} style={{ left: `${(c.time! / duration) * 100}%` }} title={`${tc(c.time!)} · ${c.author} : ${c.text}`} onClick={() => seek(c.time!)} />
