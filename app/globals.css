@@ -1270,3 +1270,14 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 }
 .liv-scene.dual .liv-netlist { align-self: center; }
 .liv-scene.dual .liv-stage { align-self: start; }
+/* Interrupteur façon iOS pour l'aperçu réseau */
+.liv-preview { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.ios-switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text); user-select: none; }
+.ios-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ios-switch i { position: relative; width: 46px; height: 28px; border-radius: 999px; background: rgba(120, 120, 128, .36); transition: background .25s; flex: none; }
+.ios-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .25); transition: transform .25s cubic-bezier(.3, .7, .4, 1); }
+.ios-switch input:checked + i { background: #34c759; }
+.ios-switch input:checked + i::after { transform: translateX(18px); }
+.ios-switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.liv-scene.dual { grid-template-columns: auto auto; }
+.liv-toolbar { min-height: 38px; }

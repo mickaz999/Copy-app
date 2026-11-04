@@ -31,6 +31,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   // Sur ordinateur, vidéo verticale : lecteur + aperçu réseau côte à côte
   const [wide, setWide] = useState(false);
   const [mock2, setMock2] = useState<Mock>("reel");
+  // Aperçu réseau désactivé par défaut : vue normale d'abord, interrupteur pour l'afficher
+  const [preview, setPreview] = useState(false);
   useEffect(() => {
     const m = window.matchMedia("(min-width: 1100px)");
     const on = () => setWide(m.matches);
@@ -108,11 +110,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
   async function downloadAll() {
     for (const x of files) { fetchFile(x.v); await new Promise((ok) => setTimeout(ok, 1200)); }
   }
-  const nets = mocks.filter(([k]) => k !== "player" && k !== "youtube");
-  const dual = wide && vertical && isVideo && !!cur?.ready && nets.length > 0;
-  if (dual && !nets.some(([k]) => k === mock2)) setTimeout(() => setMock2(nets[0][0]));
+  const nets = mocks.filter(([k]) => k !== "player");
+  const sel: Mock = nets.some(([k]) => k === mock2) ? mock2 : nets[0]?.[0] ?? "player";
+  const phone = sel === "reel" || sel === "tiktok" || sel === "short";
+  const showPreview = preview && isVideo && !!cur?.ready && nets.length > 0;
+  const dual = showPreview && wide && vertical && phone;
   // Lecteur principal : toujours le lecteur de base en mode côte à côte
-  const pm: Mock = dual ? "player" : mock;
+  const pm: Mock = dual ? "player" : showPreview ? sel : "player";
 
   return (
     <div className="liv dark">
@@ -152,11 +156,18 @@ export default function Livraison({ params }: { params: { token: string } }) {
               : d.versions.length > 1
               ? <div className={`seg ${multi ? "seg-videos" : ""}`}>{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>{lab(x)}{isOk(x.v) && " ✓"}</button>)}</div>
               : <span className="liv-file">{cur?.name}</span>}
-            {cur?.ready && isVideo && !vertical && (
-              <div className="seg">{mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}</div>
+            {cur?.ready && isVideo && nets.length > 0 && (
+              <div className="liv-preview">
+                {showPreview && nets.length > 1 && <div className="seg">{nets.map(([k, label]) => <button key={k} className={sel === k ? "on" : ""} onClick={() => setMock2(k)}>{label}</button>)}</div>}
+                <label className="ios-switch">
+                  <span>Aperçu {nets.length === 1 ? nets[0][1] : "réseau"}</span>
+                  <input type="checkbox" role="switch" checked={preview} onChange={(e) => setPreview(e.target.checked)} />
+                  <i />
+                </label>
+              </div>
             )}
           </div>
-          <div className={`liv-scene ${vertical && isVideo ? "vertical" : ""} ${dual ? "dual" : ""}`} style={dual ? { ["--ratio" as string]: ratio } : undefined}>
+          <div className={`liv-scene ${dual ? "dual" : ""}`} style={dual ? { ["--ratio" as string]: ratio } : undefined}>
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
           <div className={`liv-stage mock-${isVideo ? pm : "player"}`}>
           {cur?.ready && (isVideo
@@ -228,15 +239,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
             </div>
           )}
           </div>
-          {dual && <MockPhone key={`${cur.v}-${mock2}`} kind={mock2} src={cur.play} poster={cur.thumb} d={d} />}
-          {cur?.ready && isVideo && vertical && (
-            <div className="liv-netlist">
-              <span className="rdv-group-label">Aperçu</span>
-              {dual
-                ? nets.map(([k, label]) => <button key={k} className={mock2 === k ? "on" : ""} onClick={() => setMock2(k)}>{label}</button>)
-                : mocks.map(([k, label]) => <button key={k} className={mock === k ? "on" : ""} onClick={() => setMock(k)}>{label}</button>)}
-            </div>
-          )}
+          {dual && <MockPhone key={`${cur.v}-${sel}`} kind={sel} src={cur.play} poster={cur.thumb} d={d} />}
           </div>
           {gallery
             ? (
