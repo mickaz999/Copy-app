@@ -1470,3 +1470,9 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
   .liv-lightbox .liv-marks { display: none; }
   .liv-lightbox .liv-side { margin: 0 12px; background: #141210 !important; }
 }
+/* Fenêtre galerie sur téléphone : coins arrondis, média centré dans l'écran quand il n'est pas vertical */
+@media (max-width: 900px) {
+  .liv-lightbox .liv-main { min-height: calc(100dvh - 160px); align-content: start; }
+  .liv-lightbox .liv-player { min-height: 62vh; display: grid; align-content: center; padding: 0 12px !important; }
+  .liv-lightbox .liv-player video, .liv-lightbox .liv-player img { border-radius: 18px !important; width: auto !important; max-width: 100%; justify-self: center; box-shadow: 0 18px 40px rgba(0, 0, 0, .5); }
+}
