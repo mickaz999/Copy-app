@@ -103,9 +103,9 @@ export default function Drop({ params }: { params: { token: string } }) {
         <div className={`drop-zone ${over ? "over" : ""}`} onClick={() => !running && input.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
           onDrop={(e) => { e.preventDefault(); setOver(false); if (!running) add(e.dataTransfer.files); }}>
-          <CloudUpload size={40} />
-          <b>Glisse tes fichiers ici</b>
-          <span className="muted">ou clique pour les choisir · vidéos, photos, audio, sans limite de taille</span>
+          <CloudUpload size={30} strokeWidth={1.5} />
+          <b>Dépose tes fichiers</b>
+          <span className="muted">Vidéos, photos, sons · aucune limite de taille</span><span className="drop-pick">Parcourir</span>
           <input ref={input} type="file" multiple hidden onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
         </div>
 
@@ -143,7 +143,7 @@ export default function Drop({ params }: { params: { token: string } }) {
           ))}
         </section>
       )}
-      <footer className="liv-foot"><Logo /><span className="muted small">maderino production</span></footer>
+      <footer className="liv-foot"><Logo /></footer>
     </div>
   );
 }

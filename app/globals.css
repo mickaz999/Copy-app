@@ -1511,3 +1511,17 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 }
 .liv.dark .liv-chips .liv-days { color: var(--text) !important; font-weight: 600 !important; }
 @media (max-width: 900px) { .liv.dark .liv-chips { flex-direction: column; align-items: flex-start; gap: 3px; } .liv.dark .liv-chips span + span::before { display: none; } }
+/* Page de dépôt, version épurée : centrée, sans carte, zone de dépôt sobre */
+.liv.drop { max-width: 760px; margin: 0 auto; }
+.drop .drop-card { background: none !important; border: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; padding: 0; gap: 14px; }
+.drop .drop-name { background: none !important; border: none !important; border-bottom: 1px solid rgba(255, 255, 255, .14) !important; border-radius: 0 !important; padding: 10px 0 !important; font-size: 17px; box-shadow: none !important; }
+.drop .drop-name:focus { outline: none; border-bottom-color: var(--accent) !important; }
+.drop .drop-zone { gap: 8px; padding: 56px 20px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 22px; background: rgba(255, 255, 255, .025); }
+.drop .drop-zone b { font-size: 22px; letter-spacing: -0.02em; }
+.drop .drop-zone svg { color: var(--muted); transition: color .2s, transform .2s; }
+.drop .drop-zone:hover svg, .drop .drop-zone.over svg { color: var(--accent); transform: translateY(-2px); }
+.drop .drop-zone.over, .drop .drop-zone:hover { border-color: rgba(255, 140, 60, .5); background: rgba(255, 107, 0, .05); }
+.drop-pick { margin-top: 8px; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); }
+.drop-bg { background: radial-gradient(circle at 15% 0%, rgba(255, 110, 30, .22), transparent 45%), #0b0a09 !important; }
+.liv.dark.drop input.drop-name { background: none !important; border: none !important; border-bottom: 1px solid rgba(255, 255, 255, .14) !important; border-radius: 0 !important; padding: 10px 0 !important; }
+.liv.dark.drop input.drop-name:focus { border-bottom-color: var(--accent) !important; }
