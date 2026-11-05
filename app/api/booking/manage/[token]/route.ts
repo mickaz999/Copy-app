@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { BookingError, cancelAppointment, moveAppointment, slotsFor } from "@/lib/appointments";
+import { PUBLIC_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (!a) return NextResponse.json({ error: "Lien invalide." }, { status: 404 });
   if (a.start.getTime() < Date.now()) return NextResponse.json({ error: "Ce RDV est déjà passé." }, { status: 400 });
   const b = await req.json().catch(() => ({}));
-  const appUrl = new URL(req.url).origin;
+  const appUrl = PUBLIC_URL;
   const message = String(b.message ?? "").slice(0, 2000);
   try {
     if (b.action === "cancel") return NextResponse.json(pub(await cancelAppointment(a, appUrl, { message, byClient: true })));

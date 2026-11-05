@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Copy, ExternalLink, Plus, RefreshCw, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { PUBLIC_URL } from "@/lib/site";
 
 type Booking = { enabled: boolean; slug: string; title: string; intro: string; duration: number; step: number; buffer: number; minNotice: number; maxDays: number; hours: string; calendar: string; location: string; visioLink: string; blocked: string };
 type Hours = Record<string, [string, string][]>;
@@ -17,7 +18,7 @@ export default function BookingSettings({ calendars }: { calendars: { id: string
   if (!b) return null;
 
   const hours: Hours = JSON.parse(b.hours || "{}");
-  const link = `${window.location.origin}/rdv/${b.slug}`;
+  const link = `${PUBLIC_URL}/rdv/${b.slug}`;
   const save = async (next: Booking) => { setB(next); setB(await api<Booking>("booking", "POST", { ...next, hours: JSON.parse(next.hours), blocked: JSON.parse(next.blocked || "[]") })); };
   const today = new Date().toISOString().slice(0, 10);
   // Les jours passés sont retirés automatiquement de la liste

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { freeSlots, getBooking } from "@/lib/booking";
 import { BookingError, createAppointment } from "@/lib/appointments";
+import { PUBLIC_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   if ((mode === "visio" || email) && !EMAIL.test(email)) return NextResponse.json({ error: "Indique une adresse mail valide." }, { status: 400 });
 
   try {
-    const a = await createAppointment({ name, email, phone, mode, note, day, time }, new URL(req.url).origin);
+    const a = await createAppointment({ name, email, phone, mode, note, day, time }, PUBLIC_URL);
     return NextResponse.json({ ok: true, day: a.day, time: a.time, end: a.end, mode: a.mode, meet: a.meet, manage: `/rdv/gerer/${a.token}` });
   } catch (e) {
     if (e instanceof BookingError) return NextResponse.json({ error: e.message }, { status: e.status });

@@ -5,6 +5,7 @@ import { REPEATS, nextDate } from "@/lib/repeat";
 import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, Clapperboard, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import FramePicker, { FrameFile } from "@/components/FramePicker";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
+import { PUBLIC_URL } from "@/lib/site";
 
 type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; subtasks?: string; deliveryId?: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
 
@@ -1501,7 +1502,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
       await api(`tasks/${task.id}`, "PATCH", { deliveryId: d.id });
       onLinked(d.id);
       const n = JSON.parse(d.files || "[]").length;
-      const link = d.mode === "frame" ? "" : `${window.location.origin}/l/${d.token}`;
+      const link = d.mode === "frame" ? "" : `${PUBLIC_URL}/l/${d.token}`;
       if (link) navigator.clipboard?.writeText(link).catch(() => {});
       setDone({ text: d.mode === "frame" ? `Vidéo liée au suivi Frame « ${d.title} » (V${n}). Les commentaires arriveront dans le Planning.` : `V${n} ajoutée à « ${d.title} ». Lien copié : envoie-le au client.`, link });
     } catch (e) { setError(errorText(e)); }

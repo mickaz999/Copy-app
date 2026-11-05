@@ -4,6 +4,7 @@ import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, Me
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
+import { PUBLIC_URL } from "@/lib/site";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
@@ -73,7 +74,7 @@ export default function Livraisons() {
     load();
   }, []);
 
-  const link = (d: Delivery) => `${window.location.origin}/l/${d.token}`;
+  const link = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}`;
   const filesOf = (d: Delivery): File[] => JSON.parse(d.files || "[]");
 
   async function create() {

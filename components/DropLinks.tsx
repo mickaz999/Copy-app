@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CloudUpload, Copy, ExternalLink, Folder, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker, { FrameProject } from "@/components/FramePicker";
+import { PUBLIC_URL } from "@/lib/site";
 
 type Drop = { id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
 // Valable 1 semaine après la création, sauf prolongation
@@ -19,7 +20,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
   const [busy, setBusy] = useState(false);
   const load = () => api<Drop[]>("drops").then(setList).catch(() => {});
   useEffect(() => { load(); }, []);
-  const link = (d: Drop) => `${window.location.origin}/d/${d.token}`;
+  const link = (d: Drop) => `${PUBLIC_URL}/d/${d.token}`;
 
   async function create() {
     if (!draft) return;
