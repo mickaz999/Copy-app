@@ -5,7 +5,11 @@ import { nets } from "@/lib/frameio";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (new URL(req.url).searchParams.get("settings")) {
+    const s = await db.notifSettings.upsert({ where: { id: 1 }, create: {}, update: {} });
+    return NextResponse.json({ reviewUrl: s.reviewUrl });
+  }
   const list = await db.delivery.findMany({ orderBy: { createdAt: "desc" }, include: { comments: { orderBy: { createdAt: "asc" } } } });
   // Tâches « Modifs » liées, avec leur avancement
   const tasks = await db.task.findMany({ where: { deliveryId: { in: list.map((d) => d.id) } } });
@@ -20,6 +24,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const b = await req.json();
+  // Lien « laisser un avis Google » montré sur les pages de livraison
+  if (b.action === "review-url") {
+    const url = String(b.url ?? "").trim();
+    if (url && !/^https:\/\//.test(url)) return NextResponse.json({ error: "Lien invalide." }, { status: 400 });
+    return NextResponse.json(await db.notifSettings.upsert({ where: { id: 1 }, create: { reviewUrl: url }, update: { reviewUrl: url } }));
+  }
   const files = Array.isArray(b.files) ? b.files.map((f: any) => ({ fileId: String(f.fileId), name: String(f.name ?? "") })) : [];
   if (!b.title || !b.accountId || (!files.length && !b.folderId)) return NextResponse.json({ error: "Titre, compte et au moins une vidéo requis." }, { status: 400 });
   return NextResponse.json(await db.delivery.create({

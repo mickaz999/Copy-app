@@ -10,8 +10,8 @@ type Info = { configured: boolean; connected: boolean; projects: Project[]; erro
 type Item = { id: string; name: string; type: string; mediaType: string; createdAt: string; version: number };
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
-type Comment = { fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string };
+type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string };
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
 function KindPicker({ value, onChange }: { value: string; onChange: (k: string) => void }) {
   return (
@@ -35,6 +35,23 @@ function NetPicker({ value, onChange }: { value: string[]; onChange: (v: string[
       </div>
       <span className="muted small">{value.length ? "Le lien s'ouvre directement sur le premier choisi." : "Aucun choisi : automatique (Instagram, TikTok, Shorts en vertical ; YouTube en horizontal)."}</span>
     </div>
+  );
+}
+// Lien d'avis Google montré aux clients sur les pages de livraison
+function ReviewSetting() {
+  const [url, setUrl] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { api<{ reviewUrl: string }>("livraisons?settings=1").then((r) => setUrl(r.reviewUrl)).catch(() => {}); }, []);
+  if (url === null) return null;
+  return (
+    <section className="settings-card">
+      <div className="sc-head"><span>⭐</span> <h3>Avis Google</h3></div>
+      <p className="muted small">Affiché sur tes pages de livraison, et mis en avant dès que le client valide une vidéo. Laisse vide pour le cacher.</p>
+      <label className="field-line">Lien « laisser un avis »
+        <input value={url} onChange={(e) => { setUrl(e.target.value); setSaved(false); }} onBlur={async () => { await api("livraisons", "POST", { action: "review-url", url }); setSaved(true); }} />
+      </label>
+      {saved && <span className="ok-pill small">Enregistré</span>}
+    </section>
   );
 }
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
@@ -154,6 +171,15 @@ export default function Livraisons() {
                   </>}
               {d.kind !== "folder" && <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>}
               {d.mode !== "frame" && (
+                <label className="field-line liv-dl">Retours
+                  <select value={d.feedback} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { feedback: e.target.value }); load(); }}>
+                    <option value="ask">Sur demande</option>
+                    <option value="open">Toujours visibles</option>
+                    <option value="off">Désactivés</option>
+                  </select>
+                </label>
+              )}
+              {d.mode !== "frame" && (
                 <label className="field-line liv-dl">Téléchargement
                   <select value={!d.download ? "never" : d.dlMode} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { dlMode: e.target.value }); load(); }}>
                     <option value="always">Toujours</option>
@@ -177,7 +203,7 @@ export default function Livraisons() {
                     {d.comments.map((c) => (
                       <label key={c.id} className={`liv-admin-c ${c.resolved ? "done" : ""}`}>
                         <input type="checkbox" checked={c.resolved} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { commentId: c.id, resolved: e.target.checked }); load(); }} />
-                        <span>{c.fileName && <b>{c.fileName} · </b>}{c.time !== null && <b className="liv-tc">{tc(c.time)}</b>} <b>{c.author}</b> : {c.text}</span>
+                        <span>{c.fileName && <b>{c.fileName} · </b>}{c.time !== null && <b className="liv-tc">{tc(c.time)}</b>} <b>{c.author}</b> : {c.audio ? <audio controls preload="none" src={`/api/livraison/${d.token}/audio?id=${c.id}`} /> : c.text}</span>
                       </label>
                     ))}
                   </div>
@@ -191,7 +217,7 @@ export default function Livraisons() {
                       {cs.map((c) => (
                         <label key={c.id} className={`liv-admin-c ${c.resolved ? "done" : ""}`}>
                           <input type="checkbox" checked={c.resolved} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { commentId: c.id, resolved: e.target.checked }); load(); }} />
-                          <span>{c.time !== null && <b className="liv-tc">{tc(c.time)}</b>} <b>{c.author}</b> : {c.text}</span>
+                          <span>{c.time !== null && <b className="liv-tc">{tc(c.time)}</b>} <b>{c.author}</b> : {c.audio ? <audio controls preload="none" src={`/api/livraison/${d.token}/audio?id=${c.id}`} /> : c.text}</span>
                         </label>
                       ))}
                     </div>
@@ -206,6 +232,7 @@ export default function Livraisons() {
       {info?.connected && !list.length && !draft && <p className="muted">Aucune livraison pour l&apos;instant.</p>}
 
       {info?.connected && <DropLinks projects={info.projects} />}
+      <ReviewSetting />
 
       {picking && info && <FramePicker projects={info.projects} onPick={pick} onClose={() => setPicking(null)}
         onPickFolder={picking === "new" ? (accountId, f) => { setDraft((d) => d && { ...d, accountId, files: [], folderId: f.id, folderName: f.name, kind: "folder", mode: "page", title: d.title || f.name }); setPicking(null); } : undefined} />}

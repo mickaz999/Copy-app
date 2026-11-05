@@ -23,9 +23,9 @@ export async function GET(_: Request, { params }: { params: { token: string } })
     }
   }));
   return NextResponse.json({
-    folderId: d.folderId,
+    folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
-    comments: d.comments.map((c) => ({ fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
+    comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
 }
 
@@ -43,10 +43,18 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const version = Math.min(count, Math.max(1, Number(b.version) || count));
   const author = String(b.author ?? "").trim().slice(0, 80) || d.client || "Client";
   if (b.action === "comment") {
-    const text = String(b.text ?? "").trim().slice(0, 3000);
+    if (d.feedback === "off") return NextResponse.json({ error: "Les retours sont fermés pour cette livraison." }, { status: 403 });
+    // Message vocal : envoyé en base64 (3 min max), gardé dans Media
+    let audio = "";
+    if (b.audio) {
+      const m = String(b.audio).match(/^data:(audio\/[\w.+-]+)(?:;[^,]*)?;base64,(.+)$/);
+      if (!m || m[2].length > 4_000_000) return NextResponse.json({ error: "Message vocal trop long (3 min max)." }, { status: 400 });
+      audio = (await db.media.create({ data: { mime: m[1], data: Buffer.from(m[2], "base64") } })).id;
+    }
+    const text = String(b.text ?? "").trim().slice(0, 3000) || (audio ? "🎙 Message vocal" : "");
     if (!text) return NextResponse.json({ error: "Écris ton commentaire." }, { status: 400 });
     const time = Number.isFinite(Number(b.time)) && b.time !== null && b.time !== "" ? Math.max(0, Number(b.time)) : null;
-    const c = await db.deliveryComment.create({ data: { deliveryId: d.id, version: d.kind === "folder" ? 1 : version, author, text, time, fileId: String(b.fileId ?? "").slice(0, 100), fileName: String(b.fileName ?? "").slice(0, 300) } });
+    const c = await db.deliveryComment.create({ data: { deliveryId: d.id, version: d.kind === "folder" ? 1 : version, author, text, time, audio, fileId: String(b.fileId ?? "").slice(0, 100), fileName: String(b.fileName ?? "").slice(0, 300) } });
     await commentToTask(d, c).catch(() => {});
     await notify(`Retour sur « ${d.title} »`, `${author} (V${version}) : ${text.slice(0, 120)}`);
     return NextResponse.json(c);

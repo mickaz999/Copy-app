@@ -6,7 +6,7 @@ import { getSettings, parisNow, sendPush } from "@/lib/notify";
 type Sub = { id: string; title: string; done: boolean };
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * 864e5).toISOString().slice(0, 10);
-const subTitle = (c: DeliveryComment) => `${c.time !== null ? `${tc(c.time)} · ` : ""}${c.text}${c.author ? ` (${c.author})` : ""}`;
+const subTitle = (c: DeliveryComment) => `${c.time !== null ? `${tc(c.time)} · ` : ""}${c.audio ? "🎙 Vocal à écouter dans Livraisons" : c.text}${c.author ? ` (${c.author})` : ""}`;
 
 type VSub = Sub & { video?: number | string };
 const videoName = (d: Delivery, v: number) => {

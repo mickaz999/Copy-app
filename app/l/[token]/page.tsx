@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
+import { Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
-type Comment = { fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
+type Data = { feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -27,6 +27,9 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [duration, setDuration] = useState(0);
   const [busy, setBusy] = useState(false);
   const [mock, setMock] = useState<Mock>("player");
+  // Retours « sur demande » : le formulaire s'ouvre seulement si le client le souhaite
+  const [askOpen, setAskOpen] = useState(false);
+  const [voice, setVoice] = useState("");
   const [playing, setPlaying] = useState(false);
   // Sur ordinateur, vidéo verticale : lecteur + aperçu réseau côte à côte
   const [wide, setWide] = useState(false);
@@ -68,7 +71,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
 
   async function comment(e: React.FormEvent) {
     e.preventDefault();
-    if (await post({ action: "comment", version: v, author, text, time: atTime && isVideo ? now : null })) setText("");
+    if (await post({ action: "comment", version: v, author, text, audio: voice || undefined, time: atTime && isVideo ? now : null })) { setText(""); setVoice(""); }
   }
 
   if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
@@ -152,7 +155,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
         </div>
       </header>
 
-      <div className="liv-main">
+      <div className={`liv-main ${d.feedback === "off" ? "solo" : ""}`}>
         <div className="liv-player">
           <div className="liv-toolbar">
             {gallery
@@ -261,8 +264,14 @@ export default function Livraison({ params }: { params: { token: string } }) {
             : d.versions.length > 1 && <span className="liv-file center">{cur?.name}</span>}
         </div>
 
-        <aside className="liv-side">
+        {d.feedback !== "off" && <aside className="liv-side">
           <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
+          {d.feedback === "ask" && !askOpen && comments.length === 0 ? (
+            <div className="liv-ask">
+              <p>{approved ? "Merci pour ta validation 🙌 Une remarque malgré tout ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? "la vidéo" : `la V${cur.v}`} en haut de la page 👌</>}</p>
+              <button onClick={() => setAskOpen(true)}><MessageSquare size={15} /> J&apos;ai une remarque</button>
+            </div>
+          ) : <>
           <div className="liv-comments">
             {comments.length === 0 && <p className="muted small">{isVideo ? "Aucun retour pour l'instant. Mets pause sur un moment précis et écris ton commentaire." : "Aucun retour pour l'instant. Écris ton commentaire sur cette photo."}</p>}
             {comments.map((c) => (
@@ -272,13 +281,15 @@ export default function Livraison({ params }: { params: { token: string } }) {
                   <b>{c.author}</b>
                   {c.resolved && <span className="ok-pill small">corrigé</span>}
                 </div>
-                <p>{c.text}</p>
+                {c.audio ? <audio controls preload="none" src={c.audio} /> : <p>{c.text}</p>}
               </div>
             ))}
           </div>
           <form className="liv-form" onSubmit={comment}>
             <input placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />
-            <textarea required rows={3} placeholder={isVideo && atTime ? `Ton retour à ${tc(now)}…` : "Ton retour…"} value={text} onChange={(e) => setText(e.target.value)} />
+            {voice
+              ? <div className="liv-voice-ready"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>Supprimer</button></div>
+              : <textarea required rows={3} placeholder={isVideo && atTime ? `Ton retour à ${tc(now)}…` : "Ton retour…"} value={text} onChange={(e) => setText(e.target.value)} />}
             <div className="row">
               {isVideo && (
                 // Bascule : retour lié au moment de la vidéo, ou retour général
@@ -286,16 +297,67 @@ export default function Livraison({ params }: { params: { token: string } }) {
                   <Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Retour général"}
                 </button>
               )}
+              {!voice && <VoiceButton onDone={setVoice} />}
               <span style={{ flex: 1 }} />
-              <button className="primary" disabled={busy || !text.trim()}>Envoyer</button>
+              <button className="primary" disabled={busy || (!text.trim() && !voice)}>Envoyer</button>
             </div>
             {error && <p className="neg small">{error}</p>}
           </form>
-        </aside>
+          </>}
+        </aside>}
       </div>
+      {d.reviewUrl && <Review url={d.reviewUrl} big={approved || (multi && d.approved.length > 0)} />}
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );
+}
+
+// Avis Google : mis en avant une fois la vidéo validée, discret sinon
+function Review({ url, big }: { url: string; big: boolean }) {
+  return big ? (
+    <a className="liv-review" href={url} target="_blank" rel="noreferrer">
+      <span className="stars">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={22} fill="#fbbc04" color="#fbbc04" />)}</span>
+      <span><b>Content du résultat ?</b><small>Un petit avis Google m&apos;aide énormément à faire connaître mon travail. Ça prend 30 secondes 🙏</small></span>
+      <em>Laisser un avis</em>
+    </a>
+  ) : (
+    <a className="liv-review-small" href={url} target="_blank" rel="noreferrer"><Star size={14} fill="#fbbc04" color="#fbbc04" /> Laisser un avis Google</a>
+  );
+}
+
+// Enregistrement d'un message vocal (3 min max), renvoyé en data URL
+function VoiceButton({ onDone }: { onDone: (dataUrl: string) => void }) {
+  const [rec, setRec] = useState<MediaRecorder | null>(null);
+  const [secs, setSecs] = useState(0);
+  const [err, setErr] = useState("");
+  async function start() {
+    setErr("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+      const r = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined);
+      const parts: Blob[] = [];
+      r.ondataavailable = (e) => parts.push(e.data);
+      r.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const fr = new FileReader();
+        fr.onload = () => onDone(String(fr.result));
+        fr.readAsDataURL(new Blob(parts, { type: r.mimeType || "audio/webm" }));
+        setRec(null);
+      };
+      r.start();
+      setRec(r); setSecs(0);
+      const started = Date.now();
+      const t = setInterval(() => {
+        const sec = Math.floor((Date.now() - started) / 1000);
+        setSecs(sec);
+        if (sec >= 180 || r.state !== "recording") { clearInterval(t); if (r.state === "recording") r.stop(); }
+      }, 250);
+    } catch { setErr("Micro non autorisé"); }
+  }
+  return rec
+    ? <button type="button" className="liv-rec on" onClick={() => rec.stop()}><Square size={12} fill="currentColor" /> {tc(secs)} · Arrêter</button>
+    : <button type="button" className="liv-rec" onClick={start} title={err || "Laisser un message vocal"}><Mic size={15} /> {err || "Vocal"}</button>;
 }
 
 // Aperçu réseau affiché à côté du lecteur (vidéo verticale, sur ordinateur)
@@ -404,7 +466,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
         </div>
       </header>
 
-      <div className={`liv-main ${file ? "" : "solo"}`}>
+      <div className={`liv-main ${file && d.feedback !== "off" ? "" : "solo"}`}>
         <div className="liv-player">
           <div className="liv-crumbs">
             {path.map((p, i, all) => (
@@ -469,7 +531,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           )}
         </div>
 
-        {file && <aside className="liv-side">
+        {file && d.feedback !== "off" && <aside className="liv-side">
           <h3><MessageSquare size={16} /> Retours{file ? ` · ${file.name}` : ""}</h3>
           <div className="liv-comments">
             {!file && <p className="muted small">Ouvre un fichier pour voir ou laisser des retours.</p>}
@@ -494,6 +556,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           )}
         </aside>}
       </div>
+      {d.reviewUrl && <Review url={d.reviewUrl} big={false} />}
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );

@@ -121,6 +121,7 @@ model PushSub {
 // Réglages des notifications et des mails
 model NotifSettings {
   id             Int     @id @default(1)
+  reviewUrl      String  @default("https://search.google.com/local/writereview?placeid=ChIJRQLTsr-rF2IRtzKgJwgr-nA") // lien « laisser un avis Google » montré aux clients
   pushEnabled    Boolean @default(true)
   emailEnabled   Boolean @default(true)
   emailTo        String  @default("")
@@ -250,7 +251,8 @@ model Delivery {
   approved   String   @default("[]")       // vidéos validées (kind = videos), numéros
   mode       String   @default("page") // page = lien maderino ; frame = suivi des commentaires Frame.io seulement (agences)
   tasks      String   @default("{}")   // tâche « Modifs » liée par version ({ "1": taskId })
-  networks   String   @default("[]") // aperçus proposés (reel, tiktok, short, youtube) ; vide = selon le format
+  networks   String   @default("[]")
+  feedback   String   @default("ask") // retours client : open = toujours visibles | ask = sur demande (bouton) | off = désactivés // aperçus proposés (reel, tiktok, short, youtube) ; vide = selon le format
   approvedAt DateTime?
   approvedV  Int      @default(0)    // numéro de la version validée
   createdAt  DateTime @default(now())
@@ -269,6 +271,7 @@ model DeliveryComment {
   source     String   @default("page") // page | frame
   externalId String   @default("")     // id du commentaire Frame.io
   fileId     String   @default("")     // fichier commenté (livraison d'un dossier)
+  audio      String   @default("")     // message vocal (Media.id)
   fileName   String   @default("")
   createdAt  DateTime @default(now())
 }
