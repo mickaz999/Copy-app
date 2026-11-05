@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { canDownload, expiryOf, fileMedia, isExpired } from "@/lib/frameio";
+import { canDownload, expiryOf, fileMedia, isExpired, pool } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type F = { fileId: string; name: string };
 const find = (token: string) => db.delivery.findUnique({ where: { token }, include: { comments: { orderBy: { createdAt: "asc" } } } });
@@ -15,14 +16,14 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   if (!d) return NextResponse.json({ error: "Lien de livraison invalide." }, { status: 404 });
   if (isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré. Demande-moi un nouveau lien si besoin.", expired: true }, { status: 410 });
   const files: F[] = JSON.parse(d.files);
-  const versions = await Promise.all(files.map(async (f, i) => {
+  const versions = await pool(files, 6, async (f, i) => {
     try {
       const m = await fileMedia(d.accountId, f.fileId);
       return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), old: d.kind !== "videos" && i + 1 < files.length, ready: !!m.play };
     } catch {
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }
-  }));
+  });
   return NextResponse.json({
     expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,

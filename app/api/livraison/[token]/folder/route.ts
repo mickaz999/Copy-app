@@ -44,26 +44,26 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   try {
     const raw = await folderChildren(d.accountId, id, q.get("stack") === "1");
     // Pile de versions (V1, V2, V3…) : on ne montre que la dernière version, comme un simple fichier
-    const items = await Promise.all(raw.map(async (x) => {
+    const items = await pool(raw, 6, async (x) => {
       if (x.type !== "version_stack") return x;
       const versions = await folderChildren(d.accountId, x.id, true).catch(() => []);
       const last = versions.filter((v) => v.type !== "folder").pop();
       return last ? { ...last, name: x.name || last.name } : x;
-    }));
+    });
     // Vignettes manquantes : demandées fichier par fichier (40 max)
     let budget = 40;
-    await Promise.all(items.map(async (x) => {
+    await pool(items, 6, async (x) => {
       if (x.type === "folder" || x.thumb || budget-- <= 0) return;
       x.thumb = await fileMedia(d.accountId, x.id).then((m) => m.thumb).catch(() => "");
-    }));
+    });
     // Dossiers d'abord, puis fichiers ; chacun du plus récemment modifié au plus ancien
     items.sort((a, b) => Number(b.type === "folder") - Number(a.type === "folder") || b.updatedAt.localeCompare(a.updatedAt));
     const counts: Record<string, number> = {};
-    await Promise.all(items.filter((x) => x.type === "folder").slice(0, 30).map(async (x) => {
+    await pool(items.filter((x) => x.type === "folder").slice(0, 30), 5, async (x) => {
       const c = await cover(d.accountId, x.id);
       x.thumb = c.cover; counts[x.id] = c.count;
       if (c.latest) x.updatedAt = c.latest;
-    }));
+    });
     items.sort((a, b) => Number(b.type === "folder") - Number(a.type === "folder") || b.updatedAt.localeCompare(a.updatedAt));
     const out = items.map(({ id, name, type, mediaType, version, thumb, updatedAt }) => ({ id, name, type, mediaType, version, thumb, updatedAt, count: counts[id], sig: signItem(params.token, id) }));
     return NextResponse.json({ items: out });

@@ -7,7 +7,7 @@ export const frameConfigured = () => !!(process.env.FRAMEIO_CLIENT_ID && process
 export const frameConnected = async () => !!(await db.apiToken.findUnique({ where: { provider: "frameio" } }));
 
 // Appel à l'API Frame.io V4 avec le compte connecté
-export async function fio(path: string, init: RequestInit = {}) {
+export async function fio(path: string, init: RequestInit = {}, attempt = 1): Promise<any> {
   const token = await userToken("frameio");
   if (!token) throw new Error("Frame.io n'est pas connecté.");
   const res = await fetch(`${API}${path}`, {
@@ -15,6 +15,12 @@ export async function fio(path: string, init: RequestInit = {}) {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init.headers ?? {}) },
     cache: "no-store",
   });
+  // Trop de demandes d'un coup : Frame.io demande d'attendre, on réessaie (4 fois max)
+  if ((res.status === 429 || res.status >= 500) && attempt < 5) {
+    const wait = Number(res.headers.get("retry-after")) * 1000 || 600 * attempt;
+    await new Promise((ok) => setTimeout(ok, Math.min(wait, 4000)));
+    return fio(path, init, attempt + 1);
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Frame.io ${res.status} : ${body?.errors?.[0]?.detail ?? body?.message ?? JSON.stringify(body).slice(0, 200)}`);
   return body;
@@ -51,8 +57,28 @@ export async function folderChildren(accountId: string, folderId: string, stack 
   return items;
 }
 
-// Liens de lecture et de téléchargement d'un fichier (adresses temporaires signées par Frame.io)
+// Exécute des tâches par petits groupes (Frame.io limite les demandes simultanées)
+export async function pool<T, R>(items: T[], size: number, fn: (x: T, i: number) => Promise<R>) {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) { const i = next++; out[i] = await fn(items[i], i); }
+  }));
+  return out;
+}
+
+// Liens d'un fichier gardés 5 min en mémoire (les adresses signées de Frame.io durent plus longtemps)
+const mediaCache = new Map<string, { at: number; m: Awaited<ReturnType<typeof loadMedia>> }>();
 export async function fileMedia(accountId: string, fileId: string) {
+  const hit = mediaCache.get(fileId);
+  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.m;
+  const m = await loadMedia(accountId, fileId);
+  mediaCache.set(fileId, { at: Date.now(), m });
+  return m;
+}
+
+// Liens de lecture et de téléchargement d'un fichier (adresses temporaires signées par Frame.io)
+async function loadMedia(accountId: string, fileId: string) {
   const { data: f } = await fio(`/accounts/${accountId}/files/${fileId}?include=media_links.high_quality,media_links.efficient,media_links.original,media_links.thumbnail`);
   const l = f?.media_links ?? {};
   const url = (k: string) => l[k]?.download_url ?? l[k]?.url ?? "";
