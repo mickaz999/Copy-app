@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { canDownload, fileMedia } from "@/lib/frameio";
+import { canDownload, expiryOf, fileMedia, isExpired } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
 
@@ -13,6 +13,7 @@ const find = (token: string) => db.delivery.findUnique({ where: { token }, inclu
 export async function GET(_: Request, { params }: { params: { token: string } }) {
   const d = await find(params.token);
   if (!d) return NextResponse.json({ error: "Lien de livraison invalide." }, { status: 404 });
+  if (isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré. Demande-moi un nouveau lien si besoin.", expired: true }, { status: 410 });
   const files: F[] = JSON.parse(d.files);
   const versions = await Promise.all(files.map(async (f, i) => {
     try {
@@ -23,7 +24,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
     }
   }));
   return NextResponse.json({
-    folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
+    expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
@@ -38,6 +39,7 @@ async function notify(title: string, body: string) {
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   const d = await find(params.token);
   if (!d) return NextResponse.json({ error: "Lien de livraison invalide." }, { status: 404 });
+  if (isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré." }, { status: 410 });
   const b = await req.json().catch(() => ({}));
   const count = (JSON.parse(d.files) as F[]).length;
   const version = Math.min(count, Math.max(1, Number(b.version) || count));

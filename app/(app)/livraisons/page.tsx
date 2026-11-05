@@ -11,7 +11,9 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; createdAt: string; expiresAt: string | null };
+// Fin de validité du lien : 1 mois après la création, sauf prolongation ; supprimé 7 jours après
+const expiry = (d: { createdAt: string; expiresAt: string | null }) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 30 * 864e5);
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
 function KindPicker({ value, onChange }: { value: string; onChange: (k: string) => void }) {
   return (
@@ -151,6 +153,7 @@ export default function Livraisons() {
                 <b>{d.title}</b>{d.client && <span className="muted"> · {d.client}</span>}
                 <div className="muted small">{d.kind === "folder" ? "Dossier Frame (en direct)" : d.kind === "videos" ? `${files.length} vidéos` : `V${files.length}`} · {d.comments.length} retour{d.comments.length > 1 ? "s" : ""}{todo ? ` (${todo} à traiter)` : ""}</div>
               </div>
+              {d.mode !== "frame" && expiry(d).getTime() < Date.now() && <span className="late-pill">lien expiré</span>}
               {d.kind === "videos" && JSON.parse(d.approved || "[]").length ? <span className="ok-pill"><CheckCircle2 size={14} /> {JSON.parse(d.approved).length}/{files.length} validées</span> : d.approvedV ? <span className="ok-pill"><CheckCircle2 size={14} /> V{d.approvedV} validée</span> : todo ? <span className="late-pill"><MessageSquare size={12} /> {todo}</span> : null}
             </div>
             {d.linked.map((t) => (
@@ -170,6 +173,16 @@ export default function Livraisons() {
                     <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
                   </>}
               {d.kind !== "folder" && <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>}
+              {d.mode !== "frame" && (
+                <span className="liv-exp">
+                  <span className={`small ${expiry(d).getTime() < Date.now() ? "neg" : "muted"}`}>
+                    {expiry(d).getTime() < Date.now()
+                      ? `Expiré, supprimé le ${new Date(expiry(d).getTime() + 7 * 864e5).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`
+                      : `Valable jusqu'au ${expiry(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`}
+                  </span>
+                  <button onClick={async () => { await api(`livraisons/${d.id}`, "PATCH", { action: "extend" }); setMsg({ ok: true, text: `Lien « ${d.title} » prolongé d'un mois.` }); load(); }}>Prolonger d&apos;un mois</button>
+                </span>
+              )}
               {d.mode !== "frame" && (
                 <label className="field-line liv-dl">Retours
                   <select value={d.feedback} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { feedback: e.target.value }); load(); }}>

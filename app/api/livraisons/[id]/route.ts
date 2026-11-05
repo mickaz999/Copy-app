@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { nets } from "@/lib/frameio";
+import { expiryOf, LINK_DAYS, nets } from "@/lib/frameio";
 import { pullFrameComments, syncCommentResolved } from "@/lib/deliveryTasks";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof b.client === "string") data.client = b.client.slice(0, 200);
   if (typeof b.message === "string") data.message = b.message.slice(0, 2000);
   if (typeof b.download === "boolean") data.download = b.download;
+  // Prolonger le lien d'un mois à partir d'aujourd'hui (ou de sa date de fin si elle est plus tard)
+  if (b.action === "extend") {
+    const cur = await db.delivery.findUniqueOrThrow({ where: { id: params.id } });
+    const end = Math.max(Date.now(), expiryOf(cur).getTime());
+    data.expiresAt = new Date(end + LINK_DAYS * 864e5);
+  }
   if (["open", "ask", "off"].includes(b.feedback)) data.feedback = b.feedback;
   if (["always", "approved", "never"].includes(b.dlMode)) { data.dlMode = b.dlMode; data.download = b.dlMode !== "never"; }
   if (b.kind === "videos" || b.kind === "versions") data.kind = b.kind;

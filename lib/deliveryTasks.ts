@@ -116,3 +116,11 @@ export async function pullFrameComments(only?: string) {
   }
   return added;
 }
+
+// Liens de livraison expirés depuis plus de 7 jours : supprimés (les fichiers restent sur Frame.io)
+export async function purgeExpiredDeliveries() {
+  const list = await db.delivery.findMany({ where: { mode: "page" }, select: { id: true, createdAt: true, expiresAt: true } });
+  const old = list.filter((d) => (d.expiresAt ?? new Date(d.createdAt.getTime() + 30 * 864e5)).getTime() + 7 * 864e5 < Date.now()).map((d) => d.id);
+  if (old.length) await db.delivery.deleteMany({ where: { id: { in: old } } });
+  return old.length;
+}

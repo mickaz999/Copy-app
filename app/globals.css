@@ -1373,3 +1373,4 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .fp-new { color: var(--accent) !important; font-weight: 600; }
 .fp-new-row { flex-wrap: nowrap; }
 .fp-new-row input { flex: 1; min-width: 0; }
+.liv-exp { display: inline-flex; align-items: center; gap: 8px; }

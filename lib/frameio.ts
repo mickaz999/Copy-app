@@ -124,3 +124,8 @@ export async function startUpload(accountId: string, folderId: string, name: str
     urls: ((data.upload_urls ?? []) as { url: string; size: number }[]).map((u) => ({ url: u.url, size: u.size })),
   };
 }
+
+// Lien de livraison valable 1 mois (prolongeable)
+export const LINK_DAYS = 30;
+export const expiryOf = (d: { createdAt: Date; expiresAt: Date | null }) => d.expiresAt ?? new Date(d.createdAt.getTime() + LINK_DAYS * 864e5);
+export const isExpired = (d: { createdAt: Date; expiresAt: Date | null }) => expiryOf(d).getTime() < Date.now();

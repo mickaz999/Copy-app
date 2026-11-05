@@ -254,6 +254,7 @@ model Delivery {
   networks   String   @default("[]")
   feedback   String   @default("ask") // retours client : open = toujours visibles | ask = sur demande (bouton) | off = désactivés // aperçus proposés (reel, tiktok, short, youtube) ; vide = selon le format
   approvedAt DateTime?
+  expiresAt  DateTime? // fin de validité du lien (vide = 1 mois après la création)
   approvedV  Int      @default(0)    // numéro de la version validée
   createdAt  DateTime @default(now())
   comments   DeliveryComment[]

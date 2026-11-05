@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { fileMedia, folderChildren } from "@/lib/frameio";
+import { fileMedia, folderChildren, isExpired } from "@/lib/frameio";
 import { checkItem, signItem } from "@/lib/sign";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +36,7 @@ async function cover(accountId: string, folderId: string, depth = 0): Promise<{ 
 
 export async function GET(req: Request, { params }: { params: { token: string } }) {
   const d = await db.delivery.findUnique({ where: { token: params.token } });
+  if (d && isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré. Demande-moi un nouveau lien si besoin.", expired: true }, { status: 410 });
   if (!d || d.kind !== "folder") return NextResponse.json({ error: "Lien invalide." }, { status: 404 });
   const q = new URL(req.url).searchParams;
   const id = q.get("id") || d.folderId;
