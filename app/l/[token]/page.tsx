@@ -56,6 +56,14 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const load = () => fetch(url).then(async (r) => {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
+    // Vidéos et photos mélangées, dans un ordre fixe pour ce lien (même ordre à chaque visite)
+    if (j.kind === "videos") {
+      let seed = [...params.token].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+      const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+      const list = [...j.versions];
+      for (let i = list.length - 1; i > 0; i--) { const k = Math.floor(rnd() * (i + 1)); [list[i], list[k]] = [list[k], list[i]]; }
+      j.versions = list;
+    }
     setD(j);
     // Versions : la dernière d'abord ; vidéos / photos différentes : la première
     setV((cur) => cur || (j.kind === "videos" ? j.versions[0]?.v ?? 1 : j.versions.length));
