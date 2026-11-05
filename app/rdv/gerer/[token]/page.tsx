@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarCheck, CalendarX, ChevronLeft } from "lucide-react";
 import Logo from "@/components/Logo";
 import SlotPicker, { dayLabel } from "@/components/SlotPicker";
+import { MiniLoader } from "@/components/LivLoader";
 
 type Appt = { name: string; mode: string; day: string; time: string; end: string; meet: string; status: string; past: boolean; slots?: Record<string, string[]> };
 
@@ -32,7 +33,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
     <div className="rdv">
       <div className="rdv-card">
         <Logo />
-        {!a && !error && <p className="muted">Chargement…</p>}
+        {!a && !error && <MiniLoader />}
         {error && <p className="neg">{error}</p>}
         {a && (
           <>

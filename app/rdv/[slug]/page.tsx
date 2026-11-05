@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarCheck, Clock, MapPin, ChevronLeft, Video, Phone } from "lucide-react";
 import Logo from "@/components/Logo";
 import SlotPicker, { dayLabel } from "@/components/SlotPicker";
+import { MiniLoader } from "@/components/LivLoader";
 
 type Info = { title: string; intro: string; duration: number; location: string; slots: Record<string, string[]> };
 
@@ -36,7 +37,7 @@ export default function Rdv({ params }: { params: { slug: string } }) {
     <div className="rdv">
       <div className="rdv-card">
         <Logo />
-        {!info && !error && <p className="muted">Chargement…</p>}
+        {!info && !error && <MiniLoader label="Recherche des créneaux libres" />}
         {!info && error && <p className="neg">{error}</p>}
         {info && done && (
           <div className="rdv-done">

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, FileText, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { MiniLoader } from "@/components/LivLoader";
 
 type Block = { id: string; type: string; text: string; checked?: boolean; url?: string };
 
@@ -54,7 +55,7 @@ export default function PageEditor({ params }: { params: { id: string } }) {
     setFocus(null);
   }, [focus]);
 
-  if (!blocks) return <div className="content narrow muted">Chargement…</div>;
+  if (!blocks) return <div className="content narrow"><MiniLoader /></div>;
 
   const patch = (i: number, p: Partial<Block>) => update(blocks.map((b, j) => (j === i ? { ...b, ...p } : b)));
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Lock, Radio, Bell, BellOff, CheckCircle2, Mail, Send, Smartphone, Share, SquarePlus } from "lucide-react";
 import { api } from "@/lib/api";
 import BookingSettings from "@/components/BookingSettings";
+import { MiniLoader } from "@/components/LivLoader";
 
 type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string; mailAccount: string };
 type Info = { settings: Settings; vapidPublicKey: string; pushReady: boolean; cronReady: boolean; mailFrom: string; googleConnected: boolean; mailAccounts: { id: string; email: string }[]; devices: number; calendars: { id: string; name: string }[]; writableCalendars: { id: string; name: string }[] };
@@ -79,7 +80,7 @@ export default function Reglages() {
     } finally { setBusy(""); }
   }
 
-  if (!info || !s) return <div className="content muted">Chargement…</div>;
+  if (!info || !s) return <div className="content"><MiniLoader /></div>;
   const needsInstall = env.ios && !env.standalone;
 
   return (

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, Mail, MessageCircle, Phone, Video, X } from "lucide-react";
 import { api } from "@/lib/api";
 import SlotPicker, { dayLabel } from "@/components/SlotPicker";
+import { MiniLoader } from "@/components/LivLoader";
 
 type Appt = { id: string; name: string; email: string; phone: string; mode: string; note: string; day: string; time: string; end: string; start: string; meet: string; status: string };
 type Action = { a: Appt; kind: "move" | "cancel" };
@@ -35,7 +36,7 @@ export default function RendezVous() {
     finally { setBusy(false); }
   }
 
-  if (!list) return <div className="content muted">Chargement…</div>;
+  if (!list) return <div className="content"><MiniLoader /></div>;
   const now = Date.now();
   const upcoming = list.filter((a) => a.status === "confirmed" && Date.parse(a.start) >= now - 36e5);
   const past = list.filter((a) => a.status === "confirmed" && Date.parse(a.start) < now - 36e5).reverse();
@@ -93,7 +94,7 @@ export default function RendezVous() {
             {act.kind === "move" && (
               <>
                 <span className="rdv-group-label">Créneaux libres</span>
-                {slots ? <SlotPicker slots={slots} onPick={(day, time) => !busy && run({ action: "move", day, time }, `RDV déplacé au ${dayLabel(day)} à ${time}.`)} /> : <p className="muted">Chargement…</p>}
+                {slots ? <SlotPicker slots={slots} onPick={(day, time) => !busy && run({ action: "move", day, time }, `RDV déplacé au ${dayLabel(day)} à ${time}.`)} /> : <MiniLoader label="Recherche des créneaux" />}
                 <span className="rdv-group-label">Ou un autre horaire</span>
                 <div className="row">
                   <input type="date" value={manual.day} onChange={(e) => setManual({ ...manual, day: e.target.value })} />

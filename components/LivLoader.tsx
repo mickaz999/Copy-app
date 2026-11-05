@@ -10,10 +10,27 @@ export default function LivLoader({ steps = STEPS }: { steps?: string[] }) {
   return (
     <div className="ldr">
       <div className="ldr-glow" />
-      <div className="ldr-mark"><span className="ldr-play" /><span className="ldr-ring" /></div>
+      {/* Symbole du logo maderino (triangle lecture + point) animé */}
+      <svg className="ldr-logo" viewBox="0 0 120 80" aria-hidden>
+        <path className="ldr-tri" d="M14 12 L62 40 L14 68 Z" />
+        <circle className="ldr-dot" cx="84" cy="40" r="8" />
+      </svg>
       <div className="ldr-brand">maderino <em>production.</em></div>
       <div className="ldr-bar"><i /></div>
       <p key={i} className="ldr-step">{steps[i]}…</p>
+    </div>
+  );
+}
+
+// Version compacte du symbole animé, pour les chargements dans une page
+export function MiniLoader({ label = "Chargement" }: { label?: string }) {
+  return (
+    <div className="ldr-inline">
+      <svg className="ldr-logo sm" viewBox="0 0 120 80" aria-hidden>
+        <path className="ldr-tri" d="M14 12 L62 40 L14 68 Z" />
+        <circle className="ldr-dot" cx="84" cy="40" r="8" />
+      </svg>
+      <span>{label}…</span>
     </div>
   );
 }

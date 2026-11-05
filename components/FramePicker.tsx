@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Check, ChevronLeft, Film, Folder, FolderPlus, Layers } from "lucide-react";
 import { api } from "@/lib/api";
+import { MiniLoader } from "@/components/LivLoader";
 
 export type FrameProject = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 export type FrameFile = { fileId: string; name: string };
@@ -54,7 +55,7 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
         <h3>{title}</h3>
         {children}
         {error && <p className="neg small">{error}</p>}
-        {!project && !projects && !error && <p className="muted">Chargement…</p>}
+        {!project && !projects && !error && <MiniLoader label="Connexion à Frame.io" />}
         {!project && projects?.map((p) => (
           <button key={p.id} className="liv-item" onClick={() => { setProject(p); setPath([{ id: p.rootFolderId, name: p.name }]); }}><Folder size={16} /> {p.name} <span className="muted small">{p.workspace}</span></button>
         ))}
@@ -68,7 +69,7 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
                   <button className="primary" disabled={!newName.trim()} onClick={create}>Créer</button>
                   <button onClick={() => setNewName(null)}>Annuler</button>
                 </div>)}
-            {!items && !error && <p className="muted">Chargement…</p>}
+            {!items && !error && <MiniLoader label="Ouverture du dossier" />}
             {items && items.some((x) => x.type !== "folder" && x.type !== "version_stack") && (
               // Coche d'un coup tous les fichiers du dossier (dans l'ordre affiché), ou les décoche
               <button className="liv-item" onClick={() => {
