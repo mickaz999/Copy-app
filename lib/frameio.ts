@@ -43,8 +43,20 @@ export async function listProjects() {
 // Contenu d'un dossier Frame.io (dossiers, fichiers, piles de versions)
 export async function folderChildren(accountId: string, folderId: string, stack = false) {
   const path = `/accounts/${accountId}/${stack ? "version_stacks" : "folders"}/${folderId}/children?page_size=100`;
-  // Vignettes demandées en même temps si Frame.io l'accepte, sinon liste simple
-  const { data = [] } = await fio(`${path}&include=media_links.thumbnail`).catch(() => fio(path));
+  // Vignettes demandées en même temps si Frame.io l'accepte, sinon liste simple ;
+  // Frame.io renvoie 100 éléments par page : on suit les pages suivantes (links.next) jusqu'au bout
+  let first = await fio(`${path}&include=media_links.thumbnail`).catch(() => null);
+  const withThumbs = !!first;
+  if (!first) first = await fio(path);
+  const data: any[] = [...(first.data ?? [])];
+  let next: string | null = first.links?.next ?? null;
+  for (let i = 0; next && i < 50; i++) {
+    const rel = next.replace(/^https?:\/\/[^/]+/, "").replace(/^\/v4/, "");
+    const sep = rel.includes("?") ? "&" : "?";
+    const page = await fio(withThumbs && !rel.includes("include=") ? `${rel}${sep}include=media_links.thumbnail` : rel);
+    data.push(...(page.data ?? []));
+    next = page.links?.next ?? null;
+  }
   const items = (data as any[]).map((x) => ({
     id: x.id as string, name: (x.name ?? "") as string, type: (x.type ?? "file") as string, mediaType: (x.media_type ?? "") as string,
     createdAt: (x.created_at ?? x.inserted_at ?? "") as string,

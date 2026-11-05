@@ -89,8 +89,12 @@ export default function Livraisons() {
     else {
       const d = list.find((x) => x.id === picking)!;
       if (d.accountId !== accountId) { setMsg({ ok: false, text: "Choisis une vidéo du même compte Frame.io." }); return; }
+      // Fichiers déjà dans la livraison ignorés : « Tout le dossier » ajoute seulement ce qui manque
+      const have = new Set(filesOf(d).map((x) => x.fileId));
+      f = f.filter((x) => !have.has(x.fileId));
+      if (!f.length) { setMsg({ ok: true, text: "Tous ces fichiers sont déjà dans la livraison." }); setPicking(null); return; }
       await api(`livraisons/${d.id}`, "PATCH", { files: [...filesOf(d), ...f] });
-      setMsg({ ok: true, text: `V${filesOf(d).length + f.length} ajoutée à « ${d.title} ». Le client la voit avec le même lien.` }); load();
+      setMsg({ ok: true, text: d.kind === "videos" ? `${f.length} fichier${f.length > 1 ? "s" : ""} ajouté${f.length > 1 ? "s" : ""} à « ${d.title} ». Même lien pour le client.` : `V${filesOf(d).length + f.length} ajoutée à « ${d.title} ». Le client la voit avec le même lien.` }); load();
     }
     setPicking(null);
   }
