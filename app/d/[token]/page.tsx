@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, CloudUpload, FileVideo, X, AlertTriangle } from "lucide-react";
 import Logo from "@/components/Logo";
+import LivLoader from "@/components/LivLoader";
 
 type Info = { expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
 type Job = { key: string; file: File; sent: number; status: "wait" | "up" | "ok" | "err"; error?: string };
@@ -78,7 +79,8 @@ export default function Drop({ params }: { params: { token: string } }) {
     setRunning(false);
   }
 
-  if (!info) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo />{error ? <p className="neg">{error}</p> : <p className="muted">Chargement…</p>}</div></div>;
+  if (!info && !error) return <LivLoader steps={["Ouverture de l'espace de dépôt", "Presque prêt"]} />;
+  if (!info) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
   const pending = jobs.filter((j) => j.status !== "ok");
   const totalSize = jobs.reduce((n, j) => n + j.file.size, 0);
   const sentSize = jobs.reduce((n, j) => n + j.sent, 0);

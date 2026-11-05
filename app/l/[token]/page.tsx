@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
+import LivLoader from "@/components/LivLoader";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
@@ -100,7 +101,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   }
 
   if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
-  if (!d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="muted">Chargement…</p></div></div>;
+  if (!d) return <LivLoader />;
   if (d.kind === "folder") return <FolderDelivery d={d} token={params.token} reload={load} />;
 
   const cur = d.versions.find((x) => x.v === v) ?? d.versions[d.versions.length - 1];
@@ -598,7 +599,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           </div>
           {file && (
             <div className="liv-fileview">
-              {!media && <div className="liv-wait">Chargement…</div>}
+              {!media && <div className="liv-wait"><div className="ldr-inline"><div className="ldr-bar"><i /></div><span>Chargement de la vidéo…</span></div></div>}
               {media && (isVid(media.mediaType)
                 ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList="nodownload" onContextMenu={(e) => e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
                 : <img src={media.play} alt="" onContextMenu={(e) => e.preventDefault()} />)}
@@ -611,7 +612,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
             </div>
           )}
           {error && <p className="neg">{error}</p>}
-          {!data && !error && <p className="muted">Chargement…</p>}
+          {!data && !error && <div className="ldr-inline"><div className="ldr-bar"><i /></div><span>Ouverture du dossier…</span></div>}
           {data?.items.length === 0 && <p className="muted">Dossier vide.</p>}
           {data && data.items.some((x) => x.type === "folder") && (
             <>
