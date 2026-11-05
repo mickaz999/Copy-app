@@ -101,7 +101,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const seek = (t: number) => { if (video.current) { video.current.currentTime = t; video.current.play().catch(() => {}); } };
   // Plusieurs vidéos différentes (nom Frame.io) ou versions d'une même vidéo (V1, V2…)
   const multi = d.kind === "videos";
-  const lab = (x?: Version) => (x ? (multi ? x.name : `V${x.v}`) : "");
+  // Le nom du fichier n'est jamais montré au client (il le découvre au téléchargement)
+  const lab = (x?: Version) => (x ? (multi ? `${x.mediaType.startsWith("image") ? "Photo" : "Vidéo"} ${d.versions.findIndex((y) => y.v === x.v) + 1}` : `V${x.v}`) : "");
   const isOk = (n: number) => (multi ? d.approved.includes(n) : d.approvedV === n);
   const approved = !!cur && isOk(cur.v);
   // Format connu dès l'image d'aperçu, avant que la vidéo ne se charge (sinon le lecteur change de taille au clic)
@@ -171,8 +172,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
             ? <span className="liv-locked">Ancienne version · voir la V{d.versions.length}</span>
             : approved
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
-            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
-          {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
+            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${lab(cur)} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
+          {cur?.original && <SaveButton href={dl(cur.v)} label={files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"} />}
           {cur?.locked && !cur.old && <span className="liv-locked" title="Le téléchargement s'ouvre une fois validé"><Download size={15} /> Téléchargement après validation</span>}
           </>}
           {files.length > 1 && <button onClick={downloadAll}><Download size={16} /> Tout télécharger ({files.length})</button>}
@@ -193,7 +194,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 {isOk(x.v) && <span className="liv-wok"><CheckCircle2 size={14} /> Validée</span>}
                 {todo > 0 && <span className="liv-gtodo">{todo} retour{todo > 1 ? "s" : ""}</span>}
                 {!isImg(x) && <span className="liv-wplay"><Play size={22} fill="#fff" strokeWidth={0} /></span>}
-                <span className="liv-wname">{x.name}</span>
+                
               </button>
             );
           })}
@@ -209,8 +210,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <span style={{ flex: 1 }} />
           {approved
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {isImg(cur) ? "Photo validée" : "Vidéo validée"}</span>
-            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider « ${cur.name} » ?`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider</button>}
-          {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> Télécharger</button></a>}
+            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider « ${lab(cur)} » ?`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider</button>}
+          {cur?.original && <SaveButton href={dl(cur.v)} label="Télécharger" />}
         </div>
       )}
       <div className={`liv-main ${d.feedback === "off" ? "solo" : ""}`}>
@@ -220,13 +221,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
               ? (
                 <div className="liv-gnav">
                   <button className="ghost" aria-label="Précédent" onClick={() => go(-1)}><ChevronLeft size={18} /></button>
-                  <span><b>{cur?.name}</b><small>{idx + 1} / {d.versions.length}</small></span>
+                  <span><b>{lab(cur)}</b><small>{idx + 1} / {d.versions.length}</small></span>
                   <button className="ghost" aria-label="Suivant" onClick={() => go(1)}><ChevronRight size={18} /></button>
                 </div>
               )
               : d.versions.length > 1
-              ? <div className={`seg ${multi ? "seg-videos" : ""}`}>{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>{lab(x)}{isOk(x.v) && " ✓"}</button>)}</div>
-              : <span className="liv-file">{cur?.name}</span>}
+              ? <div className={`seg ${multi ? "seg-videos" : ""}`}>{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>{lab(x)}{isOk(x.v) && " ✓"}</button>)}</div>
+              : null}
             {cur?.ready && isVideo && nets.length > 0 && (
               <div className="liv-preview">
                 {showPreview && nets.length > 1 && <div className="seg">{nets.map(([k, label]) => <button key={k} className={sel === k ? "on" : ""} onClick={() => setMock2(k)}>{label}</button>)}</div>}
@@ -289,7 +290,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 </div>
               )}
             </div>
-            : <img src={cur.play} alt={cur.name} draggable={!!cur.original} onContextMenu={(e) => !cur.original && e.preventDefault()} />)}
+            : <img src={cur.play} alt="" draggable={!!cur.original} onContextMenu={(e) => !cur.original && e.preventDefault()} />)}
           {isVideo && pm === "youtube" && (
             <div className="mock-yt-info">
               <b>{d.title}</b>
@@ -319,7 +320,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 {d.versions.map((x, i) => {
                   const todo = d.comments.filter((c) => c.version === x.v && !c.resolved).length;
                   return (
-                    <button key={x.v} className={`ghost liv-gcard ${x.v === cur.v ? "on" : ""}`} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>
+                    <button key={x.v} className={`ghost liv-gcard ${x.v === cur.v ? "on" : ""}`} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>
                       <span className="liv-gthumb">
                         {x.thumb || isImg(x)
                           ? <img src={x.thumb || x.play} alt="" loading="lazy" />
@@ -329,13 +330,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
                         {isOk(x.v) && <span className="liv-gok"><CheckCircle2 size={14} /></span>}
                         {todo > 0 && <span className="liv-gtodo">{todo}</span>}
                       </span>
-                      <span className="liv-gname">{x.name}</span>
+                      <span className="liv-gname">{lab(x)}</span>
                     </button>
                   );
                 })}
               </div>
             )
-            : d.versions.length > 1 && <span className="liv-file center">{cur?.name}</span>}
+            : null}
         </div>
 
         {d.feedback !== "off" && <aside className="liv-side">
@@ -404,6 +405,27 @@ function Review({ url, big }: { url: string; big: boolean }) {
   ) : (
     <a className="liv-review-small" href={url} target="_blank" rel="noreferrer"><Star size={13} fill="currentColor" strokeWidth={0} /> Laisser un avis Google</a>
   );
+}
+
+// Téléchargement ; sur iPhone / iPad : propose « Enregistrer dans Photos » (feuille de partage)
+function SaveButton({ href, label }: { href: string; label: string }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const ios = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent) && !!navigator.canShare;
+  async function prepare() {
+    if (!ios) { window.open(href, "_blank"); return; }
+    setBusy(true);
+    try {
+      const info = await (await fetch(`${href}&url=1`)).json();
+      const blob = await (await fetch(info.url)).blob();
+      const f = new File([blob], info.name || "fichier", { type: info.type || blob.type });
+      if (navigator.canShare({ files: [f] })) setFile(f); else window.open(href, "_blank");
+    } catch { window.open(href, "_blank"); }
+    finally { setBusy(false); }
+  }
+  // Le partage doit partir d'un appui : 2e bouton une fois le fichier prêt
+  if (file) return <button className="primary" onClick={() => navigator.share({ files: [file] }).then(() => setFile(null)).catch(() => {})}><Download size={16} /> Enregistrer dans Photos</button>;
+  return <button disabled={busy} onClick={prepare}><Download size={16} /> {busy ? "Préparation…" : label}</button>;
 }
 
 // Enregistrement d'un message vocal (3 min max), renvoyé en data URL

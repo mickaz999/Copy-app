@@ -16,6 +16,8 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   try {
     const m = await fileMedia(d.accountId, f.fileId);
     if (!m.original) throw new Error("pas de lien");
+    // ?url=1 : renvoie l'adresse (pour enregistrer dans Photos sur iPhone)
+    if (new URL(req.url).searchParams.get("url")) return NextResponse.json({ url: m.original, name: m.name, type: m.mediaType });
     return NextResponse.redirect(m.original);
   } catch {
     return NextResponse.json({ error: "Frame.io ne répond pas, réessaie dans un instant." }, { status: 502 });
