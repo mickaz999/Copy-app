@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
+import { X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
@@ -30,6 +30,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   // Retours « sur demande » : le formulaire s'ouvre seulement si le client le souhaite
   const [askOpen, setAskOpen] = useState(false);
   const [voice, setVoice] = useState("");
+  // Galerie : la vidéo / photo choisie s'ouvre en grand dans une fenêtre
+  const [lb, setLb] = useState(false);
   const [playing, setPlaying] = useState(false);
   // Sur ordinateur, vidéo verticale : lecteur + aperçu réseau côte à côte
   const [wide, setWide] = useState(false);
@@ -55,6 +57,17 @@ export default function Livraison({ params }: { params: { token: string } }) {
     // Versions : la dernière d'abord ; vidéos / photos différentes : la première
     setV((cur) => cur || (j.kind === "videos" ? j.versions[0]?.v ?? 1 : j.versions.length));
   }).catch((e) => setError(e.message));
+  // Clavier dans la fenêtre galerie : Échap ferme, flèches = précédent / suivant
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!lb || (e.target as HTMLElement)?.closest("input, textarea")) return;
+      if (e.key === "Escape") setLb(false);
+      if (e.key === "ArrowRight") document.querySelector<HTMLButtonElement>(".liv-gnav button:last-child")?.click();
+      if (e.key === "ArrowLeft") document.querySelector<HTMLButtonElement>(".liv-gnav button:first-child")?.click();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lb]);
   useEffect(() => {
     load();
     try { setAuthor(localStorage.getItem("liv-author") ?? ""); } catch {}
@@ -97,7 +110,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   }
   const vertical = ratio < 1;
   // Réseaux choisis à la création du lien, sinon selon le format de la vidéo
-  const mocks = MOCKS.filter(([k]) => k === "player" || (d.networks?.length ? d.networks.includes(k) : (vertical ? VERTICAL : HORIZONTAL).includes(k)));
+  // Aperçus réseaux : seulement ceux choisis dans la livraison (aucun par défaut)
+  const mocks = MOCKS.filter(([k]) => k === "player" || !!d.networks?.includes(k));
   if (!mocks.some(([k]) => k === mock)) setTimeout(() => setMock("player"));
   // Livraison de photos (ou mixte) : galerie de vignettes ; téléchargement de tout d'un coup
   const isImg = (x: Version) => x.mediaType.startsWith("image");
@@ -105,6 +119,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const gallery = d.versions.length > 1 && (multi || d.versions.some(isImg));
   const idx = d.versions.findIndex((x) => x.v === cur.v);
   const go = (n: number) => { const x = d.versions[(idx + n + d.versions.length) % d.versions.length]; setV(x.v); setNow(0); setRatio(16 / 9); };
+  const wall = gallery && multi;
   const noun = d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos";
   const files = multi ? d.versions.filter((x) => x.original) : [];
   // Téléchargement via l'app : lien Frame.io recréé au clic ; cadre invisible = pas d'onglet ouvert
@@ -148,6 +163,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           </div>
         </div>
         <div className="liv-cta">
+          {!wall && <>
           {cur?.old
             ? <span className="liv-locked">Ancienne version · voir la V{d.versions.length}</span>
             : approved
@@ -155,10 +171,41 @@ export default function Livraison({ params }: { params: { token: string } }) {
             : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${cur.name} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
           {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> {files.length > 1 ? (isImg(cur) ? "Cette photo" : "Cette vidéo") : "Télécharger"}</button></a>}
           {cur?.locked && !cur.old && <span className="liv-locked" title="Le téléchargement s'ouvre une fois validé"><Download size={15} /> Téléchargement après validation</span>}
+          </>}
           {files.length > 1 && <button onClick={downloadAll}><Download size={16} /> Tout télécharger ({files.length})</button>}
         </div>
       </header>
 
+      {wall && (
+        <section className="liv-wall">
+          {d.versions.map((x, i) => {
+            const todo = d.comments.filter((c) => c.version === x.v && !c.resolved).length;
+            return (
+              <button key={x.v} className="ghost liv-wcard" onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); setLb(true); }}>
+                {x.thumb || isImg(x) ? <img src={x.thumb || x.play} alt="" loading="lazy" /> : <video src={`${x.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} />}
+                <span className="liv-wshade" />
+                <span className="liv-gnum">{String(i + 1).padStart(2, "0")}</span>
+                {isOk(x.v) && <span className="liv-wok"><CheckCircle2 size={14} /> Validée</span>}
+                {todo > 0 && <span className="liv-gtodo">{todo} retour{todo > 1 ? "s" : ""}</span>}
+                {!isImg(x) && <span className="liv-wplay"><Play size={22} fill="#fff" strokeWidth={0} /></span>}
+                <span className="liv-wname">{x.name}</span>
+              </button>
+            );
+          })}
+        </section>
+      )}
+      {(!wall || lb) && <div className={wall ? "liv-lightbox" : ""} onClick={(e) => { if (wall && e.target === e.currentTarget) setLb(false); }}>
+      {wall && (
+        <div className="liv-lb-top">
+          <button className="ghost liv-lb-close" onClick={() => setLb(false)} aria-label="Fermer"><X size={20} /></button>
+          <span className="liv-lb-count">{idx + 1} / {d.versions.length}</span>
+          <span style={{ flex: 1 }} />
+          {approved
+            ? <span className="ok-pill"><CheckCircle2 size={15} /> {isImg(cur) ? "Photo validée" : "Vidéo validée"}</span>
+            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider « ${cur.name} » ?`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider</button>}
+          {cur?.original && <a href={dl(cur.v)} target="_blank" rel="noreferrer"><button><Download size={16} /> Télécharger</button></a>}
+        </div>
+      )}
       <div className={`liv-main ${d.feedback === "off" ? "solo" : ""}`}>
         <div className="liv-player">
           <div className="liv-toolbar">
@@ -326,6 +373,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           </>}
         </aside>}
       </div>
+      </div>}
       {d.reviewUrl && <Review url={d.reviewUrl} big={approved || (multi && d.approved.length > 0)} />}
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
