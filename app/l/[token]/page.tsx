@@ -211,16 +211,26 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <span className="liv-wfill" />
         </section>
       )}
-      {(!wall || lb) && <div className={wall ? "liv-lightbox" : ""} onClick={(e) => { if (wall && e.target === e.currentTarget) setLb(false); }}>
+      {(!wall || lb) && <div className={wall ? "liv-lightbox" : ""} onClick={(e) => { if (wall && e.target === e.currentTarget) setLb(false); }}
+        // Glisser à gauche / à droite pour passer d'un fichier à l'autre
+        onTouchStart={(e) => { if (wall) (e.currentTarget as any)._x = [e.touches[0].clientX, e.touches[0].clientY]; }}
+        onTouchEnd={(e) => {
+          const s0 = (e.currentTarget as any)._x; if (!wall || !s0 || (e.target as HTMLElement).closest("form, .liv-side, video")) return;
+          const dx = e.changedTouches[0].clientX - s0[0], dy = e.changedTouches[0].clientY - s0[1];
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+        }}>
       {wall && (
         <div className="liv-lb-top">
           <button className="ghost liv-lb-close" onClick={() => setLb(false)} aria-label="Fermer"><X size={20} /></button>
           <span className="liv-lb-count">{idx + 1} / {d.versions.length}</span>
           <span style={{ flex: 1 }} />
-          {approved
-            ? <span className="ok-pill"><CheckCircle2 size={15} /> {isImg(cur) ? "Photo validée" : "Vidéo validée"}</span>
-            : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider « ${lab(cur)} » ?`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider</button>}
-          {cur?.original && <SaveButton href={dl(cur.v)} label="Télécharger" />}
+          {/* Sur téléphone : barre d'actions fixée en bas de l'écran */}
+          <div className="liv-lb-actions">
+            {approved
+              ? <span className="ok-pill"><CheckCircle2 size={15} /> {isImg(cur) ? "Photo validée" : "Vidéo validée"}</span>
+              : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider « ${lab(cur)} » ?`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider</button>}
+            {cur?.original && <SaveButton href={dl(cur.v)} label="Télécharger" />}
+          </div>
         </div>
       )}
       <div className={`liv-main ${d.feedback === "off" ? "solo" : ""}`}>
@@ -352,7 +362,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
           {d.feedback === "ask" && !askOpen && comments.length === 0 ? (
             <div className="liv-ask">
-              <p>{approved ? "Merci pour ta validation. Une remarque malgré tout ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? "la vidéo" : `la V${cur.v}`} en haut de la page.</>}</p>
+              <p>{approved ? "Merci pour ta validation. Une remarque malgré tout ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? (isImg(cur) ? "la photo" : "la vidéo") : `la V${cur.v}`} avec le bouton Valider.</>}</p>
               <button onClick={() => setAskOpen(true)}><MessageSquare size={15} /> J&apos;ai une remarque</button>
             </div>
           ) : <>
