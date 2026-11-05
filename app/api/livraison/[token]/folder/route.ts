@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { fileMedia, folderChildren, isExpired } from "@/lib/frameio";
+import { fileMedia, folderChildren, isExpired, pool } from "@/lib/frameio";
 import { checkItem, signItem } from "@/lib/sign";
 
 export const dynamic = "force-dynamic";
