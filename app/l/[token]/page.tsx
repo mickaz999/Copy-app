@@ -33,6 +33,15 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [voice, setVoice] = useState("");
   // Galerie : la vidéo / photo choisie s'ouvre en grand dans une fenêtre
   const [lb, setLb] = useState(false);
+  // Indication « glisse pour passer » à la première ouverture sur téléphone
+  const [hint, setHint] = useState(false);
+  useEffect(() => {
+    if (!lb || window.innerWidth > 900) return;
+    try { if (localStorage.getItem("liv-swipe-hint")) return; localStorage.setItem("liv-swipe-hint", "1"); } catch {}
+    setHint(true);
+    const t = setTimeout(() => setHint(false), 3200);
+    return () => clearTimeout(t);
+  }, [lb]);
   // Format réel de chaque vignette (largeur / hauteur), pour une galerie qui respecte vertical / horizontal
   const [ratios, setRatios] = useState<Record<number, number>>({});
   const setR = (v: number, w: number, h: number) => w && h && setRatios((r) => (r[v] ? r : { ...r, [v]: Math.min(2.4, Math.max(.45, w / h)) }));
@@ -218,8 +227,14 @@ export default function Livraison({ params }: { params: { token: string } }) {
         onTouchEnd={(e) => {
           const s0 = (e.currentTarget as any)._x; if (!wall || !s0 || (e.target as HTMLElement).closest("form, .liv-side, video")) return;
           const dx = e.changedTouches[0].clientX - s0[0], dy = e.changedTouches[0].clientY - s0[1];
-          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { setHint(false); go(dx < 0 ? 1 : -1); }
         }}>
+      {wall && hint && d.versions.length > 1 && (
+        <div className="swipe-hint" onClick={() => setHint(false)}>
+          <span className="swipe-hand"><span className="swipe-dot" /><span className="swipe-trail" /></span>
+          <b>Glisse pour passer à la suivante</b>
+        </div>
+      )}
       {wall && (
         <div className="liv-lb-top">
           <button className="ghost liv-lb-close" onClick={() => setLb(false)} aria-label="Fermer"><X size={20} /></button>

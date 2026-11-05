@@ -1554,3 +1554,14 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .ldr-logo.sm .ldr-tri { filter: drop-shadow(0 0 6px rgba(255, 107, 0, .45)); }
 .ldr-inline .ldr-dot { fill: var(--text); }
 .ldr-inline { padding: 26px 0; }
+/* Indication « glisse » dans la galerie sur téléphone (affichée une fois) */
+.swipe-hint { position: fixed; left: 50%; top: 42%; z-index: 70; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 14px; padding: 22px 26px; border-radius: 22px; background: rgba(11, 10, 9, .78); border: 1px solid rgba(255, 255, 255, .1); color: #f4efe9; animation: sh-in .3s ease-out, sh-out .4s ease-in 2.8s forwards; pointer-events: auto; }
+.swipe-hint b { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.swipe-hand { position: relative; width: 120px; height: 34px; }
+.swipe-dot { position: absolute; top: 5px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: #ff6b00; box-shadow: 0 0 16px rgba(255, 107, 0, .6); animation: sh-move 1.3s cubic-bezier(.5, 0, .3, 1) infinite; }
+.swipe-trail { position: absolute; top: 15px; right: 20px; height: 4px; width: 0; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(255, 140, 60, .6)); animation: sh-trail 1.3s cubic-bezier(.5, 0, .3, 1) infinite; }
+@keyframes sh-move { 0% { transform: translateX(0) scale(.8); opacity: 0; } 15% { opacity: 1; transform: translateX(0) scale(1); } 75% { transform: translateX(-84px); opacity: 1; } 100% { transform: translateX(-84px); opacity: 0; } }
+@keyframes sh-trail { 0%, 15% { width: 0; opacity: 0; } 75% { width: 84px; opacity: 1; } 100% { width: 84px; opacity: 0; } }
+@keyframes sh-in { from { opacity: 0; transform: translate(-50%, -46%); } }
+@keyframes sh-out { to { opacity: 0; visibility: hidden; } }
+@media (min-width: 901px) { .swipe-hint { display: none; } }
