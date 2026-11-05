@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Film, Folder, Layers } from "lucide-react";
+import { Check, ChevronLeft, Film, Folder, FolderPlus, Layers } from "lucide-react";
 import { api } from "@/lib/api";
 
 export type FrameProject = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
@@ -11,8 +11,8 @@ const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day:
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
 
 // Explorateur Frame.io : choisir une ou plusieurs vidéos (dans l'ordre des clics : V1, V2…)
-export default function FramePicker({ title = "Choisir sur Frame.io", projects: given, onPick, onPickFolder, folderLabel = "Livrer ce dossier entier", onClose, children }: {
-  title?: string; projects?: FrameProject[]; onPick?: (accountId: string, files: FrameFile[]) => void; folderLabel?: string;
+export default function FramePicker({ title = "Choisir sur Frame.io", projects: given, onPick, onPickFolder, folderLabel = "Livrer ce dossier entier", allowCreate, onClose, children }: {
+  title?: string; projects?: FrameProject[]; onPick?: (accountId: string, files: FrameFile[]) => void; folderLabel?: string; allowCreate?: boolean;
   onPickFolder?: (accountId: string, folder: { id: string; name: string }) => void; onClose: () => void; children?: React.ReactNode;
 }) {
   const [projects, setProjects] = useState<FrameProject[] | null>(given ?? null);
@@ -21,6 +21,8 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState("");
   const [sel, setSel] = useState<FrameFile[]>([]);
+  const [newName, setNewName] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
   const folder = path[path.length - 1];
 
   useEffect(() => {
@@ -33,7 +35,15 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
     if (!project || !folder) return;
     setItems(null); setError("");
     api<Item[]>(`frameio/browse?accountId=${project.accountId}&folderId=${folder.id}${folder.stack ? "&stack=1" : ""}`).then(setItems).catch((e) => setError(errorText(e)));
-  }, [project, folder?.id]);
+  }, [project, folder?.id, reload]);
+  // Crée un dossier dans le dossier ouvert, puis entre dedans
+  async function create() {
+    if (!project || !folder || !newName?.trim()) return;
+    try {
+      const f = await api<{ id: string; name: string }>("frameio/folders", "POST", { accountId: project.accountId, parentId: folder.id, name: newName.trim() });
+      setNewName(null); setPath([...path, { id: f.id, name: f.name }]); setReload((n) => n + 1);
+    } catch (e) { setError(errorText(e)); }
+  }
 
   const toggle = (f: FrameFile) => setSel((s) => s.some((x) => x.fileId === f.fileId) ? s.filter((x) => x.fileId !== f.fileId) : [...s, f]);
   const order = (id: string) => sel.findIndex((x) => x.fileId === id) + 1;
@@ -51,6 +61,13 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
         {project && (
           <>
             <button className="rdv-back" onClick={() => path.length > 1 ? setPath(path.slice(0, -1)) : (setProject(null), setPath([]))}><ChevronLeft size={16} /> {path.map((p) => p.name).join(" / ")}</button>
+            {allowCreate && !folder?.stack && (newName === null
+              ? <button className="liv-item fp-new" onClick={() => setNewName("")}><FolderPlus size={16} /> Nouveau dossier ici</button>
+              : <div className="row fp-new-row">
+                  <input autoFocus placeholder="Nom du dossier" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} />
+                  <button className="primary" disabled={!newName.trim()} onClick={create}>Créer</button>
+                  <button onClick={() => setNewName(null)}>Annuler</button>
+                </div>)}
             {!items && !error && <p className="muted">Chargement…</p>}
             {items && items.some((x) => x.type !== "folder" && x.type !== "version_stack") && (
               // Coche d'un coup tous les fichiers du dossier (dans l'ordre affiché), ou les décoche

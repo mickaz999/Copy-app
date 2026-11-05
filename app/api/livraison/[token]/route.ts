@@ -51,7 +51,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       if (!m || m[2].length > 4_000_000) return NextResponse.json({ error: "Message vocal trop long (3 min max)." }, { status: 400 });
       audio = (await db.media.create({ data: { mime: m[1], data: Buffer.from(m[2], "base64") } })).id;
     }
-    const text = String(b.text ?? "").trim().slice(0, 3000) || (audio ? "🎙 Message vocal" : "");
+    const text = String(b.text ?? "").trim().slice(0, 3000) || (audio ? "Message vocal" : "");
     if (!text) return NextResponse.json({ error: "Écris ton commentaire." }, { status: 400 });
     const time = Number.isFinite(Number(b.time)) && b.time !== null && b.time !== "" ? Math.max(0, Number(b.time)) : null;
     const c = await db.deliveryComment.create({ data: { deliveryId: d.id, version: d.kind === "folder" ? 1 : version, author, text, time, audio, fileId: String(b.fileId ?? "").slice(0, 100), fileName: String(b.fileName ?? "").slice(0, 300) } });
@@ -65,11 +65,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
       const list = Array.from(new Set([...(JSON.parse(d.approved || "[]") as number[]), version])).sort((a, b) => a - b);
       await db.delivery.update({ where: { id: d.id }, data: { approved: JSON.stringify(list), ...(list.length === count ? { approvedAt: new Date() } : {}) } });
       const name = (JSON.parse(d.files) as F[])[version - 1]?.name ?? `vidéo ${version}`;
-      await notify(`« ${name} » validée ✅`, `${author} · ${list.length}/${count} vidéos validées (${d.title}).`);
+      await notify(`« ${name} » validée`, `${author} · ${list.length}/${count} vidéos validées (${d.title}).`);
       return NextResponse.json({ ok: true, approved: list });
     }
     await db.delivery.update({ where: { id: d.id }, data: { approvedAt: new Date(), approvedV: version } });
-    await notify(`« ${d.title} » validé ✅`, `${author} a validé la V${version}.`);
+    await notify(`« ${d.title} » validé`, `${author} a validé la V${version}.`);
     return NextResponse.json({ ok: true, approvedV: version });
   }
   return NextResponse.json({ error: "Action inconnue" }, { status: 400 });

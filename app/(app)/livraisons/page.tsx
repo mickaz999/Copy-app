@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw } from "lucide-react";
+import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
@@ -45,7 +45,7 @@ function ReviewSetting() {
   if (url === null) return null;
   return (
     <section className="settings-card">
-      <div className="sc-head"><span>⭐</span> <h3>Avis Google</h3></div>
+      <div className="sc-head"><Star size={18} /> <h3>Avis Google</h3></div>
       <p className="muted small">Affiché sur tes pages de livraison, et mis en avant dès que le client valide une vidéo. Laisse vide pour le cacher.</p>
       <label className="field-line">Lien « laisser un avis »
         <input value={url} onChange={(e) => { setUrl(e.target.value); setSaved(false); }} onBlur={async () => { await api("livraisons", "POST", { action: "review-url", url }); setSaved(true); }} />
@@ -125,7 +125,7 @@ export default function Livraisons() {
           <label className="field-line">Titre du projet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Clip « Été 2026 »" /></label>
           <label className="field-line">Client<input value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} placeholder="Nom du client" /></label>
           {draft.mode === "page" && <>
-            <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses 🙌" /></label>
+            <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses." /></label>
             <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
           </>}
           <div className="field-line">Vidéo(s)</div>
@@ -155,7 +155,7 @@ export default function Livraisons() {
             </div>
             {d.linked.map((t) => (
               <a key={t.id} className="liv-task" href="/planning">
-                <span>📋 {t.title}</span>
+                <span className="liv-task-t"><ListChecks size={15} /> {t.title}</span>
                 <span className="muted small">{t.status === "done" ? "terminée ✓" : t.total ? `${t.done}/${t.total} retours corrigés` : "à faire"}</span>
               </a>
             ))}

@@ -1510,7 +1510,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
   if (done) return (
     <div className="overlay" onClick={onClose}>
       <div className="modal appt-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>C&apos;est lié ✅</h3>
+        <h3>C&apos;est lié</h3>
         <p>{done.text}</p>
         {done.link && <a className="link small" href={done.link} target="_blank" rel="noreferrer">{done.link}</a>}
         <button className="primary" onClick={onClose}>OK</button>
@@ -1518,7 +1518,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
     </div>
   );
   return (
-    <FramePicker title={task.status === "done" ? `« ${task.title} » terminée 🎉 Quelle(s) vidéo(s) Frame correspondent ?` : `Vidéo(s) Frame pour « ${task.title} »`} onPick={pick} onClose={onClose}>
+    <FramePicker title={task.status === "done" ? `« ${task.title} » terminée. Quelle(s) vidéo(s) Frame correspondent ?` : `Vidéo(s) Frame pour « ${task.title} »`} onPick={pick} onClose={onClose}>
       <label className="field-line">Ajouter à
         <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={!list}>
           {list?.map((d) => <option key={d.id} value={d.id}>Nouvelle version de « {d.title} »{d.client ? ` · ${d.client}` : ""}{d.mode === "frame" ? " (suivi Frame)" : ""}</option>)}

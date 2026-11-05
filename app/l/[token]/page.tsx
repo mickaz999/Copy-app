@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
+import { ArrowUpRight, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
@@ -218,7 +218,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
                   </div>
                   <div className="mock-caption">
                     <b><span className="mock-avatar">{(d.client || "M")[0]}</span>{(d.client || "maderino").toLowerCase().replace(/\s+/g, "")} {pm !== "tiktok" && <em>{pm === "short" ? "S'abonner" : "Suivre"}</em>}</b>
-                    <span>{d.title} ✨</span>
+                    <span>{d.title}</span>
                     <span className="mock-music"><Music2 size={12} /> Son original · {d.client || "maderino"}</span>
                   </div>
                   <div className="mock-progress"><i style={{ width: duration ? `${(now / duration) * 100}%` : 0 }} /></div>
@@ -268,7 +268,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
           {d.feedback === "ask" && !askOpen && comments.length === 0 ? (
             <div className="liv-ask">
-              <p>{approved ? "Merci pour ta validation 🙌 Une remarque malgré tout ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? "la vidéo" : `la V${cur.v}`} en haut de la page 👌</>}</p>
+              <p>{approved ? "Merci pour ta validation. Une remarque malgré tout ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? "la vidéo" : `la V${cur.v}`} en haut de la page.</>}</p>
               <button onClick={() => setAskOpen(true)}><MessageSquare size={15} /> J&apos;ai une remarque</button>
             </div>
           ) : <>
@@ -312,16 +312,22 @@ export default function Livraison({ params }: { params: { token: string } }) {
   );
 }
 
-// Avis Google : mis en avant une fois la vidéo validée, discret sinon
+// Avis Google aux couleurs maderino : mis en avant une fois la vidéo validée, discret sinon
 function Review({ url, big }: { url: string; big: boolean }) {
   return big ? (
     <a className="liv-review" href={url} target="_blank" rel="noreferrer">
-      <span className="stars">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={22} fill="#fbbc04" color="#fbbc04" />)}</span>
-      <span><b>Content du résultat ?</b><small>Un petit avis Google m&apos;aide énormément à faire connaître mon travail. Ça prend 30 secondes 🙏</small></span>
-      <em>Laisser un avis</em>
+      <span className="liv-review-text">
+        <span className="eyebrow">avis google</span>
+        <b>ton avis <span className="accent">compte.</span></b>
+        <small>Si le résultat te plaît, quelques mots sur Google m&apos;aident énormément à faire connaître mon travail. Trente secondes suffisent.</small>
+      </span>
+      <span className="liv-review-side">
+        <span className="stars">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={18} fill="currentColor" strokeWidth={0} />)}</span>
+        <em>Laisser un avis <ArrowUpRight size={16} /></em>
+      </span>
     </a>
   ) : (
-    <a className="liv-review-small" href={url} target="_blank" rel="noreferrer"><Star size={14} fill="#fbbc04" color="#fbbc04" /> Laisser un avis Google</a>
+    <a className="liv-review-small" href={url} target="_blank" rel="noreferrer"><Star size={13} fill="currentColor" strokeWidth={0} /> Laisser un avis Google</a>
   );
 }
 
@@ -383,7 +389,7 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
           </div>
           <div className="mock-caption">
             <b><span className="mock-avatar">{(d.client || "M")[0]}</span>{(d.client || "maderino").toLowerCase().replace(/\s+/g, "")} {kind !== "tiktok" && <em>{kind === "short" ? "S'abonner" : "Suivre"}</em>}</b>
-            <span>{d.title} ✨</span>
+            <span>{d.title}</span>
             <span className="mock-music"><Music2 size={12} /> Son original · {d.client || "maderino"}</span>
           </div>
           <div className="mock-progress"><i style={{ width: duration ? `${(now / duration) * 100}%` : 0 }} /></div>

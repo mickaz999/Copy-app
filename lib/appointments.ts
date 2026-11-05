@@ -39,7 +39,7 @@ async function mailClient(a: Appointment, kind: "confirm" | "move" | "cancel", a
   const acc = await mailAccount();
   if (!acc) return;
   const when = whenLabel(a.day);
-  const head = { confirm: "Ton RDV est confirmé ✅", move: "Ton RDV a été déplacé 🔁", cancel: "Ton RDV est annulé" }[kind];
+  const head = { confirm: "Ton RDV est confirmé", move: "Ton RDV a été déplacé", cancel: "Ton RDV est annulé" }[kind];
   const subject = { confirm: `RDV confirmé · ${when} à ${a.time}`, move: `RDV déplacé · ${when} à ${a.time}`, cancel: `RDV annulé · ${when} à ${a.time}` }[kind];
   const manage = `${appUrl}/rdv/gerer/${a.token}`;
   const html = `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:auto;color:#1c1814">

@@ -69,7 +69,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
             <div className="liv-row">
               <div>
                 <b>{d.title}</b>{d.client && <span className="muted"> · {d.client}</span>}
-                <div className="muted small">📁 {d.folderName} · {d.files.length} fichier{d.files.length > 1 ? "s" : ""} reçu{d.files.length > 1 ? "s" : ""}{total ? ` (${size(total)})` : ""}</div>
+                <div className="muted small drop-meta"><Folder size={12} /> {d.folderName} · {d.files.length} fichier{d.files.length > 1 ? "s" : ""} reçu{d.files.length > 1 ? "s" : ""}{total ? ` (${size(total)})` : ""}</div>
               </div>
               {!d.active && <span className="late-pill">fermé</span>}
             </div>
@@ -86,8 +86,8 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
       })}
 
       {picking && (
-        <FramePicker title="Où arrivent les rushs ?" projects={projects} folderLabel="Choisir ce dossier" onClose={() => setPicking(false)}
-          onPickFolder={(accountId, f) => { setDraft((d) => d && { ...d, accountId, folderId: f.id, folderName: f.name }); setPicking(false); }} />
+        <FramePicker title="Où arrivent les rushs ?" projects={projects} folderLabel="Choisir ce dossier" allowCreate onClose={() => setPicking(false)}
+          onPickFolder={(accountId, f) => { setDraft((d) => d && { ...d, accountId, folderId: f.id, folderName: f.name, create: false }); setPicking(false); }} />
       )}
     </section>
   );
