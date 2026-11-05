@@ -32,6 +32,9 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [voice, setVoice] = useState("");
   // Galerie : la vidéo / photo choisie s'ouvre en grand dans une fenêtre
   const [lb, setLb] = useState(false);
+  // Format réel de chaque vignette (largeur / hauteur), pour une galerie qui respecte vertical / horizontal
+  const [ratios, setRatios] = useState<Record<number, number>>({});
+  const setR = (v: number, w: number, h: number) => w && h && setRatios((r) => (r[v] ? r : { ...r, [v]: Math.min(2.4, Math.max(.45, w / h)) }));
   const [playing, setPlaying] = useState(false);
   // Sur ordinateur, vidéo verticale : lecteur + aperçu réseau côte à côte
   const [wide, setWide] = useState(false);
@@ -181,8 +184,10 @@ export default function Livraison({ params }: { params: { token: string } }) {
           {d.versions.map((x, i) => {
             const todo = d.comments.filter((c) => c.version === x.v && !c.resolved).length;
             return (
-              <button key={x.v} className="ghost liv-wcard" onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); setLb(true); }}>
-                {x.thumb || isImg(x) ? <img src={x.thumb || x.play} alt="" loading="lazy" /> : <video src={`${x.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} />}
+              <button key={x.v} className="ghost liv-wcard" style={{ ["--r" as string]: ratios[x.v] ?? 1.6 }} onClick={() => { setV(x.v); setNow(0); setRatio(ratios[x.v] ?? 16 / 9); setLb(true); }}>
+                {x.thumb || isImg(x)
+                  ? <img src={x.thumb || x.play} alt="" loading="lazy" onLoad={(e) => setR(x.v, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)} />
+                  : <video src={`${x.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} onLoadedMetadata={(e) => setR(x.v, e.currentTarget.videoWidth, e.currentTarget.videoHeight)} />}
                 <span className="liv-wshade" />
                 <span className="liv-gnum">{String(i + 1).padStart(2, "0")}</span>
                 {isOk(x.v) && <span className="liv-wok"><CheckCircle2 size={14} /> Validée</span>}
@@ -192,6 +197,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
               </button>
             );
           })}
+          {/* Remplit la dernière ligne pour qu'elle ne s'étire pas */}
+          <span className="liv-wfill" />
         </section>
       )}
       {(!wall || lb) && <div className={wall ? "liv-lightbox" : ""} onClick={(e) => { if (wall && e.target === e.currentTarget) setLb(false); }}>
