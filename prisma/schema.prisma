@@ -272,3 +272,29 @@ model DeliveryComment {
   fileName   String   @default("")
   createdAt  DateTime @default(now())
 }
+
+// Lien de dépôt de rushs : le client envoie ses fichiers directement dans un dossier Frame.io
+model DropLink {
+  id         String     @id @default(cuid())
+  token      String     @unique
+  title      String
+  client     String     @default("")
+  message    String     @default("")
+  accountId  String
+  folderId   String     // dossier Frame.io de destination
+  folderName String     @default("")
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  files      DropFile[]
+}
+
+model DropFile {
+  id        String   @id @default(cuid())
+  linkId    String
+  link      DropLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  name      String
+  size      Float
+  fileId    String   @default("")
+  author    String   @default("")
+  createdAt DateTime @default(now())
+}

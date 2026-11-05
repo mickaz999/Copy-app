@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
+import DropLinks from "@/components/DropLinks";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
@@ -203,6 +204,8 @@ export default function Livraisons() {
         );
       })}
       {info?.connected && !list.length && !draft && <p className="muted">Aucune livraison pour l&apos;instant.</p>}
+
+      {info?.connected && <DropLinks projects={info.projects} />}
 
       {picking && info && <FramePicker projects={info.projects} onPick={pick} onClose={() => setPicking(null)}
         onPickFolder={picking === "new" ? (accountId, f) => { setDraft((d) => d && { ...d, accountId, files: [], folderId: f.id, folderName: f.name, kind: "folder", mode: "page", title: d.title || f.name }); setPicking(null); } : undefined} />}

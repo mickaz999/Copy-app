@@ -1321,3 +1321,26 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 @media (max-width: 900px) { .liv-browser { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } }
 .liv-cover > svg { margin-bottom: 30%; }
 .liv-main.solo { grid-template-columns: minmax(0, 1fr); }
+
+/* Page de dépôt de rushs */
+.drop { max-width: 860px; }
+.drop-bg { background: radial-gradient(circle at 20% 10%, rgba(255, 120, 40, .35), transparent 50%), radial-gradient(circle at 80% 30%, rgba(120, 60, 255, .2), transparent 55%), #0c0b0a !important; filter: none !important; }
+.drop-card { display: grid; gap: 12px; background: rgba(20, 18, 16, .6); border: 1px solid var(--border); border-radius: 22px; padding: 18px; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.drop-name { font-size: 16px; }
+.drop-zone { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 40px 20px; border-radius: 18px; border: 2px dashed rgba(255, 255, 255, .18); color: var(--text); cursor: pointer; transition: border-color .2s, background .2s; }
+.drop-zone svg { color: var(--accent); }
+.drop-zone b { font-size: 18px; }
+.drop-zone.over, .drop-zone:hover { border-color: var(--accent); background: rgba(255, 107, 0, .08); }
+.drop-list { display: grid; gap: 6px; }
+.drop-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .04); }
+.drop-row > svg { flex: none; color: var(--muted); }
+.drop-row .ok, .drop-row.ok > svg.ok { color: #5fd38f; }
+.drop-row-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.drop-row-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.drop-row-top b, .drop-row-top span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drop-bar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.drop-bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.drop-row.ok .drop-bar i { background: #5fd38f; }
+.drop-row.err .drop-bar i { background: #ff7b7b; }
+.drop-send { justify-content: center; padding: 14px !important; font-size: 15px; font-weight: 700; }
+.drop-done { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 14px; background: rgba(47, 143, 91, .18); color: #5fd38f; font-weight: 600; }

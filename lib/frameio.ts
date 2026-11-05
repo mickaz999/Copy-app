@@ -104,3 +104,23 @@ export async function folderInfo(accountId: string, folderId: string) {
   const { data } = await fio(`/accounts/${accountId}/folders/${folderId}`);
   return { id: data?.id as string, name: (data?.name ?? "") as string, parentId: (data?.parent_id ?? "") as string };
 }
+
+// Crée un sous-dossier dans un dossier Frame.io
+export async function createFolder(accountId: string, parentId: string, name: string) {
+  const { data } = await fio(`/accounts/${accountId}/folders/${parentId}/folders`, {
+    method: "POST", headers: { "api-version": "experimental" }, body: JSON.stringify({ data: { name } }),
+  });
+  return { id: data.id as string, name: (data.name ?? name) as string };
+}
+
+// Prépare l'envoi d'un fichier dans un dossier : Frame.io renvoie des adresses où envoyer le fichier, morceau par morceau
+export async function startUpload(accountId: string, folderId: string, name: string, size: number) {
+  const body = JSON.stringify({ data: { name, file_size: size } });
+  const { data } = await fio(`/accounts/${accountId}/folders/${folderId}/files/local_upload`, { method: "POST", body })
+    .catch(() => fio(`/accounts/${accountId}/folders/${folderId}/files/local_upload`, { method: "POST", body, headers: { "api-version": "experimental" } }));
+  return {
+    fileId: data.id as string,
+    mediaType: (data.media_type ?? "") as string,
+    urls: ((data.upload_urls ?? []) as { url: string; size: number }[]).map((u) => ({ url: u.url, size: u.size })),
+  };
+}
