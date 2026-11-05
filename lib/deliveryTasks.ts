@@ -124,3 +124,11 @@ export async function purgeExpiredDeliveries() {
   if (old.length) await db.delivery.deleteMany({ where: { id: { in: old } } });
   return old.length;
 }
+
+// Notification « le client télécharge » : une seule toutes les 30 min par livraison (« Tout télécharger » = 1 notif)
+export async function notifyDownload(d: { id: string; title: string; client: string }, what: string) {
+  const key = `dl-${d.id}-${Math.floor(Date.now() / (30 * 60_000))}`;
+  try { await db.sentReminder.create({ data: { key } }); } catch { return; }
+  const s = await getSettings();
+  if (s.pushEnabled) await sendPush({ title: `Téléchargement · ${d.title}`, body: `${d.client || "Le client"} télécharge ${what}.`, url: "/livraisons", tag: key }).catch(() => {});
+}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { notifyDownload } from "@/lib/deliveryTasks";
 import { canDownload, fileMedia, isExpired } from "@/lib/frameio";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,8 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     const m = await fileMedia(d.accountId, f.fileId);
     if (!m.original) throw new Error("pas de lien");
     // ?url=1 : renvoie l'adresse (pour enregistrer dans Photos sur iPhone)
-    if (new URL(req.url).searchParams.get("url")) return NextResponse.json({ url: m.original, name: m.name, type: m.mediaType });
+    if (new URL(req.url).searchParams.get("url")) { await notifyDownload(d, files.length > 1 ? "ses fichiers" : "sa vidéo"); return NextResponse.json({ url: m.original, name: m.name, type: m.mediaType }); }
+    await notifyDownload(d, files.length > 1 ? "ses fichiers" : "sa vidéo");
     return NextResponse.redirect(m.original);
   } catch {
     return NextResponse.json({ error: "Frame.io ne répond pas, réessaie dans un instant." }, { status: 502 });

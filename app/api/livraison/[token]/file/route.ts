@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { notifyDownload } from "@/lib/deliveryTasks";
 import { fileMedia, isExpired } from "@/lib/frameio";
 import { checkItem } from "@/lib/sign";
 
@@ -17,6 +18,7 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     const m = await fileMedia(d.accountId, id);
     if (q.get("download") === "1") {
       if (!d.download || !m.original) return NextResponse.json({ error: "Téléchargement non autorisé." }, { status: 403 });
+      await notifyDownload(d, "des fichiers du dossier");
       return NextResponse.redirect(m.original);
     }
     return NextResponse.json({ name: m.name, mediaType: m.mediaType, play: m.play, thumb: m.thumb, canDownload: d.download && !!m.original });
