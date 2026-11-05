@@ -146,7 +146,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const pm: Mock = dual ? "player" : showPreview ? sel : "player";
 
   return (
-    <div className="liv dark">
+    <div className="liv dark" onContextMenu={(e) => { if ((e.target as HTMLElement).closest("video, img, .liv-wcard, .mock-screen")) e.preventDefault(); }} onDragStart={(e) => { if ((e.target as HTMLElement).closest("video, img")) e.preventDefault(); }}>
       {/* Fond : vignette de la vidéo floutée, en fondu vers le noir */}
       <div className="liv-bg" style={cur?.thumb || (cur && !isVideo) ? { backgroundImage: `url("${cur.thumb || cur.play}")` } : undefined}>
         {/* Sans vignette Frame.io, on prend une image de la vidéo elle-même */}
@@ -290,7 +290,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 </div>
               )}
             </div>
-            : <img src={cur.play} alt="" draggable={!!cur.original} onContextMenu={(e) => !cur.original && e.preventDefault()} />)}
+            : <img src={cur.play} alt="" draggable={false} onContextMenu={(e) => e.preventDefault()} />)}
           {isVideo && pm === "youtube" && (
             <div className="mock-yt-info">
               <b>{d.title}</b>
@@ -591,7 +591,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
               {!media && <div className="liv-wait">Chargement…</div>}
               {media && (isVid(media.mediaType)
                 ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList="nodownload" onContextMenu={(e) => e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
-                : <img src={media.play} alt={file.name} onContextMenu={(e) => !media.canDownload && e.preventDefault()} />)}
+                : <img src={media.play} alt={file.name} onContextMenu={(e) => e.preventDefault()} />)}
               <div className="liv-actions">
                 <span className="liv-file">{file.name}</span>
                 <span style={{ flex: 1 }} />
