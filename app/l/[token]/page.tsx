@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
@@ -52,7 +52,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
     setD(j);
-    setV((cur) => cur || j.versions.length);
+    // Versions : la dernière d'abord ; vidéos / photos différentes : la première
+    setV((cur) => cur || (j.kind === "videos" ? j.versions[0]?.v ?? 1 : j.versions.length));
   }).catch((e) => setError(e.message));
   useEffect(() => {
     load();
@@ -100,7 +101,10 @@ export default function Livraison({ params }: { params: { token: string } }) {
   if (!mocks.some(([k]) => k === mock)) setTimeout(() => setMock("player"));
   // Livraison de photos (ou mixte) : galerie de vignettes ; téléchargement de tout d'un coup
   const isImg = (x: Version) => x.mediaType.startsWith("image");
-  const gallery = d.versions.length > 1 && d.versions.some(isImg);
+  // Plusieurs vidéos / photos différentes : galerie de vignettes
+  const gallery = d.versions.length > 1 && (multi || d.versions.some(isImg));
+  const idx = d.versions.findIndex((x) => x.v === cur.v);
+  const go = (n: number) => { const x = d.versions[(idx + n + d.versions.length) % d.versions.length]; setV(x.v); setNow(0); setRatio(16 / 9); };
   const noun = d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos";
   const files = multi ? d.versions.filter((x) => x.original) : [];
   // Téléchargement via l'app : lien Frame.io recréé au clic ; cadre invisible = pas d'onglet ouvert
@@ -159,7 +163,13 @@ export default function Livraison({ params }: { params: { token: string } }) {
         <div className="liv-player">
           <div className="liv-toolbar">
             {gallery
-              ? <span className="liv-file">{cur?.name} · {d.versions.findIndex((x) => x.v === cur.v) + 1}/{d.versions.length}</span>
+              ? (
+                <div className="liv-gnav">
+                  <button className="ghost" aria-label="Précédent" onClick={() => go(-1)}><ChevronLeft size={18} /></button>
+                  <span><b>{cur?.name}</b><small>{idx + 1} / {d.versions.length}</small></span>
+                  <button className="ghost" aria-label="Suivant" onClick={() => go(1)}><ChevronRight size={18} /></button>
+                </div>
+              )
               : d.versions.length > 1
               ? <div className={`seg ${multi ? "seg-videos" : ""}`}>{d.versions.map((x) => <button key={x.v} className={x.v === cur.v ? "on" : ""} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>{lab(x)}{isOk(x.v) && " ✓"}</button>)}</div>
               : <span className="liv-file">{cur?.name}</span>}
@@ -252,13 +262,23 @@ export default function Livraison({ params }: { params: { token: string } }) {
           {gallery
             ? (
               <div className="liv-gallery">
-                {d.versions.map((x) => (
-                  <button key={x.v} className={`ghost ${x.v === cur.v ? "on" : ""}`} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>
-                    {isImg(x) || x.thumb ? <img src={x.thumb || x.play} alt={x.name} loading="lazy" /> : <span className="liv-g-vid"><Play size={18} fill="#fff" /></span>}
-                    {isOk(x.v) && <i>✓</i>}
-                    {comments.length >= 0 && d.comments.some((c) => c.version === x.v && !c.resolved) && <b>{d.comments.filter((c) => c.version === x.v && !c.resolved).length}</b>}
-                  </button>
-                ))}
+                {d.versions.map((x, i) => {
+                  const todo = d.comments.filter((c) => c.version === x.v && !c.resolved).length;
+                  return (
+                    <button key={x.v} className={`ghost liv-gcard ${x.v === cur.v ? "on" : ""}`} title={x.name} onClick={() => { setV(x.v); setNow(0); setRatio(16 / 9); }}>
+                      <span className="liv-gthumb">
+                        {x.thumb || isImg(x)
+                          ? <img src={x.thumb || x.play} alt="" loading="lazy" />
+                          : <video src={`${x.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} />}
+                        {!isImg(x) && <span className="liv-gplay"><Play size={13} fill="#fff" strokeWidth={0} /></span>}
+                        <span className="liv-gnum">{String(i + 1).padStart(2, "0")}</span>
+                        {isOk(x.v) && <span className="liv-gok"><CheckCircle2 size={14} /></span>}
+                        {todo > 0 && <span className="liv-gtodo">{todo}</span>}
+                      </span>
+                      <span className="liv-gname">{x.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             )
             : d.versions.length > 1 && <span className="liv-file center">{cur?.name}</span>}
