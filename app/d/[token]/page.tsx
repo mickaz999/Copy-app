@@ -94,7 +94,7 @@ export default function Drop({ params }: { params: { token: string } }) {
           <span className="eyebrow">{info.client ? `dépôt de rushs · ${info.client}` : "dépôt de rushs"}</span>
           <h1>{info.title}</h1>
           <p className="liv-msg">{info.message || "Glisse tes rushs ici, ils m'arrivent directement. Aucun compte à créer."}</p>
-          {info.expiresAt && <div className="liv-chips"><span>Lien valable jusqu&apos;au {new Date(info.expiresAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span></div>}
+          {info.expiresAt && <div className="liv-chips"><span className="liv-days">{(() => { const n = Math.ceil((Date.parse(info.expiresAt) - Date.now()) / 864e5); return n <= 1 ? "Lien valable encore 1 jour" : `Lien valable encore ${n} jours`; })()}</span><span>jusqu&apos;au {new Date(info.expiresAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span></div>}
         </div>
       </header>
 

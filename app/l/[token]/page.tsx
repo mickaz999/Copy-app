@@ -6,7 +6,7 @@ import LivLoader from "@/components/LivLoader";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -170,6 +170,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <div className="liv-chips">
             <span>{multi ? `${d.versions.length} ${d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos"}` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+            {d.expiresAt && <span className="liv-days">{daysLeft(d.expiresAt)}</span>}
             {multi
               ? d.approved.length === d.versions.length ? <span className="ok">✓ Toutes les {noun} validées</span> : <span className="wait">{d.approved.length}/{d.versions.length} {noun} validé{noun === "fichiers" ? "s" : "es"}</span>
               : d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
@@ -517,6 +518,12 @@ function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: 
 
 // Livraison d'un dossier Frame.io : navigation dans les sous-dossiers, aperçu, retours et téléchargement par fichier
 type Item = { id: string; name: string; type: string; mediaType: string; version: number; sig: string; thumb?: string; updatedAt?: string; count?: number };
+// « Lien valable encore 12 jours »
+const daysLeft = (iso?: string) => {
+  if (!iso) return "";
+  const n = Math.ceil((Date.parse(iso) - Date.now()) / 864e5);
+  return n <= 0 ? "Lien expiré" : n === 1 ? "Lien valable encore 1 jour" : `Lien valable encore ${n} jours`;
+};
 const ago = (iso?: string) => {
   if (!iso) return "";
   const days = Math.floor((Date.now() - Date.parse(iso)) / 864e5);
@@ -583,6 +590,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           <div className="liv-chips">
             <span>Dossier</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+            {d.expiresAt && <span className="liv-days">{daysLeft(d.expiresAt)}</span>}
           </div>
         </div>
         <div className="liv-cta">

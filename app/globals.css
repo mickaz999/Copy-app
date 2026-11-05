@@ -1450,7 +1450,6 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 @keyframes ldr-breathe { 0%, 100% { transform: scale(.9); opacity: .7; } 50% { transform: scale(1.1); opacity: 1; } }
 @keyframes ldr-slide { from { left: -40%; } to { left: 100%; } }
 @keyframes ldr-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .ldr *, .ldr-inline * { animation: none !important; } }
 /* Fenêtre galerie sur téléphone : épurée, média bord à bord, actions en bas */
 .liv-lb-actions { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 900px) {
@@ -1493,3 +1492,22 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
   .liv.dark .liv-hero { padding: 14px 0 0; }
   .liv.dark .liv-chips { row-gap: 4px; }
 }
+
+/* Mêmes réglages sur toutes les pages de livraison (vidéo seule, versions, dossier) */
+@media (max-width: 900px) {
+  /* Boutons principaux (valider, télécharger, avis) dans une barre fixée en bas */
+  .liv.dark:not(.drop) { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  .liv.dark:not(.drop) .liv-hero .liv-cta:not(:empty) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; width: auto;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); background: rgba(11, 10, 9, .96); border-top: 1px solid rgba(255, 255, 255, .06); }
+  .liv.dark:not(.drop) .liv-hero .liv-cta > * { width: 100%; }
+  .liv.dark:not(.drop) .liv-hero .liv-cta button, .liv.dark:not(.drop) .liv-hero .liv-cta .ok-pill, .liv.dark:not(.drop) .liv-hero .liv-cta .liv-review-btn { width: 100%; justify-content: center; padding: 13px 6px !important; font-size: 14.5px; }
+  .liv.dark:not(.drop) .liv-hero .liv-cta .liv-locked { justify-content: center; padding: 12px 6px; font-size: 12.5px; }
+  .liv-review-btn .stars { display: none; }
+  /* Lecteur sans cadre, média aux coins arrondis et centré */
+  .liv.dark .liv-player { background: none !important; border: none !important; padding: 0 !important; }
+  .liv.dark .liv-player video, .liv.dark .liv-player img, .liv.dark .liv-fileview video, .liv.dark .liv-fileview img { border-radius: 18px !important; box-shadow: 0 18px 40px rgba(0, 0, 0, .5); justify-self: center; }
+  .liv.dark .mock-reel .mock-screen video, .liv.dark .mock-tiktok .mock-screen video, .liv.dark .mock-short .mock-screen video { border-radius: 0 !important; box-shadow: none; }
+  .liv.dark .liv-side { background: #141210 !important; }
+}
+.liv.dark .liv-chips .liv-days { color: var(--text) !important; font-weight: 600 !important; }
+@media (max-width: 900px) { .liv.dark .liv-chips { flex-direction: column; align-items: flex-start; gap: 3px; } .liv.dark .liv-chips span + span::before { display: none; } }
