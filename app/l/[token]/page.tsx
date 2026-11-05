@@ -530,6 +530,8 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   }, [file?.id]);
 
   const files = data?.items.filter((x) => x.type !== "folder" && x.type !== "version_stack") ?? [];
+  // Nom du fichier caché au client : « Vidéo 3 », « Photo 12 »
+  const fname = (x: Item | null) => { if (!x) return ""; const n = (data?.items.filter((y) => y.type !== "folder") ?? []).findIndex((y) => y.id === x.id) + 1; return `${x.mediaType.startsWith("image") ? "Photo" : "Vidéo"} ${n || ""}`.trim(); };
   const isVid = (m?: string) => !m || m.startsWith("video");
   const icon = (x: Item) => x.type === "folder" ? <Folder size={22} /> : x.type === "version_stack" ? <Layers size={22} /> : x.mediaType.startsWith("image") ? <FileImage size={22} /> : <Film size={22} />;
   const dl = (f: Item) => `${base}/file?id=${f.id}&sig=${f.sig}&download=1`;
@@ -591,9 +593,9 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
               {!media && <div className="liv-wait">Chargement…</div>}
               {media && (isVid(media.mediaType)
                 ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList="nodownload" onContextMenu={(e) => e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
-                : <img src={media.play} alt={file.name} onContextMenu={(e) => e.preventDefault()} />)}
+                : <img src={media.play} alt="" onContextMenu={(e) => e.preventDefault()} />)}
               <div className="liv-actions">
-                <span className="liv-file">{file.name}</span>
+                <span className="liv-file">{fname(file)}</span>
                 <span style={{ flex: 1 }} />
                 {media?.canDownload && <a href={dl(file)} target="_blank" rel="noreferrer"><button><Download size={15} /> Télécharger</button></a>}
                 <button onClick={() => setFile(null)}>Fermer</button>
@@ -631,7 +633,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
                       {x.thumb ? <img src={x.thumb} alt="" loading="lazy" /> : <span className="liv-entry-ic">{icon(x)}</span>}
                       {!x.mediaType.startsWith("image") && x.thumb && <i><Play size={14} fill="#fff" /></i>}
                     </span>
-                    <span className="liv-entry-name">{x.name}</span>
+                    <span className="liv-entry-name">{fname(x)}</span>
                     <small className="muted">{ago(x.updatedAt)}</small>
                     {d.comments.some((c) => c.fileId === x.id && !c.resolved) && <b>{d.comments.filter((c) => c.fileId === x.id && !c.resolved).length}</b>}
                   </button>
@@ -642,7 +644,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
         </div>
 
         {file && d.feedback !== "off" && <aside className="liv-side">
-          <h3><MessageSquare size={16} /> Retours{file ? ` · ${file.name}` : ""}</h3>
+          <h3><MessageSquare size={16} /> Retours{file ? ` · ${fname(file)}` : ""}</h3>
           <div className="liv-comments">
             {!file && <p className="muted small">Ouvre un fichier pour voir ou laisser des retours.</p>}
             {file && cs.length === 0 && <p className="muted small">Aucun retour sur ce fichier.</p>}
