@@ -125,6 +125,10 @@ export async function startUpload(accountId: string, folderId: string, name: str
   };
 }
 
+// Lien de dépôt de rushs valable 1 semaine (prolongeable)
+export const DROP_DAYS = 7;
+export const dropExpiry = (l: { createdAt: Date; expiresAt: Date | null }) => l.expiresAt ?? new Date(l.createdAt.getTime() + DROP_DAYS * 864e5);
+
 // Lien de livraison valable 1 mois (prolongeable)
 export const LINK_DAYS = 30;
 export const expiryOf = (d: { createdAt: Date; expiresAt: Date | null }) => d.expiresAt ?? new Date(d.createdAt.getTime() + LINK_DAYS * 864e5);

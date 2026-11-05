@@ -4,7 +4,9 @@ import { CloudUpload, Copy, ExternalLink, Folder, Plus, Trash2 } from "lucide-re
 import { api } from "@/lib/api";
 import FramePicker, { FrameProject } from "@/components/FramePicker";
 
-type Drop = { id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; files: { name: string; size: number; author: string; createdAt: string }[] };
+type Drop = { id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
+// Valable 1 semaine après la création, sauf prolongation
+const expiry = (d: Drop) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 7 * 864e5);
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} Go` : `${Math.max(1, Math.round(n / 1e6))} Mo`);
 const errorText = (e: unknown) => { const raw = (e as Error).message; try { return JSON.parse(raw).error ?? raw; } catch { return raw; } };
 
@@ -71,11 +73,13 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
                 <b>{d.title}</b>{d.client && <span className="muted"> · {d.client}</span>}
                 <div className="muted small drop-meta"><Folder size={12} /> {d.folderName} · {d.files.length} fichier{d.files.length > 1 ? "s" : ""} reçu{d.files.length > 1 ? "s" : ""}{total ? ` (${size(total)})` : ""}</div>
               </div>
-              {!d.active && <span className="late-pill">fermé</span>}
+              {!d.active ? <span className="late-pill">fermé</span> : expiry(d).getTime() < Date.now() && <span className="late-pill">expiré</span>}
             </div>
             <div className="row">
               <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
               <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
+              <span className={`small ${expiry(d).getTime() < Date.now() ? "neg" : "muted"}`}>{expiry(d).getTime() < Date.now() ? "Expiré le" : "Valable jusqu'au"} {expiry(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+              <button onClick={async () => { await api(`drops/${d.id}`, "PATCH", { action: "extend" }); setMsg({ ok: true, text: `Lien « ${d.title} » prolongé d'une semaine.` }); load(); }}>Prolonger d&apos;une semaine</button>
               <label className="check small"><input type="checkbox" checked={d.active} onChange={async (e) => { await api(`drops/${d.id}`, "PATCH", { active: e.target.checked }); load(); }} /> Ouvert</label>
               <span style={{ flex: 1 }} />
               <button className="ghost neg" onClick={async () => { if (confirm(`Supprimer le lien « ${d.title} » ? Les fichiers restent sur Frame.io.`)) { await api(`drops/${d.id}`, "DELETE"); load(); } }}><Trash2 size={15} /></button>

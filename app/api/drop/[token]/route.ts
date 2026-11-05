@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { startUpload } from "@/lib/frameio";
+import { dropExpiry, startUpload } from "@/lib/frameio";
 import { getSettings, parisNow, sendPush } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,8 @@ const gb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} Go` : `${Math.max
 export async function GET(_: Request, { params }: { params: { token: string } }) {
   const l = await find(params.token);
   if (!l || !l.active) return NextResponse.json({ error: "Ce lien de dépôt n'est plus actif." }, { status: 404 });
-  return NextResponse.json({ title: l.title, client: l.client, message: l.message, files: l.files.map((f) => ({ name: f.name, size: f.size, author: f.author, createdAt: f.createdAt })) });
+  if (dropExpiry(l).getTime() < Date.now()) return NextResponse.json({ error: "Ce lien de dépôt a expiré. Demande-moi un nouveau lien si besoin." }, { status: 410 });
+  return NextResponse.json({ expiresAt: dropExpiry(l), title: l.title, client: l.client, message: l.message, files: l.files.map((f) => ({ name: f.name, size: f.size, author: f.author, createdAt: f.createdAt })) });
 }
 
 // start : prépare l'envoi d'un fichier sur Frame.io ; done : fichier reçu ; finish : fin d'un envoi groupé (notification + tâche)
@@ -20,6 +21,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const l = await find(params.token);
   if (!l || !l.active) return NextResponse.json({ error: "Ce lien de dépôt n'est plus actif." }, { status: 404 });
   const b = await req.json().catch(() => ({}));
+  // Expiré : plus de nouvel envoi (un fichier déjà commencé peut se terminer)
+  if (dropExpiry(l).getTime() < Date.now() && b.action === "start") return NextResponse.json({ error: "Ce lien de dépôt a expiré." }, { status: 410 });
   const author = String(b.author ?? "").trim().slice(0, 80);
   if (b.action === "start") {
     const name = String(b.name ?? "").slice(0, 300), size = Number(b.size);

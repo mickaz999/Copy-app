@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, CloudUpload, FileVideo, X, AlertTriangle } from "lucide-react";
 import Logo from "@/components/Logo";
 
-type Info = { title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
+type Info = { expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
 type Job = { key: string; file: File; sent: number; status: "wait" | "up" | "ok" | "err"; error?: string };
 
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} Mo` : `${Math.ceil(n / 1e3)} Ko`);
@@ -92,6 +92,7 @@ export default function Drop({ params }: { params: { token: string } }) {
           <span className="eyebrow">{info.client ? `dépôt de rushs · ${info.client}` : "dépôt de rushs"}</span>
           <h1>{info.title}</h1>
           <p className="liv-msg">{info.message || "Glisse tes rushs ici, ils m'arrivent directement. Aucun compte à créer."}</p>
+          {info.expiresAt && <div className="liv-chips"><span>Lien valable jusqu&apos;au {new Date(info.expiresAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span></div>}
         </div>
       </header>
 

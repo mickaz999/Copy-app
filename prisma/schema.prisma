@@ -288,6 +288,7 @@ model DropLink {
   folderId   String     // dossier Frame.io de destination
   folderName String     @default("")
   active     Boolean    @default(true)
+  expiresAt  DateTime?  // fin de validité (vide = 1 semaine après la création)
   createdAt  DateTime   @default(now())
   files      DropFile[]
 }
