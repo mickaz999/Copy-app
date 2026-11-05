@@ -468,6 +468,13 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           </div>
         </div>
         <div className="liv-cta">
+          {d.reviewUrl && (
+            // Avis Google en haut de la page, aux couleurs maderino
+            <a className="liv-review-btn" href={d.reviewUrl} target="_blank" rel="noreferrer">
+              <span className="stars">{[0, 1, 2, 3, 4].map((k) => <Star key={k} size={13} fill="currentColor" strokeWidth={0} />)}</span>
+              Laisser un avis Google <ArrowUpRight size={15} />
+            </a>
+          )}
           {d.download && files.length > 0 && <button onClick={downloadFolder}><Download size={16} /> Télécharger ce dossier ({files.length})</button>}
         </div>
       </header>
@@ -562,7 +569,6 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           )}
         </aside>}
       </div>
-      {d.reviewUrl && <Review url={d.reviewUrl} big={false} />}
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );

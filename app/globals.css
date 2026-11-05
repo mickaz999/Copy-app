@@ -1374,3 +1374,8 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .fp-new-row { flex-wrap: nowrap; }
 .fp-new-row input { flex: 1; min-width: 0; }
 .liv-exp { display: inline-flex; align-items: center; gap: 8px; }
+.liv-review-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; text-decoration: none; white-space: nowrap;
+  background: linear-gradient(135deg, #ffa25e, var(--accent)); box-shadow: 0 8px 22px rgba(255, 107, 0, .3); transition: transform .2s; }
+.liv-review-btn:hover { transform: translateY(-1px); }
+.liv-review-btn .stars { display: inline-flex; gap: 1px; color: #fff; }
+@media (max-width: 900px) { .liv-review-btn { justify-content: center; width: 100%; } }
