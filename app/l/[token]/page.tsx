@@ -6,7 +6,7 @@ import LivLoader, { MiniLoader } from "@/components/LivLoader";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -417,7 +417,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
         </aside>}
       </div>
       </div>}
-      {d.reviewUrl && <Review url={d.reviewUrl} big={approved || (multi && d.approved.length > 0)} />}
+      {/* Avis mis en avant après validation, ou d'emblée pour un lien sans retours ni validation (téléchargement libre) */}
+      {d.reviewUrl && <Review url={d.reviewUrl} big={approved || (multi && d.approved.length > 0) || (d.feedback === "off" && d.dlMode === "always")} />}
       <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );
