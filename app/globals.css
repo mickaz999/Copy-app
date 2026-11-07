@@ -1601,3 +1601,4 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 }
 .home-grid > *, .home-stats > *, .home-tiles > * { min-width: 0; } .home { overflow-x: hidden; }
 .logo-link { color: inherit; text-decoration: none; display: inline-flex; } .logo-link:hover .logo { opacity: .85; }
+@media (max-width: 700px) { .liv-review-side { justify-items: center !important; } .liv-review { text-align: left; } .liv-review-side em { justify-content: center; } }
