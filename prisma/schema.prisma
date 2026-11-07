@@ -245,6 +245,7 @@ model Delivery {
   files      String   @default("[]") // versions, de la plus ancienne à la plus récente (JSON [{ fileId, name }])
   download   Boolean  @default(true) // téléchargement autorisé
   dlApproved Boolean  @default(true) // ancien réglage, remplacé par dlMode
+  validation Boolean  @default(true)       // le client doit-il valider ? (non = pas de bouton Valider)
   dlMode     String   @default("approved") // téléchargement : approved = après validation (défaut, y compris livraisons existantes) | always | never
   kind       String   @default("versions") // versions = V1, V2… d'une même vidéo ; videos = plusieurs vidéos différentes ; folder = dossier Frame.io (sous-dossiers compris)
   folderId   String   @default("")         // dossier Frame.io livré (kind = folder)

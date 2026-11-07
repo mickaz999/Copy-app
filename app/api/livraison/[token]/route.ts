@@ -26,7 +26,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   });
   return NextResponse.json({
     expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
-    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
+    title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
 }

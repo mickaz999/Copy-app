@@ -12,7 +12,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; createdAt: string; expiresAt: string | null };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null };
 // Fin de validité du lien : 1 mois après la création, sauf prolongation ; supprimé 7 jours après
 const expiry = (d: { createdAt: string; expiresAt: string | null }) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 30 * 864e5);
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
@@ -187,6 +187,14 @@ export default function Livraisons() {
                   </span>
                   <button onClick={async () => { await api(`livraisons/${d.id}`, "PATCH", { action: "extend" }); setMsg({ ok: true, text: `Lien « ${d.title} » prolongé d'un mois.` }); load(); }}>Prolonger d&apos;un mois</button>
                 </span>
+              )}
+              {d.mode !== "frame" && (
+                <label className="field-line liv-dl">Validation
+                  <select value={d.validation === false ? "no" : "yes"} onChange={async (e) => { await api(`livraisons/${d.id}`, "PATCH", { validation: e.target.value === "yes" }); load(); }}>
+                    <option value="yes">Requise</option>
+                    <option value="no">Pas nécessaire</option>
+                  </select>
+                </label>
               )}
               {d.mode !== "frame" && (
                 <label className="field-line liv-dl">Retours

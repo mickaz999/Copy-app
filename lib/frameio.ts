@@ -108,11 +108,12 @@ async function loadMedia(accountId: string, fileId: string) {
 }
 
 // Téléchargement permis pour ce fichier (n = 1 pour V1 ou la 1re vidéo)
-export function canDownload(d: { download: boolean; dlMode: string; kind: string; approvedV: number; approved: string; files: string }, n: number) {
+export function canDownload(d: { download: boolean; dlMode: string; kind: string; approvedV: number; approved: string; files: string; validation?: boolean }, n: number) {
   if (!d.download || d.dlMode === "never") return false;
   // Versions : seule la dernière se télécharge, les anciennes restent consultables (retours) mais bloquées
   if (d.kind !== "videos" && n < (JSON.parse(d.files || "[]") as unknown[]).length) return false;
-  if (d.dlMode === "always") return true;
+  // Sans validation demandée, « après validation » revient à « toujours »
+  if (d.dlMode === "always" || d.validation === false) return true;
   return d.kind === "videos" ? (JSON.parse(d.approved || "[]") as number[]).includes(n) : d.approvedV === n;
 }
 

@@ -6,7 +6,7 @@ import LivLoader, { MiniLoader } from "@/components/LivLoader";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { validation?: boolean; dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -123,6 +123,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const lab = (x?: Version) => (x ? (multi ? `${x.mediaType.startsWith("image") ? "Photo" : "Vidéo"} ${d.versions.findIndex((y) => y.v === x.v) + 1}` : `V${x.v}`) : "");
   const isOk = (n: number) => (multi ? d.approved.includes(n) : d.approvedV === n);
   const approved = !!cur && isOk(cur.v);
+  // Validation demandée par toi pour cette livraison (sinon : pas de bouton Valider)
+  const needOk = d.validation !== false;
   // Format connu dès l'image d'aperçu, avant que la vidéo ne se charge (sinon le lecteur change de taille au clic)
   if (cur?.thumb && ratioFor.current !== cur.thumb) {
     ratioFor.current = cur.thumb;
@@ -180,7 +182,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
             <span>{multi ? `${d.versions.length} ${d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos"}` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
             {d.expiresAt && <span className="liv-days">{daysLeft(d.expiresAt)}</span>}
-            {multi
+            {!needOk ? null : multi
               ? d.approved.length === d.versions.length ? <span className="ok">✓ Toutes les {noun} validées</span> : <span className="wait">{d.approved.length}/{d.versions.length} {noun} validé{noun === "fichiers" ? "s" : "es"}</span>
               : d.approvedV ? <span className="ok">✓ V{d.approvedV} validée</span> : <span className="wait">En attente de ta validation</span>}
           </div>
@@ -189,6 +191,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           {!wall && <>
           {cur?.old
             ? <span className="liv-locked">Ancienne version · voir la V{d.versions.length}</span>
+            : !needOk ? null
             : approved
             ? <span className="ok-pill"><CheckCircle2 size={15} /> {multi ? "Vidéo validée" : `V${cur.v} validée`}</span>
             : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider ${multi ? `« ${lab(cur)} »` : `la V${cur.v}`} ? Je serai prévenu que c'est bon pour toi.`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> {multi ? (isImg(cur) ? "Valider cette photo" : "Valider cette vidéo") : `Valider la V${cur.v}`}</button>}
@@ -242,7 +245,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <span style={{ flex: 1 }} />
           {/* Sur téléphone : barre d'actions fixée en bas de l'écran */}
           <div className="liv-lb-actions">
-            {approved
+            {!needOk ? null : approved
               ? <span className="ok-pill"><CheckCircle2 size={15} /> {isImg(cur) ? "Photo validée" : "Vidéo validée"}</span>
               : <button className="primary" disabled={busy || !cur?.ready} onClick={() => confirm(`Valider « ${lab(cur)} » ?`) && post({ action: "approve", version: cur.v, author })}><CheckCircle2 size={16} /> Valider</button>}
             {cur?.original && <SaveButton href={dl(cur.v)} label="Télécharger" />}
@@ -378,7 +381,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
           {d.feedback === "ask" && !askOpen && comments.length === 0 ? (
             <div className="liv-ask">
-              <p>{approved ? "Merci pour ta validation. Une remarque malgré tout ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? (isImg(cur) ? "la photo" : "la vidéo") : `la V${cur.v}`} avec le bouton Valider.</>}</p>
+              <p>{approved ? "Merci pour ta validation. Une remarque malgré tout ? C'est ici." : (!needOk ? "Une remarque sur ce fichier ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? (isImg(cur) ? "la photo" : "la vidéo") : `la V${cur.v}`} avec le bouton Valider.</>)}</p>
               <button onClick={() => setAskOpen(true)}><MessageSquare size={15} /> J&apos;ai une remarque</button>
             </div>
           ) : <>
@@ -418,7 +421,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
       </div>
       </div>}
       {/* Avis mis en avant après validation, ou d'emblée pour un lien sans retours ni validation (téléchargement libre) */}
-      {d.reviewUrl && <Review url={d.reviewUrl} big={approved || (multi && d.approved.length > 0) || (d.feedback === "off" && d.dlMode === "always")} />}
+      {d.reviewUrl && <Review url={d.reviewUrl} big={!needOk || approved || (multi && d.approved.length > 0) || (d.feedback === "off" && d.dlMode === "always")} />}
       <footer className="liv-foot"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );

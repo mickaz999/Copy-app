@@ -23,6 +23,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof b.client === "string") data.client = b.client.slice(0, 200);
   if (typeof b.message === "string") data.message = b.message.slice(0, 2000);
   if (typeof b.download === "boolean") data.download = b.download;
+  if (typeof b.validation === "boolean") data.validation = b.validation;
   // Prolonger le lien d'un mois à partir d'aujourd'hui (ou de sa date de fin si elle est plus tard)
   if (b.action === "extend") {
     const cur = await db.delivery.findUniqueOrThrow({ where: { id: params.id } });
