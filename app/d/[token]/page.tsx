@@ -80,7 +80,7 @@ export default function Drop({ params }: { params: { token: string } }) {
   }
 
   if (!info && !error) return <LivLoader steps={["Ouverture de l'espace de dépôt", "Presque prêt"]} />;
-  if (!info) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
+  if (!info) return <div className="rdv liv-dark-solo"><div className="rdv-card"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><p className="neg">{error}</p></div></div>;
   const pending = jobs.filter((j) => j.status !== "ok");
   const totalSize = jobs.reduce((n, j) => n + j.file.size, 0);
   const sentSize = jobs.reduce((n, j) => n + j.sent, 0);
@@ -88,7 +88,7 @@ export default function Drop({ params }: { params: { token: string } }) {
   return (
     <div className="liv dark drop">
       <div className="liv-bg drop-bg" />
-      <div className="liv-top"><Logo /><span className="muted small">Dépôt privé</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Dépôt privé</span></div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{info.client ? `dépôt de rushs · ${info.client}` : "dépôt de rushs"}</span>
@@ -143,7 +143,7 @@ export default function Drop({ params }: { params: { token: string } }) {
           ))}
         </section>
       )}
-      <footer className="liv-foot"><Logo /></footer>
+      <footer className="liv-foot"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a></footer>
     </div>
   );
 }

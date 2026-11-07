@@ -32,7 +32,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
   return (
     <div className="rdv">
       <div className="rdv-card">
-        <Logo />
+        <a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>
         {!a && !error && <MiniLoader />}
         {error && <p className="neg">{error}</p>}
         {a && (

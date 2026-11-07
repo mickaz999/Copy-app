@@ -36,7 +36,7 @@ export default function Rdv({ params }: { params: { slug: string } }) {
   return (
     <div className="rdv">
       <div className="rdv-card">
-        <Logo />
+        <a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>
         {!info && !error && <MiniLoader label="Recherche des créneaux libres" />}
         {!info && error && <p className="neg">{error}</p>}
         {info && done && (

@@ -1600,3 +1600,4 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
   .home-tile { padding: 14px; }
 }
 .home-grid > *, .home-stats > *, .home-tiles > * { min-width: 0; } .home { overflow-x: hidden; }
+.logo-link { color: inherit; text-decoration: none; display: inline-flex; } .logo-link:hover .logo { opacity: .85; }

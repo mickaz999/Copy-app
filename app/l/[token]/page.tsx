@@ -109,7 +109,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
     if (await post({ action: "comment", version: v, author, text, audio: voice || undefined, time: atTime && isVideo ? now : null })) { setText(""); setVoice(""); }
   }
 
-  if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><Logo /><p className="neg">{error}</p></div></div>;
+  if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><p className="neg">{error}</p></div></div>;
   if (!d) return <LivLoader />;
   if (d.kind === "folder") return <FolderDelivery d={d} token={params.token} reload={load} />;
 
@@ -170,7 +170,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
         {/* Sans vignette Frame.io, on prend une image de la vidéo elle-même */}
         {!cur?.thumb && cur?.play && isVideo && <video key={cur.v} src={`${cur.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden />}
       </div>
-      <div className="liv-top"><Logo /><span className="muted small">Livraison privée</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Livraison privée</span></div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
@@ -419,7 +419,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
       </div>}
       {/* Avis mis en avant après validation, ou d'emblée pour un lien sans retours ni validation (téléchargement libre) */}
       {d.reviewUrl && <Review url={d.reviewUrl} big={approved || (multi && d.approved.length > 0) || (d.feedback === "off" && d.dlMode === "always")} />}
-      <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
+      <footer className="liv-foot"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );
 }
@@ -597,7 +597,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   return (
     <div className="liv dark">
       <div className="liv-bg" style={media?.thumb || (media && !isVid(media.mediaType)) ? { backgroundImage: `url("${media.thumb || media.play}")` } : undefined} />
-      <div className="liv-top"><Logo /><span className="muted small">Livraison privée</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Livraison privée</span></div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
@@ -711,7 +711,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           )}
         </aside>}
       </div>
-      <footer className="liv-foot"><Logo /><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
+      <footer className="liv-foot"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
     </div>
   );
 }
