@@ -6,7 +6,7 @@ export const metadata = {
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "maderino", statusBarStyle: "default" },
 };
-export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#f1e9df" };
+export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f1e9df" }, { media: "(prefers-color-scheme: dark)", color: "#0f0d0c" }] };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

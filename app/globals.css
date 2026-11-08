@@ -1602,3 +1602,45 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .home-grid > *, .home-stats > *, .home-tiles > * { min-width: 0; } .home { overflow-x: hidden; }
 .logo-link { color: inherit; text-decoration: none; display: inline-flex; } .logo-link:hover .logo { opacity: .85; }
 @media (max-width: 700px) { .liv-review-side { justify-items: center !important; } .liv-review { text-align: left; } .liv-review-side em { justify-content: center; } }
+
+/* ============ Thème sombre automatique (selon le réglage du téléphone / de l'ordinateur) ============ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f0d0c; --side: #161412; --text: #f1ebe4; --muted: rgba(241, 235, 228, .58);
+    --border: rgba(255, 255, 255, .09); --hover: rgba(255, 255, 255, .06); --accent-soft: rgba(255, 107, 0, .16);
+    --tag: #221e1b; --card: #171513;
+    --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    --glass-bg: rgba(28, 25, 22, .72); --glass-bg-strong: rgba(38, 34, 30, .9); --glass-border: rgba(255, 255, 255, .08);
+    --glass-edge: rgba(255, 255, 255, .06); --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 50%);
+    --glass-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .04);
+  }
+  body:not(:has(.liv)) {
+    background:
+      radial-gradient(700px 500px at 85% 10%, rgba(255, 110, 30, .14), transparent 65%),
+      radial-gradient(600px 500px at 10% 85%, rgba(255, 140, 60, .08), transparent 65%),
+      linear-gradient(180deg, #0f0d0c, #12100e) fixed !important;
+  }
+  .sidebar { background: rgba(22, 20, 18, .9) !important; box-shadow: none !important; }
+  .overlay { background: rgba(0, 0, 0, .55) !important; }
+  .tag { color: #ff9a4d; }
+  .notice { color: #ffb27a; }
+  .notice.ok { background: rgba(47, 143, 91, .18); color: #5fd38f; }
+  .notice.err { background: rgba(229, 72, 77, .16); color: #ff8a8d; }
+  .ok-pill { color: #5fd38f; }
+  .task-card { background: color-mix(in srgb, var(--cat, #222) 14%, #171513); }
+  .seg button.on { background: rgba(255, 255, 255, .12) !important; }
+  .rdv-card { background: #171513; }
+  .rdv-days button, .rdv-slots button, .rdv-modes button, .rdv-summary { background: #1f1c19; }
+  .home-stat, .home-card, .home-tile { background: var(--card); }
+  img.logo-img, .logo .pt { background: var(--text); }
+  .cal .day.out { background: rgba(0, 0, 0, .25) !important; }
+  .wk-past { background: rgba(0, 0, 0, .28); }
+  .chip.task.late { background: rgba(229, 72, 77, .18); color: #ff9a9d; }
+  input::placeholder, textarea::placeholder { color: rgba(241, 235, 228, .35); }
+  @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+    .cal-month, .week, .table-wrap, .stat, .settings-card, .col, .modal, .th-pop, .pick-menu,
+    .topbar, table:not(.db), .bookmark, .gaccount, .card { background: rgba(23, 21, 19, .96) !important; }
+    .sidebar { background: #161412 !important; }
+  }
+}
