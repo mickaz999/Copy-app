@@ -1644,3 +1644,36 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
     .sidebar { background: #161412 !important; }
   }
 }
+
+/* Thème sombre : tout ce qui avait une couleur claire écrite en dur */
+@media (prefers-color-scheme: dark) {
+  /* Windows « effets de transparence » désactivés : fonds pleins sombres au lieu de crème */
+  @media (prefers-reduced-transparency: reduce) {
+    .cal-month, .week, .table-wrap, .stat, .settings-card, .col, .modal, .sidebar, .topbar, .card { background: #171513 !important; }
+  }
+  .modal { background: #1a1816 !important; box-shadow: 0 24px 60px rgba(0, 0, 0, .55) !important; }
+  .modal input:not([type=checkbox]):not([type=radio]), .modal textarea, .modal select { background: rgba(255, 255, 255, .06) !important; }
+  .tv-cat { background: color-mix(in srgb, var(--cat) 22%, #1a1816); color: var(--text); }
+  .tv-st.on.todo { background: rgba(255, 255, 255, .14) !important; color: var(--text); }
+  .tv-st.on.doing { background: rgba(255, 107, 0, .2) !important; color: #ff9a4d; }
+  .tv-st.on.done, .status-pill.done { background: rgba(47, 143, 91, .2) !important; color: #5fd38f; }
+  .tv-late, .span-bar.overdue-bar { background: rgba(229, 72, 77, .16); color: #ff8a8d; }
+  .tv-left { color: #ff9a4d; }
+  .tv-revision { color: #7aa7ff !important; }
+  .chip.task { background: color-mix(in srgb, var(--cat) 22%, #1a1816) !important; color: var(--text); }
+  .chip.task.doing { background: color-mix(in srgb, var(--cat) 34%, #1a1816) !important; }
+  .chip.task.done { background: color-mix(in srgb, var(--cat) 12%, #1a1816) !important; }
+  .chip.task.late { background: rgba(229, 72, 77, .2) !important; color: #ff9a9d; }
+  .task-card { background: color-mix(in srgb, var(--cat, #333) 16%, #1a1816) !important; }
+  .navitem:hover { background: rgba(255, 255, 255, .06); }
+  table.db tr:hover td { background: rgba(255, 255, 255, .04); }
+  .span-bar .span-end, .chip .countdown { background: rgba(255, 255, 255, .12); }
+  .bnode { background: rgba(30, 27, 24, .9); border-color: rgba(255, 255, 255, .08); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
+  .doc-title, .block, .bookmark { color: var(--text); }
+  .stale, .stale-row { background: rgba(255, 255, 255, .03); }
+  hr, .divider { border-color: var(--border); }
+  @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+    .sidebar { background: #161412 !important; }
+    .modal { background: #1a1816 !important; }
+  }
+}
