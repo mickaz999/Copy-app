@@ -172,3 +172,22 @@ export const dropExpiry = (l: { createdAt: Date; expiresAt: Date | null }) => l.
 export const LINK_DAYS = 30;
 export const expiryOf = (d: { createdAt: Date; expiresAt: Date | null }) => d.expiresAt ?? new Date(d.createdAt.getTime() + LINK_DAYS * 864e5);
 export const isExpired = (d: { createdAt: Date; expiresAt: Date | null }) => expiryOf(d).getTime() < Date.now();
+
+// Dossier de destination pour un chemin relatif (« Jour 1/Caméra A ») : sous-dossiers trouvés ou créés sur Frame.io
+const pathCache = new Map<string, string>();
+export async function ensurePath(accountId: string, rootId: string, parts: string[]) {
+  let cur = rootId;
+  for (const raw of parts) {
+    const name = raw.trim().slice(0, 200);
+    if (!name) continue;
+    const key = `${cur}/${name.toLowerCase()}`;
+    let id = pathCache.get(key);
+    if (!id) {
+      const kids = await folderChildren(accountId, cur).catch(() => []);
+      id = kids.find((k) => k.type === "folder" && k.name.toLowerCase() === name.toLowerCase())?.id ?? (await createFolder(accountId, cur, name)).id;
+      pathCache.set(key, id);
+    }
+    cur = id;
+  }
+  return cur;
+}

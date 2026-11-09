@@ -1694,3 +1694,4 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
   .muted, .small.muted { color: var(--muted); }
   ::selection { background: rgba(255, 107, 0, .35); }
 }
+.drop-picks { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; } .drop-picks .drop-pick:hover { border-color: var(--accent); color: var(--accent); }

@@ -5,7 +5,7 @@ import Logo from "@/components/Logo";
 import LivLoader from "@/components/LivLoader";
 
 type Info = { expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
-type Job = { key: string; file: File; sent: number; status: "wait" | "up" | "ok" | "err"; error?: string };
+type Job = { dir: string; key: string; file: File; sent: number; status: "wait" | "up" | "ok" | "err"; error?: string };
 
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} Mo` : `${Math.ceil(n / 1e3)} Ko`);
 
@@ -30,17 +30,46 @@ export default function Drop({ params }: { params: { token: string } }) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [running]);
 
+  // Fichiers (avec leur dossier d'origine : « Rushs/Jour 1 ») ; fichiers cachés du système ignorés
+  const addFiles = (list: { file: File; dir: string }[]) => {
+    const ok = list.filter(({ file }) => !/^\.|^(thumbs\.db|desktop\.ini)$/i.test(file.name));
+    if (!ok.length) return;
+    setDone(null);
+    setJobs((j) => [...j, ...ok.map(({ file, dir }) => ({ key: `${dir}/${file.name}-${file.size}-${Math.random()}`, file, dir, sent: 0, status: "wait" as const }))]);
+  };
   const add = (list: FileList | null) => {
     if (!list) return;
-    setDone(null);
-    setJobs((j) => [...j, ...Array.from(list).map((file) => ({ key: `${file.name}-${file.size}-${Math.random()}`, file, sent: 0, status: "wait" as const }))]);
+    addFiles(Array.from(list).map((file) => {
+      const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath || "";
+      return { file, dir: rel.split("/").slice(0, -1).join("/") };
+    }));
   };
+  // Glisser-déposer : parcourt les dossiers déposés, sous-dossiers compris
+  async function dropItems(dt: DataTransfer) {
+    const entries = Array.from(dt.items).map((i) => (i as DataTransferItem & { webkitGetAsEntry?: () => any }).webkitGetAsEntry?.()).filter(Boolean);
+    if (!entries.length) return add(dt.files);
+    const out: { file: File; dir: string }[] = [];
+    const walk = async (e: any, dir: string): Promise<void> => {
+      if (e.isFile) { out.push({ file: await new Promise<File>((ok, ko) => e.file(ok, ko)), dir }); return; }
+      if (!e.isDirectory) return;
+      const reader = e.createReader();
+      const sub = dir ? `${dir}/${e.name}` : e.name;
+      for (;;) {
+        const batch: any[] = await new Promise((ok, ko) => reader.readEntries(ok, ko));
+        if (!batch.length) break;
+        for (const c of batch) await walk(c, sub);
+      }
+    };
+    for (const e of entries) await walk(e, "");
+    addFiles(out);
+  }
+  const folderInput = useRef<HTMLInputElement>(null);
   const patch = (key: string, p: Partial<Job>) => setJobs((all) => all.map((j) => (j.key === key ? { ...j, ...p } : j)));
   const post = (body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ author, ...body }) });
 
   async function sendOne(job: Job) {
     patch(job.key, { status: "up", sent: 0, error: undefined });
-    const r = await post({ action: "start", name: job.file.name, size: job.file.size });
+    const r = await post({ action: "start", name: job.file.name, size: job.file.size, dir: job.dir });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error ?? "Envoi refusé");
     const type = j.mediaType || job.file.type || "application/octet-stream";
@@ -102,11 +131,15 @@ export default function Drop({ params }: { params: { token: string } }) {
         <input className="drop-name" placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} disabled={running} />
         <div className={`drop-zone ${over ? "over" : ""}`} onClick={() => !running && input.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
-          onDrop={(e) => { e.preventDefault(); setOver(false); if (!running) add(e.dataTransfer.files); }}>
+          onDrop={(e) => { e.preventDefault(); setOver(false); if (!running) dropItems(e.dataTransfer); }}>
           <CloudUpload size={30} strokeWidth={1.5} />
           <b>Dépose tes fichiers</b>
-          <span className="muted">Vidéos, photos, sons · aucune limite de taille</span><span className="drop-pick">Parcourir</span>
+          <span className="muted">Fichiers ou dossiers entiers · vidéos, photos, sons · aucune limite de taille</span><span className="drop-picks">
+            <span className="drop-pick">Choisir des fichiers</span>
+            <span className="drop-pick" onClick={(e) => { e.stopPropagation(); if (!running) folderInput.current?.click(); }}>Choisir un dossier</span>
+          </span>
           <input ref={input} type="file" multiple hidden onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
+          <input ref={folderInput} type="file" multiple hidden {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
         </div>
 
         {jobs.length > 0 && (
@@ -115,7 +148,7 @@ export default function Drop({ params }: { params: { token: string } }) {
               <div key={j.key} className={`drop-row ${j.status}`}>
                 <FileVideo size={18} />
                 <div className="drop-row-main">
-                  <div className="drop-row-top"><b>{j.file.name}</b><span className="muted small">{j.status === "up" ? `${size(j.sent)} / ` : ""}{size(j.file.size)}</span></div>
+                  <div className="drop-row-top"><b>{j.dir ? <span className="muted">{j.dir}/</span> : null}{j.file.name}</b><span className="muted small">{j.status === "up" ? `${size(j.sent)} / ` : ""}{size(j.file.size)}</span></div>
                   <div className="drop-bar"><i style={{ width: `${(j.sent / j.file.size) * 100}%` }} /></div>
                   {j.error && <span className="neg small"><AlertTriangle size={12} /> {j.error}</span>}
                 </div>

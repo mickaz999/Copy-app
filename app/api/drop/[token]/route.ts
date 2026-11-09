@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { dropExpiry, startUpload } from "@/lib/frameio";
+import { dropExpiry, ensurePath, startUpload } from "@/lib/frameio";
 import { getSettings, parisNow, sendPush } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (b.action === "start") {
     const name = String(b.name ?? "").slice(0, 300), size = Number(b.size);
     if (!name || !(size > 0)) return NextResponse.json({ error: "Fichier invalide." }, { status: 400 });
-    try { return NextResponse.json(await startUpload(l.accountId, l.folderId, name, size)); }
+    // Fichier venant d'un dossier déposé : on recrée ses sous-dossiers sur Frame.io
+    const parts = String(b.dir ?? "").split("/").filter(Boolean).slice(0, 8);
+    try {
+      const folderId = parts.length ? await ensurePath(l.accountId, l.folderId, parts) : l.folderId;
+      return NextResponse.json(await startUpload(l.accountId, folderId, name, size));
+    }
     catch (e) { return NextResponse.json({ error: `Frame.io refuse l'envoi : ${(e as Error).message}` }, { status: 502 }); }
   }
   if (b.action === "done") {
