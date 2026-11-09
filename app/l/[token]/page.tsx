@@ -575,8 +575,8 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   }, [file?.id]);
 
   const files = data?.items.filter((x) => x.type !== "folder" && x.type !== "version_stack") ?? [];
-  // Nom du fichier caché au client : « Vidéo 3 », « Photo 12 »
-  const fname = (x: Item | null) => { if (!x) return ""; const n = (data?.items.filter((y) => y.type !== "folder") ?? []).findIndex((y) => y.id === x.id) + 1; return `${x.mediaType.startsWith("image") ? "Photo" : "Vidéo"} ${n || ""}`.trim(); };
+  // Livraison d'un dossier : on affiche le vrai nom du fichier (comme sur Frame.io)
+  const fname = (x: Item | null) => x?.name ?? "";
   const isVid = (m?: string) => !m || m.startsWith("video");
   const icon = (x: Item) => x.type === "folder" ? <Folder size={22} /> : x.type === "version_stack" ? <Layers size={22} /> : x.mediaType.startsWith("image") ? <FileImage size={22} /> : <Film size={22} />;
   const dl = (f: Item) => `${base}/file?id=${f.id}&sig=${f.sig}&download=1`;
