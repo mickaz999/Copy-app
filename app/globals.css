@@ -1677,3 +1677,20 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
     .modal { background: #1a1816 !important; }
   }
 }
+
+/* Thème sombre : lisibilité des listes déroulantes, cases, dates et textes colorés */
+@media (prefers-color-scheme: dark) {
+  input, select, textarea { color-scheme: dark; }
+  select option, select optgroup { background: #1a1816; color: #f1ebe4; }
+  input[type=checkbox], input[type=radio] { accent-color: #ff6b00; }
+  input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-calendar-picker-indicator { filter: invert(.85); }
+  .status-pill.doing, .tag { color: #ff9a4d; }
+  .notice { color: #ffb27a; }
+  .cal-errors, .stale-del, .node-actions .danger { color: #ff8a8d !important; }
+  .tv-revision { color: #8fb4ff !important; border-color: rgba(120, 160, 255, .35) !important; background: rgba(80, 130, 255, .12) !important; }
+  .wk-draft { color: #f1ebe4; }
+  .wk-draft span { color: #e0b48f; }
+  .bnode.title .bnode-title::placeholder { color: rgba(241, 235, 228, .3); }
+  .muted, .small.muted { color: var(--muted); }
+  ::selection { background: rgba(255, 107, 0, .35); }
+}
