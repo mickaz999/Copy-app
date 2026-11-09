@@ -15,24 +15,20 @@ const loadFonts = () => (fonts ??= Promise.all([
   font("Playfair+Display:ital@1").then((data) => ({ name: "Playfair", data, weight: 400 as const, style: "italic" as const })),
 ]).catch(() => { fonts = null; return []; }));
 
-// Carte d'aperçu des liens (Instagram, WhatsApp, iMessage…) : image de fond, titre, logo maderino
-export async function ogCard({ title, kicker, sub, bg }: { title: string; kicker: string; sub: string; bg?: string }) {
+// Image d'aperçu des liens (Instagram, WhatsApp, iMessage…) : uniquement le logo maderino, centré
+// (WhatsApp recadre en carré au centre : tout tient dans le carré du milieu)
+export async function ogCard(_: { title?: string; kicker?: string; sub?: string; bg?: string } = {}) {
   const f = await loadFonts();
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#0b0a09", color: "#f4efe9", fontFamily: "Inter" }}>
-        {bg && <img src={bg} width={1200} height={630} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
-        <div style={{ position: "absolute", inset: 0, display: "flex", background: bg ? "linear-gradient(180deg, rgba(11,10,9,.15) 0%, rgba(11,10,9,.55) 55%, rgba(11,10,9,.95) 100%)" : "linear-gradient(160deg, rgba(255,107,0,.32) 0%, rgba(11,10,9,0) 55%)" }} />
-        <div style={{ position: "absolute", left: 64, right: 64, bottom: 56, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", fontSize: 34, color: "#ff8a3d", fontFamily: "Playfair", fontStyle: "italic" }}>{kicker}</div>
-          <div style={{ display: "flex", fontSize: 76, fontWeight: 800, letterSpacing: -3, lineHeight: 1 }}>{title.slice(0, 60)}</div>
-          <div style={{ display: "flex", fontSize: 28, color: "#cfc6bd", fontWeight: 400 }}>{sub}</div>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 34, background: "#0b0a09", color: "#f4efe9", fontFamily: "Inter" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+          <svg width="150" height="180" viewBox="0 0 30 36"><path d="M0 0 L30 18 L0 36 Z" fill="#ff6b00" /></svg>
+          <div style={{ width: 46, height: 46, borderRadius: 23, background: "#f4efe9" }} />
         </div>
-        <div style={{ position: "absolute", left: 64, top: 52, display: "flex", alignItems: "center", gap: 12 }}>
-          <svg width="30" height="36" viewBox="0 0 30 36"><path d="M0 0 L30 18 L0 36 Z" fill="#ff6b00" /></svg>
-          <div style={{ width: 12, height: 12, borderRadius: 6, background: "#f4efe9" }} />
-          <div style={{ display: "flex", fontSize: 34, fontWeight: 800, marginLeft: 6 }}>maderino</div>
-          <div style={{ display: "flex", fontSize: 36, color: "#ff6b00", fontFamily: "Playfair", fontStyle: "italic" }}>production.</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+          <div style={{ display: "flex", fontSize: 54, fontWeight: 800, letterSpacing: -2 }}>maderino</div>
+          <div style={{ display: "flex", fontSize: 58, color: "#ff6b00", fontFamily: "Playfair", fontStyle: "italic" }}>production.</div>
         </div>
       </div>
     ),

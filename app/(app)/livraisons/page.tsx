@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
 import { PUBLIC_URL } from "@/lib/site";
+import ClientList from "@/components/ClientList";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
@@ -130,7 +131,7 @@ export default function Livraisons() {
             ? "Le client reçoit ta page à tes couleurs. Ses retours créent une tâche « Modifs » dans le Planning."
             : "Tu continues à partager le lien Frame.io de l'agence. L'app lit les commentaires laissés sur Frame (toutes les 5 min) et les ajoute à une tâche « Modifs » dans le Planning."}</p>
           <label className="field-line">Titre du projet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Clip « Été 2026 »" /></label>
-          <label className="field-line">Client<input value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} placeholder="Nom du client" /></label>
+          <label className="field-line">Client<input list="clients" autoComplete="off" value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} placeholder="Choisis ou tape un nom" /><ClientList /></label>
           {draft.mode === "page" && <>
             <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses." /></label>
             <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
