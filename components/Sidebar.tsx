@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { House, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
+import { House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -82,6 +82,7 @@ export default function Sidebar() {
     <nav className={`sidebar ${menuOpen ? "open" : ""}`}>
       <Logo />
       <Link href="/" className={`navitem ${path === "/" ? "active" : ""}`}><House size={17} className="nav-ic" /> Accueil</Link>
+      <Link href="/aujourdhui" className={`navitem ${path === "/aujourdhui" ? "active" : ""}`}><ListChecks size={17} className="nav-ic" /> To-do du jour</Link>
       <Link href="/planning" className={`navitem ${path === "/planning" ? "active" : ""}`}><CalendarDays size={17} className="nav-ic" /> Planning</Link>
       <Link href="/rendez-vous" className={`navitem ${path === "/rendez-vous" ? "active" : ""}`}><CalendarClock size={17} className="nav-ic" /> Rendez-vous</Link>
       <Link href="/livraisons" className={`navitem ${path === "/livraisons" ? "active" : ""}`}><Clapperboard size={17} className="nav-ic" /> Livraisons</Link>

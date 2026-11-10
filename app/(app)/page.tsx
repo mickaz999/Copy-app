@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Bell, Calculator, CalendarClock, CalendarDays, Clapperboard, Clock, MessageSquare, Video, Phone, Wallet, Workflow, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ListChecks, ArrowUpRight, Bell, Calculator, CalendarClock, CalendarDays, Clapperboard, Clock, MessageSquare, Video, Phone, Wallet, Workflow, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { api, isoDay } from "@/lib/api";
 
 type Task = { id: string; title: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string };
@@ -44,6 +44,7 @@ export default function Home() {
   const date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   const tiles = [
+    { href: "/aujourdhui", icon: ListChecks, label: "To-do du jour", info: tasks ? `${todays.filter((t) => t.status !== "done").length} à faire` : "" },
     { href: "/planning", icon: CalendarDays, label: "Planning", info: tasks ? `${todays.length} tâche${todays.length > 1 ? "s" : ""} aujourd'hui` : "" },
     { href: "/rendez-vous", icon: CalendarClock, label: "Rendez-vous", info: `${nextAppts.length ? `Prochain : ${dayLabel(nextAppts[0].day)} ${nextAppts[0].time}` : "Aucun RDV prévu"}` },
     { href: "/livraisons", icon: Clapperboard, label: "Livraisons", info: feedback ? `${feedback} retour${feedback > 1 ? "s" : ""} à traiter` : `${waiting} en attente de validation` },
