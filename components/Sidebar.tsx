@@ -82,7 +82,7 @@ export default function Sidebar() {
     <nav className={`sidebar ${menuOpen ? "open" : ""}`}>
       <Logo />
       <Link href="/" className={`navitem ${path === "/" ? "active" : ""}`}><House size={17} className="nav-ic" /> Accueil</Link>
-      <Link href="/aujourdhui" className={`navitem ${path === "/aujourdhui" ? "active" : ""}`}><ListChecks size={17} className="nav-ic" /> To-do du jour</Link>
+      <Link href="/planning?view=today" className="navitem"><ListChecks size={17} className="nav-ic" /> To-do du jour</Link>
       <Link href="/planning" className={`navitem ${path === "/planning" ? "active" : ""}`}><CalendarDays size={17} className="nav-ic" /> Planning</Link>
       <Link href="/rendez-vous" className={`navitem ${path === "/rendez-vous" ? "active" : ""}`}><CalendarClock size={17} className="nav-ic" /> Rendez-vous</Link>
       <Link href="/livraisons" className={`navitem ${path === "/livraisons" ? "active" : ""}`}><Clapperboard size={17} className="nav-ic" /> Livraisons</Link>

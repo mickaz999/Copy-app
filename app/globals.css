@@ -1721,3 +1721,12 @@ button.todo-check:not(.primary) { border: 2px solid var(--muted) !important; bac
 button.todo-check.on:not(.primary) { background: var(--green) !important; border-color: var(--green) !important; }
 .todo-add input:not([type=checkbox]) { border: none !important; background: none !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 .todo-row button.ghost.todo-check { border: 2px solid var(--muted) !important; } .todo-row button.ghost.todo-check.on { background: var(--green) !important; border-color: var(--green) !important; }
+/* To-do du jour (vue du Planning) */
+.todo-view { max-width: 760px; }
+.todo-view .todo-row { cursor: pointer; border-left: 4px solid var(--cat, var(--accent)); transition: transform .12s; }
+.todo-view .todo-row:hover { transform: translateX(2px); }
+.todo-st { flex: none; width: 24px !important; height: 24px !important; border-radius: 50% !important; display: grid !important; place-items: center; border: 2px solid var(--muted) !important; color: #fff; cursor: pointer; }
+.todo-st.doing { border-color: var(--accent) !important; background: radial-gradient(circle, var(--accent) 38%, transparent 42%) !important; }
+.todo-st.done { background: var(--green) !important; border-color: var(--green) !important; }
+.todo-new { display: flex !important; align-items: center; gap: 8px; width: 100%; margin: 12px 0; padding: 12px 14px !important; border-radius: 14px; color: var(--muted) !important; justify-content: flex-start; }
+.todo-view .progress { margin-left: auto; }

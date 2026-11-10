@@ -44,7 +44,7 @@ export default function Home() {
   const date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   const tiles = [
-    { href: "/aujourdhui", icon: ListChecks, label: "To-do du jour", info: tasks ? `${todays.filter((t) => t.status !== "done").length} à faire` : "" },
+    { href: "/planning?view=today", icon: ListChecks, label: "To-do du jour", info: tasks ? `${todays.filter((t) => t.status !== "done").length} à faire` : "" },
     { href: "/planning", icon: CalendarDays, label: "Planning", info: tasks ? `${todays.length} tâche${todays.length > 1 ? "s" : ""} aujourd'hui` : "" },
     { href: "/rendez-vous", icon: CalendarClock, label: "Rendez-vous", info: `${nextAppts.length ? `Prochain : ${dayLabel(nextAppts[0].day)} ${nextAppts[0].time}` : "Aucun RDV prévu"}` },
     { href: "/livraisons", icon: Clapperboard, label: "Livraisons", info: feedback ? `${feedback} retour${feedback > 1 ? "s" : ""} à traiter` : `${waiting} en attente de validation` },

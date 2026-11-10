@@ -9,8 +9,8 @@ import { PUBLIC_URL } from "@/lib/site";
 
 type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; subtasks?: string; deliveryId?: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
 
-type View = "month" | "days5" | "board" | "list";
-const VIEWS: View[] = ["month", "days5", "board", "list"];
+type View = "today" | "month" | "days5" | "board" | "list";
+const VIEWS: View[] = ["today", "month", "days5", "board", "list"];
 
 // Valeurs des propriétés perso d'une tâche
 const propsOf = (t: Partial<Task>): Record<string, unknown> => { try { return JSON.parse(t.props || "{}"); } catch { return {}; } };
@@ -213,6 +213,9 @@ export default function Planning() {
       const v = (saved === "week" ? "days5" : saved) as View;
       if (VIEWS.includes(v)) setView(v);
     } catch {}
+    // ?view=today : ouverture directe de la to-do du jour
+    const qv = new URLSearchParams(window.location.search).get("view") as View | null;
+    if (qv && VIEWS.includes(qv)) setView(qv);
     // Message de retour après la connexion Google
     const msg = new URLSearchParams(window.location.search).get("google");
     if (msg) { setNotice(msg); setShowCals(true); window.history.replaceState(null, "", "/planning"); }
@@ -583,6 +586,7 @@ export default function Planning() {
       <div className="eyebrow">planning</div>
       <h1 className="title">ce qu&apos;on <span className="accent">planifie.</span></h1>
       <div className="row" style={{ marginBottom: 16 }}>
+        <button className={view === "today" ? "primary" : ""} onClick={() => setView("today")}>Aujourd&apos;hui</button>
         <button className={view === "month" ? "primary" : ""} onClick={() => setView("month")}>Mois</button>
         <button className={view === "days5" ? "primary" : ""} onClick={() => { setView("days5"); setCursor(new Date()); }}>{dayCount} jours</button>
         <button className={view === "board" ? "primary" : ""} onClick={() => setView("board")}>Tableau</button>
@@ -771,6 +775,53 @@ export default function Planning() {
                 </div>
               );
             })()}
+          </div>
+        );
+      })()}
+
+      {view === "today" && (() => {
+        // To-do du jour : mêmes tâches, mêmes actions que le reste du Planning (statut, fiche, retours client…)
+        const todays = visible.filter((t) => onDay(t, today) && t.status !== "waiting")
+          .sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || (a.startTime || "99").localeCompare(b.startTime || "99"));
+        const done = todays.filter((t) => t.status === "done").length;
+        const row = (t: Task, late = false) => (
+          <div key={t.id} className={`todo-row ${t.status === "done" ? "done" : ""}`} style={catStyle(t)} onClick={() => setViewing(t)}>
+            <div className="todo-main">
+              <span className={`st todo-st ${t.status}`} title={`${STATUS_LABEL[t.status]} · clic pour changer`} onClick={(e) => { e.stopPropagation(); move(t.id, { status: NEXT_STATUS[t.status] ?? "todo" }); }}>
+                {t.status === "done" && <Check size={12} strokeWidth={3.5} />}
+              </span>
+              <div className="todo-text">
+                <b>{t.title || "Sans titre"}</b>
+                <span className="muted small">
+                  {t.startTime && <><Clock size={11} /> {t.startTime}{t.endTime ? `–${t.endTime}` : ""} · </>}
+                  <span style={{ color: catColor(t) }}>{t.category}</span> · {STATUS_LABEL[t.status]}
+                  {late && <span className="todo-late"> · {lateLabel(lateDays(t))}</span>}
+                </span>
+              </div>
+              <Progress t={t} />
+              {!late && latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
+            </div>
+          </div>
+        );
+        return (
+          <div className="todo-view">
+            {todays.length > 0 && (
+              <div className="todo-progress">
+                <div className="todo-bar"><i style={{ width: `${(done / todays.length) * 100}%` }} /></div>
+                <span className="muted small">{done}/{todays.length} terminée{done > 1 ? "s" : ""}</span>
+              </div>
+            )}
+            <button className="todo-new" onClick={() => newTask(today)}><Plus size={16} /> Ajouter une tâche pour aujourd&apos;hui</button>
+            <section className="todo-list">
+              {todays.length === 0 && <p className="muted">Rien de prévu aujourd&apos;hui. Profite.</p>}
+              {todays.map((t) => row(t))}
+            </section>
+            {lateTasks.length > 0 && (
+              <section className="todo-list">
+                <h3 className="todo-h"><AlertTriangle size={15} /> En retard ({lateTasks.length})</h3>
+                {lateTasks.map((t) => row(t, true))}
+              </section>
+            )}
           </div>
         );
       })()}
