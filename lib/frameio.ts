@@ -15,6 +15,12 @@ export async function fio(path: string, init: RequestInit = {}, attempt = 1): Pr
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init.headers ?? {}) },
     cache: "no-store",
   });
+  // Jeton refusé (expiré côté Adobe) : on en redemande un neuf et on réessaie une fois
+  if (res.status === 401 && attempt === 1) {
+    await db.apiToken.update({ where: { provider: "frameio" }, data: { accessToken: "", expiresAt: new Date(0) } }).catch(() => {});
+    return fio(path, init, 5);
+  }
+  if (res.status === 401) throw new Error("Connexion Frame.io expirée : clique sur « Reconnecter Frame.io » dans Livraisons.");
   // Trop de demandes d'un coup : Frame.io demande d'attendre, on réessaie (4 fois max)
   if ((res.status === 429 || res.status >= 500) && attempt < 5) {
     const wait = Number(res.headers.get("retry-after")) * 1000 || 600 * attempt;
