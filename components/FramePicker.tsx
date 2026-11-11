@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronLeft, Film, Folder, FolderPlus, Layers } from "lucide-react";
 import { api } from "@/lib/api";
 import { MiniLoader } from "@/components/LivLoader";
@@ -49,7 +50,9 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
   const toggle = (f: FrameFile) => setSel((s) => s.some((x) => x.fileId === f.fileId) ? s.filter((x) => x.fileId !== f.fileId) : [...s, f]);
   const order = (id: string) => sel.findIndex((x) => x.fileId === id) + 1;
 
-  return (
+  // Affiché au niveau de la page (sinon une carte « verre » parente le coince dans son cadre)
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="overlay" onClick={onClose}>
       <div className="modal appt-modal" onClick={(e) => e.stopPropagation()}>
         <h3>{title}</h3>
@@ -98,5 +101,5 @@ export default function FramePicker({ title = "Choisir sur Frame.io", projects: 
         </div>
       </div>
     </div>
-  );
+  , document.body);
 }
