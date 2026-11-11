@@ -1683,7 +1683,7 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
   input, select, textarea { color-scheme: dark; }
   select option, select optgroup { background: #1a1816; color: #f1ebe4; }
   input[type=checkbox], input[type=radio] { accent-color: #ff6b00; }
-  input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-calendar-picker-indicator { filter: invert(.85); }
+  input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-calendar-picker-indicator { filter: none; opacity: .8; cursor: pointer; }
   .status-pill.doing, .tag { color: #ff9a4d; }
   .notice { color: #ffb27a; }
   .cal-errors, .stale-del, .node-actions .danger { color: #ff8a8d !important; }
@@ -1868,4 +1868,9 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
   .chip.task.late .st { border-color: #ff6b72 !important; }
   .chip.task.ghost { background: transparent !important; border: 1px dashed color-mix(in srgb, var(--cat, #ff8a3d) 60%, transparent) !important; color: rgba(255, 255, 255, .6) !important; opacity: 1; }
   .task-card { background: color-mix(in srgb, var(--cat, #ff8a3d) 22%, #15130f) !important; border-left-color: var(--cat, #ff8a3d) !important; }
+}
+@media (prefers-color-scheme: dark) {
+  input[type=date], input[type=time], input[type=datetime-local] { color: var(--text) !important; min-width: 140px; }
+  input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-calendar-picker-indicator { filter: none !important; opacity: .85; cursor: pointer; }
+  input[type=date]::-webkit-datetime-edit-fields-wrapper, input[type=time]::-webkit-datetime-edit-fields-wrapper { color: var(--text); }
 }
