@@ -1853,3 +1853,8 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
   .pl-icon { flex: none; }
   .pl-ev, .pl-bar > .primary { flex: 1 1 0 !important; min-width: 0; white-space: nowrap; padding-left: 8px !important; padding-right: 8px !important; }
 }
+/* Sombre : couleurs d'agendas et d'événements plus lumineuses */
+@media (prefers-color-scheme: dark) {
+  .chip:not(.task), .wk-event:not(.task-event) { filter: saturate(1.25) brightness(1.18); }
+  .home-dot, .dot { filter: saturate(1.3) brightness(1.25); }
+}

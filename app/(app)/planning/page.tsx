@@ -75,7 +75,10 @@ function Progress({ t, small }: { t: Task; small?: boolean }) {
   );
 }
 // Couleur de la catégorie (le « projet ») : bordure + fond teinté de la vignette
-const catColor = (t: Pick<Task, "category">) => COLORS[t.category] ?? "#ff6a00";
+// Version plus vive des couleurs de catégorie, lisible sur fond noir (thème sombre)
+const DARK_COLORS: Record<string, string> = { Persos: "#2dd4bf", Gaming: "#c084fc", Clients: "#60a5fa", Admin: "#a8a29e", "Créa persos": "#ff8a3d" };
+const isDark = () => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+const catColor = (t: Pick<Task, "category">) => (isDark() ? DARK_COLORS : COLORS)[t.category] ?? (isDark() ? "#ff8a3d" : "#ff6a00");
 const catStyle = (t: Pick<Task, "category">) => ({ borderLeftColor: catColor(t), ["--cat" as string]: catColor(t) }) as React.CSSProperties;
 const toHours = (hm: string) => { const [h, m] = hm.split(":").map(Number); return h + (m || 0) / 60; };
 const addMinutes = (hm: string, n: number) => { const t = Math.min(23 * 60 + 59, toHours(hm) * 60 + n); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(Math.round(t % 60)).padStart(2, "0")}`; };
