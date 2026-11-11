@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { api, isoDay } from "@/lib/api";
 import { REPEATS, nextDate } from "@/lib/repeat";
-import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, Lock, LockOpen, Clapperboard, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
+import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, ChevronLeft, ChevronRight, Lock, LockOpen, Clapperboard, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import FramePicker, { FrameFile } from "@/components/FramePicker";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 import { PUBLIC_URL } from "@/lib/site";
@@ -585,19 +585,20 @@ export default function Planning() {
     <div className="content wide" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="eyebrow">planning</div>
       <h1 className="title">ce qu&apos;on <span className="accent">planifie.</span></h1>
-      <div className="row" style={{ marginBottom: 16 }}>
-        <button className={view === "today" ? "primary" : ""} onClick={() => setView("today")}>Aujourd&apos;hui</button>
-        <button className={view === "month" ? "primary" : ""} onClick={() => setView("month")}>Mois</button>
-        <button className={view === "days5" ? "primary" : ""} onClick={() => { setView("days5"); setCursor(new Date()); }}>{dayCount} jours</button>
-        <button className={view === "board" ? "primary" : ""} onClick={() => setView("board")}>Tableau</button>
-        <button className={view === "list" ? "primary" : ""} onClick={() => setView("list")}>Liste</button>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+      {/* Barre d'outils : vues en segment façon Apple, filtres, actions */}
+      <div className="pl-bar">
+        <div className="pl-seg">
+          {([["today", "Aujourd'hui"], ["month", "Mois"], ["days5", `${dayCount} jours`], ["board", "Tableau"], ["list", "Liste"]] as [View, string][]).map(([v, label]) => (
+            <button key={v} className={`ghost ${view === v ? "on" : ""}`} onClick={() => { setView(v); if (v === "days5") setCursor(new Date()); }}>{label}</button>
+          ))}
+        </div>
+        <select className="pl-filter" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">Toutes catégories</option>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
         </select>
-        <button className="ghost" onClick={() => setShowCals(true)}><CalendarCog size={16} /> Agendas</button>
+        <button className="ghost pl-icon" title="Agendas" onClick={() => setShowCals(true)}><CalendarCog size={17} /><span>Agendas</span></button>
         <span style={{ flex: 1 }} />
-        <button onClick={() => newEvent(today)}><Plus size={16} /> Événement</button>
+        <button className="pl-ev" onClick={() => newEvent(today)}><Plus size={16} /> Événement</button>
         <button className="primary" onClick={() => newTask(null)}><Plus size={16} /> Nouvelle tâche</button>
       </div>
 
@@ -609,12 +610,14 @@ export default function Planning() {
         </details>
       )}
 
-      {view !== "board" && view !== "list" && (
-        <div className="row" style={{ marginBottom: 10 }}>
-          <button onClick={() => shift(-1)}>‹</button>
-          <button onClick={() => setCursor(new Date())}>Aujourd'hui</button>
-          <button onClick={() => shift(1)}>›</button>
+      {view !== "board" && view !== "list" && view !== "today" && (
+        <div className="pl-nav">
           <strong style={{ textTransform: view === "month" ? "capitalize" : "none" }}>{title}</strong>
+          <div className="pl-step">
+            <button className="ghost" aria-label="Précédent" onClick={() => shift(-1)}><ChevronLeft size={18} /></button>
+            <button className="ghost pl-now" onClick={() => setCursor(new Date())}>Aujourd&apos;hui</button>
+            <button className="ghost" aria-label="Suivant" onClick={() => shift(1)}><ChevronRight size={18} /></button>
+          </div>
           <span style={{ flex: 1 }} />
           <button className="ghost" title="Recharger les agendas" onClick={() => loadEvents(true)}><RefreshCw size={16} /></button>
         </div>
