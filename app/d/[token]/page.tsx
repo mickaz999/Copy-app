@@ -20,6 +20,16 @@ export default function Drop({ params }: { params: { token: string } }) {
   const [over, setOver] = useState(false);
   const [done, setDone] = useState<{ n: number; total: number } | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  // iPhone / iPad : les navigateurs intégrés (WhatsApp, Instagram…) bloquent souvent la sélection de vidéos.
+  // WhatsApp ne se signale pas : sur iOS on propose toujours d'ouvrir dans Safari (« x-safari-https » ouvre Safari, iOS 17+)
+  const [ios, setIos] = useState<{ inApp: boolean } | null>(null);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    if (!/iPhone|iPad|iPod/.test(ua)) return;
+    const inApp = /WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Snapchat|Line\/|TikTok|musical_ly|LinkedInApp/i.test(ua) || !/Safari\//.test(ua);
+    try { if (!inApp && sessionStorage.getItem("drop-safari-ok")) return; } catch {}
+    setIos({ inApp });
+  }, []);
 
   const load = () => fetch(url).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setInfo(j); }).catch((e) => setError(e.message));
   useEffect(() => { load(); try { setAuthor(localStorage.getItem("drop-author") ?? ""); } catch {} }, []);
@@ -126,6 +136,18 @@ export default function Drop({ params }: { params: { token: string } }) {
           {info.expiresAt && <div className="liv-chips"><span className="liv-days">{(() => { const n = Math.ceil((Date.parse(info.expiresAt) - Date.now()) / 864e5); return n <= 1 ? "Lien valable encore 1 jour" : `Lien valable encore ${n} jours`; })()}</span><span>jusqu&apos;au {new Date(info.expiresAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span></div>}
         </div>
       </header>
+
+      {ios && (
+        <div className={`drop-safari ${ios.inApp ? "strong" : ""}`}>
+          <b>{ios.inApp ? "Ouvre cette page dans Safari pour envoyer tes vidéos" : "Tu as ouvert ce lien depuis WhatsApp ?"}</b>
+          <span>Le navigateur de WhatsApp (ou Instagram) bloque souvent la sélection des vidéos. Dans Safari, ça marche directement.</span>
+          <div className="drop-safari-actions">
+            <a className="drop-safari-btn" href={`x-safari-${typeof window !== "undefined" ? window.location.href : ""}`}>Ouvrir dans Safari</a>
+            {!ios.inApp && <button className="ghost" onClick={() => { try { sessionStorage.setItem("drop-safari-ok", "1"); } catch {} setIos(null); }}>Je suis déjà dans Safari</button>}
+          </div>
+          <small>Sinon : touche ••• ou la boussole en bas à droite, puis « Ouvrir dans Safari ».</small>
+        </div>
+      )}
 
       <section className="drop-card">
         <input className="drop-name" placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} disabled={running} />

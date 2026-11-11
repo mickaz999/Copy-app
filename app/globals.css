@@ -1879,3 +1879,10 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv-top { min-height: 52px; }
 .liv-top .logo-link, .liv-foot .logo-link { align-items: center; }
 .logo .accent { display: inline-block; line-height: 1; transform: translateY(-2px); }
+/* Dépôt sur iPhone : invitation à ouvrir dans Safari */
+.drop-safari { display: grid; gap: 6px; padding: 16px 18px; border-radius: 18px; background: rgba(255, 107, 0, .1); border: 1px solid rgba(255, 140, 60, .35); }
+.drop-safari b { font-size: 15.5px; }
+.drop-safari span, .drop-safari small { font-size: 13px; color: var(--muted); }
+.drop-safari.strong { background: rgba(255, 107, 0, .18); border-color: var(--accent); }
+.drop-safari-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0; }
+.drop-safari-btn { display: inline-flex; align-items: center; justify-content: center; padding: 11px 18px; border-radius: 999px; font-weight: 700; color: #fff; text-decoration: none; background: linear-gradient(135deg, #ffa25e, var(--accent)); }
