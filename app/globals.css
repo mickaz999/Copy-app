@@ -1748,3 +1748,13 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
   .todo-view .todo-row:hover { background: #22201c; }
   .todo-view .todo-late { background: rgba(229, 72, 77, .2); color: #ff8a8d; }
 }
+/* Sombre : plus de liseré blanc (reflet « verre ») autour des boutons et champs */
+@media (prefers-color-scheme: dark) {
+  button:not(.primary):not(.ghost):not(.tv-st.on), .gbutton, select, input:not([type=checkbox]):not([type=radio]):not([type=color]):not(.cell-input), textarea {
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    box-shadow: none !important;
+    background: rgba(255, 255, 255, .05) !important;
+  }
+  button:not(.primary):not(.ghost):hover { background: rgba(255, 255, 255, .1) !important; }
+  button.primary { box-shadow: 0 6px 18px rgba(255, 107, 0, .22) !important; border: none !important; }
+}
