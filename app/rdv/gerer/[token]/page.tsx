@@ -4,6 +4,7 @@ import { CalendarCheck, CalendarX, ChevronLeft } from "lucide-react";
 import Logo from "@/components/Logo";
 import SlotPicker, { dayLabel } from "@/components/SlotPicker";
 import { MiniLoader } from "@/components/LivLoader";
+import ContactBlock from "@/components/ContactBlock";
 
 type Appt = { name: string; mode: string; day: string; time: string; end: string; meet: string; status: string; past: boolean; slots?: Record<string, string[]> };
 
@@ -34,7 +35,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
       <div className="rdv-card">
         <a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>
         {!a && !error && <MiniLoader />}
-        {error && <p className="neg">{error}</p>}
+        {error && <><p className="neg">{error}</p>{!a && <ContactBlock text="Un souci avec ton rendez-vous ? Contacte-moi directement." />}</>}
         {a && (
           <>
             <h1>{a.status === "cancelled" ? "RDV annulé" : "Ton RDV"}</h1>

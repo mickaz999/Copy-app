@@ -4,6 +4,7 @@ import { CalendarCheck, Clock, MapPin, ChevronLeft, Video, Phone } from "lucide-
 import Logo from "@/components/Logo";
 import SlotPicker, { dayLabel } from "@/components/SlotPicker";
 import { MiniLoader } from "@/components/LivLoader";
+import ContactBlock from "@/components/ContactBlock";
 
 type Info = { title: string; intro: string; duration: number; location: string; slots: Record<string, string[]> };
 
@@ -38,7 +39,7 @@ export default function Rdv({ params }: { params: { slug: string } }) {
       <div className="rdv-card">
         <a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>
         {!info && !error && <MiniLoader label="Recherche des créneaux libres" />}
-        {!info && error && <p className="neg">{error}</p>}
+        {!info && error && <><p className="neg">{error}</p><ContactBlock text="Pour prendre rendez-vous, contacte-moi directement." /></>}
         {info && done && (
           <div className="rdv-done">
             <CalendarCheck size={34} />

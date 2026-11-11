@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 import LivLoader, { MiniLoader } from "@/components/LivLoader";
+import ContactBlock from "@/components/ContactBlock";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
@@ -109,7 +110,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
     if (await post({ action: "comment", version: v, author, text, audio: voice || undefined, time: atTime && isVideo ? now : null })) { setText(""); setVoice(""); }
   }
 
-  if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><p className="neg">{error}</p></div></div>;
+  if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><p className="neg">{error}</p><ContactBlock /></div></div>;
   if (!d) return <LivLoader />;
   if (d.kind === "folder") return <FolderDelivery d={d} token={params.token} reload={load} />;
 

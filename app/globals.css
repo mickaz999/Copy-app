@@ -1886,3 +1886,12 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .drop-safari.strong { background: rgba(255, 107, 0, .18); border-color: var(--accent); }
 .drop-safari-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0; }
 .drop-safari-btn { display: inline-flex; align-items: center; justify-content: center; padding: 11px 18px; border-radius: 999px; font-weight: 700; color: #fff; text-decoration: none; background: linear-gradient(135deg, #ffa25e, var(--accent)); }
+/* Contacts quand un lien n'est plus valable */
+.contact-block { display: grid; gap: 12px; margin-top: 4px; }
+.contact-block p { margin: 0; font-size: 14px; color: var(--muted); }
+.contact-links { display: grid; gap: 8px; }
+.contact-links a { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 14px; text-decoration: none; color: var(--text); font-size: 14px; font-weight: 600; background: rgba(127, 127, 127, .1); border: 1px solid var(--border); }
+.contact-links a:hover { border-color: var(--accent); }
+.contact-links a svg { color: var(--accent); flex: none; }
+.contact-links a.primary-link { background: linear-gradient(135deg, #ffa25e, var(--accent)); color: #fff; border-color: transparent; justify-content: center; }
+.contact-links a.primary-link svg { color: #fff; }
