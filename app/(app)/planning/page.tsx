@@ -794,8 +794,9 @@ export default function Planning() {
                 <b>{t.title || "Sans titre"}</b>
                 <span className="muted small">
                   {t.startTime && <><Clock size={11} /> {t.startTime}{t.endTime ? `–${t.endTime}` : ""} · </>}
-                  <span style={{ color: catColor(t) }}>{t.category}</span> · {STATUS_LABEL[t.status]}
-                  {late && <span className="todo-late"> · {lateLabel(lateDays(t))}</span>}
+                  <span style={{ color: catColor(t) }}>{t.category}</span>
+                  <span>{STATUS_LABEL[t.status]}</span>
+                  {late && <span className="todo-late">{lateLabel(lateDays(t))}</span>}
                 </span>
               </div>
               <Progress t={t} />
