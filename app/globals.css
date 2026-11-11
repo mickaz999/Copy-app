@@ -1784,3 +1784,32 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
     select option { background: none; color: #f1ebe4; }
   }
 }
+/* To-do du jour v3 : progression en anneau, listes groupées façon Rappels */
+.todo-hero { display: flex; align-items: center; gap: 20px; padding: 18px 22px; margin: 14px 0 20px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); }
+.todo-ring { width: 84px; height: 84px; flex: none; transform: rotate(-90deg); }
+.todo-ring circle { fill: none; stroke-width: 8; }
+.todo-ring .bg { stroke: var(--border); }
+.todo-ring .fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
+.todo-ring text { transform: rotate(90deg); transform-origin: 42px 42px; font-size: 17px; font-weight: 800; fill: var(--text); }
+.todo-hero-txt { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.todo-hero-txt b { font-size: 19px; letter-spacing: -0.02em; }
+.todo-hero-txt .todo-bar { margin-top: 6px; height: 6px; }
+.todo-group { margin-bottom: 22px; border-radius: 20px; background: var(--card); border: 1px solid var(--border); overflow: hidden; }
+.todo-gh { display: flex; align-items: center; gap: 6px; margin: 0; padding: 14px 18px 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.todo-gh span { margin-left: auto; font-weight: 700; }
+.todo-group.late .todo-gh { color: var(--red); }
+.todo-empty { padding: 4px 18px 16px; margin: 0; }
+.todo-view .todo-group .todo-row { background: none !important; border: none !important; border-top: 1px solid var(--border) !important; border-radius: 0; padding: 13px 18px 13px 14px; box-shadow: inset 4px 0 0 var(--cat, var(--accent)); }
+.todo-view .todo-group .todo-row:hover { transform: none; background: rgba(127, 127, 127, .06) !important; }
+.todo-view .todo-group .todo-text b { font-size: 15.5px; }
+@media (max-width: 760px) {
+  .todo-hero { gap: 14px; padding: 14px; flex-wrap: wrap; }
+  .todo-ring { width: 64px; height: 64px; }
+  .todo-hero > button { width: 100%; justify-content: center; }
+}
+@media (max-width: 760px) {
+  .todo-view .todo-main { flex-wrap: wrap; row-gap: 6px; }
+  .todo-view .todo-text { flex: 1 1 calc(100% - 44px); }
+  .todo-view .todo-main > .progress, .todo-view .todo-main > .late-pill { margin-left: 38px; }
+  .todo-view .todo-main > .progress + .late-pill { margin-left: 6px; }
+}

@@ -804,22 +804,34 @@ export default function Planning() {
             </div>
           </div>
         );
+        const pct = todays.length ? Math.round((done / todays.length) * 100) : 0;
+        const left = todays.length - done;
+        const R = 34, C = 2 * Math.PI * R;
         return (
           <div className="todo-view">
-            {todays.length > 0 && (
-              <div className="todo-progress">
-                <div className="todo-bar"><i style={{ width: `${(done / todays.length) * 100}%` }} /></div>
-                <span className="muted small">{done}/{todays.length} terminée{done > 1 ? "s" : ""}</span>
+            {/* En-tête : progression du jour */}
+            <div className="todo-hero">
+              <svg className="todo-ring" viewBox="0 0 84 84">
+                <circle cx="42" cy="42" r={R} className="bg" />
+                <circle cx="42" cy="42" r={R} className="fg" strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)} />
+                <text x="42" y="47" textAnchor="middle">{pct}%</text>
+              </svg>
+              <div className="todo-hero-txt">
+                <b>{todays.length === 0 ? "Journée libre" : left === 0 ? "Tout est fait, bravo" : `${left} tâche${left > 1 ? "s" : ""} à faire`}</b>
+                <span className="muted small">{done}/{todays.length} terminée{done > 1 ? "s" : ""} aujourd&apos;hui{lateTasks.length ? ` · ${lateTasks.length} en retard` : ""}</span>
+                <div className="todo-bar"><i style={{ width: `${pct}%` }} /></div>
               </div>
-            )}
-            <button className="todo-new" onClick={() => newTask(today)}><Plus size={16} /> Ajouter une tâche pour aujourd&apos;hui</button>
-            <section className="todo-list">
-              {todays.length === 0 && <p className="muted">Rien de prévu aujourd&apos;hui. Profite.</p>}
+              <button className="primary" onClick={() => newTask(today)}><Plus size={16} /> Ajouter</button>
+            </div>
+
+            <section className="todo-group">
+              <h3 className="todo-gh">Aujourd&apos;hui <span>{todays.length}</span></h3>
+              {todays.length === 0 && <p className="muted small todo-empty">Rien de prévu aujourd&apos;hui. Profite.</p>}
               {todays.map((t) => row(t))}
             </section>
             {lateTasks.length > 0 && (
-              <section className="todo-list">
-                <h3 className="todo-h"><AlertTriangle size={15} /> En retard ({lateTasks.length})</h3>
+              <section className="todo-group late">
+                <h3 className="todo-gh"><AlertTriangle size={14} /> En retard <span>{lateTasks.length}</span></h3>
                 {lateTasks.map((t) => row(t, true))}
               </section>
             )}
