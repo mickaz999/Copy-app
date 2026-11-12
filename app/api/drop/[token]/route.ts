@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dropExpiry, ensurePath, startUpload } from "@/lib/frameio";
-import { getSettings, parisNow, sendPush } from "@/lib/notify";
+import { getSettings, sendPush } from "@/lib/notify";
+import { dropTask } from "@/lib/deliveryTasks";
 
 export const dynamic = "force-dynamic";
 
@@ -63,13 +64,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
     const who = author || l.client || "Le client";
     const s = await getSettings();
     if (s.pushEnabled) await sendPush({ title: `Rushs reçus · ${l.title}`, body: `${who} a déposé ${names.length} fichier${names.length > 1 ? "s" : ""} (${gb(total)}).`, url: "/livraisons", tag: `drop-${l.id}-${Date.now()}` }).catch(() => {});
-    // Tâche « Dérusher » dans le Planning, avec la liste des fichiers reçus
-    const today = parisNow().day;
-    await db.task.create({ data: {
-      title: `Dérusher · ${l.title}`, category: "Clients", status: "todo", date: new Date(today),
-      notes: `${who} a déposé ${names.length} fichier(s) (${gb(total)}) dans le dossier Frame.io « ${l.folderName} ».`,
-      subtasks: JSON.stringify(names.map((n, i) => ({ id: `r${Date.now()}${i}`, title: n, done: false }))),
-    } }).catch(() => {});
+    // Une seule tâche « Dérusher » par lien de dépôt : les nouveaux fichiers s'ajoutent en sous-tâches
+    await dropTask(l, names, who, total).catch(() => {});
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "Action inconnue" }, { status: 400 });

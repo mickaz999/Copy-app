@@ -132,3 +132,43 @@ export async function notifyDownload(d: { id: string; title: string; client: str
   const s = await getSettings();
   if (s.pushEnabled) await sendPush({ title: `Téléchargement · ${d.title}`, body: `${d.client || "Le client"} télécharge ${what}.`, url: "/livraisons", tag: key }).catch(() => {});
 }
+
+// Tâche « Dérusher » d'un lien de dépôt : une seule (non terminée) par lien, les fichiers reçus en sous-tâches
+const gbOf = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} Go` : `${Math.max(1, Math.round(n / 1e6))} Mo`);
+export async function dropTask(l: { id: string; title: string; folderName: string }, names: string[], who: string, total: number) {
+  const title = `Dérusher · ${l.title}`;
+  const existing = await db.task.findMany({ where: { title, status: { not: "done" } }, orderBy: { createdAt: "asc" } });
+  const line = `${who} a déposé ${names.length} fichier(s) (${gbOf(total)}) dans le dossier Frame.io « ${l.folderName} ».`;
+  const add = names.map((n, i) => ({ id: `r${Date.now()}${i}`, title: n, done: false }));
+  if (!existing.length) {
+    await db.task.create({ data: { title, category: "Clients", status: "todo", date: new Date(parisNow().day), notes: line, subtasks: JSON.stringify(add) } });
+    return;
+  }
+  const [keep, ...dups] = existing;
+  const subs: Sub[] = JSON.parse(keep.subtasks || "[]");
+  const notes = [keep.notes];
+  for (const t of dups) { subs.push(...(JSON.parse(t.subtasks || "[]") as Sub[])); if (t.notes) notes.push(t.notes); }
+  for (const x of add) if (!subs.some((s) => s.title === x.title)) subs.push(x);
+  notes.push(line);
+  await db.task.update({ where: { id: keep.id }, data: { subtasks: JSON.stringify(subs), notes: notes.filter(Boolean).join("\n") } });
+  if (dups.length) await db.task.deleteMany({ where: { id: { in: dups.map((t) => t.id) } } });
+}
+
+// Nettoyage : les tâches « Dérusher » en double (une par envoi) sont fusionnées en une seule par projet
+export async function mergeDropTasks() {
+  const all = await db.task.findMany({ where: { title: { startsWith: "Dérusher · " } }, orderBy: { createdAt: "asc" } });
+  const groups = new Map<string, typeof all>();
+  for (const t of all) groups.set(t.title, [...(groups.get(t.title) ?? []), t]);
+  let removed = 0;
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const [keep, ...dups] = list;
+    const subs: Sub[] = JSON.parse(keep.subtasks || "[]");
+    for (const t of dups) for (const x of JSON.parse(t.subtasks || "[]") as Sub[]) if (!subs.some((s) => s.title === x.title)) subs.push(x);
+    const done = list.every((t) => t.status === "done");
+    await db.task.update({ where: { id: keep.id }, data: { subtasks: JSON.stringify(subs), status: done ? "done" : keep.status === "done" ? "todo" : keep.status } });
+    await db.task.deleteMany({ where: { id: { in: dups.map((t) => t.id) } } });
+    removed += dups.length;
+  }
+  return removed;
+}
