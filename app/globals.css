@@ -1901,3 +1901,27 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .contact-icons a.wa { color: #fff; background: linear-gradient(135deg, #ffa25e, var(--accent)); border-color: transparent; }
 .drop-keep { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 107, 0, .1); border: 1px solid rgba(255, 140, 60, .3); font-size: 13px; color: var(--muted); }
 .drop-keep > b { color: var(--text); font-size: 14px; }
+/* Boîte de notifications */
+.nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: var(--accent); }
+.inbox { display: grid; gap: 6px; }
+.inbox-row { display: flex !important; align-items: flex-start; gap: 12px; padding: 14px 16px !important; border-radius: 16px; background: var(--card) !important; border: 1px solid var(--border) !important; text-align: left; width: 100%; }
+.inbox-row:hover { border-color: var(--accent) !important; }
+.inbox-dot { flex: none; width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: transparent; }
+.inbox-row.unread .inbox-dot { background: var(--accent); }
+.inbox-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.inbox-txt b { font-size: 14.5px; }
+.inbox-txt span { font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
+.inbox-row:not(.unread) .inbox-txt b { font-weight: 600; color: var(--muted); }
+.inbox-row small { flex: none; font-size: 12px; color: var(--muted); }
+/* Brief sur les dépôts */
+.drop-brief textarea { width: 100%; font-size: 15px; }
+.drop-brief-admin { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); }
+.drop-brief-admin p { margin: 0; white-space: pre-line; font-size: 14px; }
+.drop-brief-admin audio { width: 100%; height: 36px; }
+.inbox-row.brief { cursor: default; }
+.inbox-brief { margin: 6px 0 2px; white-space: pre-line; font-size: 14px; color: var(--text); padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); }
+.inbox-row audio { width: 100%; height: 36px; margin-top: 4px; }
+.inbox-act { justify-self: start; margin-top: 8px; font-size: 13px; }
+.brief-task { display: grid; gap: 8px; margin-top: 8px; }
+.brief-task input:not([type=date]) { width: 100%; }
+.burger { position: relative; } .burger-badge { position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; color: #fff; background: var(--accent); }

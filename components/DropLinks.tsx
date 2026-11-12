@@ -6,7 +6,7 @@ import FramePicker, { FrameProject } from "@/components/FramePicker";
 import { PUBLIC_URL } from "@/lib/site";
 import ClientList from "@/components/ClientList";
 
-type Drop = { id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
+type Drop = { notes?: { id: string; author: string; text: string; audio: string; createdAt: string }[]; id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
 // Valable 1 semaine après la création, sauf prolongation
 const expiry = (d: Drop) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 7 * 864e5);
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} Go` : `${Math.max(1, Math.round(n / 1e6))} Mo`);
@@ -86,6 +86,13 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
               <span style={{ flex: 1 }} />
               <button className="ghost neg" onClick={async () => { if (confirm(`Supprimer le lien « ${d.title} » ? Les fichiers restent sur Frame.io.`)) { await api(`drops/${d.id}`, "DELETE"); load(); } }}><Trash2 size={15} /></button>
             </div>
+            {(d.notes ?? []).map((n) => (
+              <div key={n.id} className="drop-brief-admin">
+                <b>Brief{n.author ? ` de ${n.author}` : ""}</b>
+                {n.text && <p>{n.text}</p>}
+                {n.audio && <audio controls preload="none" src={`/api/drop/${d.token}/audio?id=${n.id}`} />}
+              </div>
+            ))}
             {d.files.slice(0, 5).map((f, i) => <div key={i} className="muted small">• {f.name} ({size(f.size)}){f.author ? ` · ${f.author}` : ""}</div>)}
           </div>
         );

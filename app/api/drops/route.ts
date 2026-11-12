@@ -6,7 +6,7 @@ import { createFolder } from "@/lib/frameio";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(await db.dropLink.findMany({ orderBy: { createdAt: "desc" }, include: { files: { orderBy: { createdAt: "desc" } } } }));
+  return NextResponse.json(await db.dropLink.findMany({ orderBy: { createdAt: "desc" }, include: { files: { orderBy: { createdAt: "desc" } }, notes: { orderBy: { createdAt: "asc" } } } }));
 }
 
 // Nouveau lien de dépôt ; newFolder = nom du sous-dossier à créer dans le dossier choisi

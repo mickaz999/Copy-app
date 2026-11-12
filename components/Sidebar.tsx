@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
+import { Inbox, House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -17,6 +17,15 @@ export default function Sidebar() {
   const router = useRouter();
 
   useEffect(() => setMenuOpen(false), [path]);
+  // Nombre de notifications non lues (rafraîchi toutes les 60 s et à chaque lecture)
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    const get = () => api<{ unread: number }>("inbox").then((r) => setUnread(r.unread)).catch(() => {});
+    get();
+    const t = setInterval(get, 60_000);
+    window.addEventListener("inbox-changed", get);
+    return () => { clearInterval(t); window.removeEventListener("inbox-changed", get); };
+  }, []);
 
   const load = () => api<Page[]>("pages").then(setPages);
   useEffect(() => {
@@ -76,18 +85,19 @@ export default function Sidebar() {
     <>
       <header className="topbar">
         <Link href="/"><Logo /></Link>
-        <button className="ghost burger" aria-label="Menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={24} /> : <Menu size={24} />}</button>
+        <button className="ghost burger" aria-label="Menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={24} /> : <Menu size={24} />}{!menuOpen && unread > 0 && <span className="burger-badge">{unread > 9 ? "9+" : unread}</span>}</button>
       </header>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
     <nav className={`sidebar ${menuOpen ? "open" : ""}`}>
       <Logo />
       <Link href="/" className={`navitem ${path === "/" ? "active" : ""}`}><House size={17} className="nav-ic" /> Accueil</Link>
+      <Link href="/notifs" className={`navitem ${path === "/notifs" ? "active" : ""}`}><Inbox size={17} className="nav-ic" /> Notifications{unread > 0 && <span className="nav-badge">{unread > 99 ? "99+" : unread}</span>}</Link>
       <Link href="/planning?view=today" className="navitem"><ListChecks size={17} className="nav-ic" /> To-do du jour</Link>
       <Link href="/planning" className={`navitem ${path === "/planning" ? "active" : ""}`}><CalendarDays size={17} className="nav-ic" /> Planning</Link>
       <Link href="/rendez-vous" className={`navitem ${path === "/rendez-vous" ? "active" : ""}`}><CalendarClock size={17} className="nav-ic" /> Rendez-vous</Link>
       <Link href="/livraisons" className={`navitem ${path === "/livraisons" ? "active" : ""}`}><Clapperboard size={17} className="nav-ic" /> Livraisons</Link>
       <Link href="/compta" className={`navitem ${path === "/compta" ? "active" : ""}`}><Wallet size={17} className="nav-ic" /> Compta EI</Link>
-      <Link href="/reglages" className={`navitem ${path === "/reglages" ? "active" : ""}`}><Bell size={17} className="nav-ic" /> Notifications</Link>
+      <Link href="/reglages" className={`navitem ${path === "/reglages" ? "active" : ""}`}><Bell size={17} className="nav-ic" /> Réglages</Link>
       <Link href="/inspi" className={`navitem ${path.startsWith("/inspi") ? "active" : ""}`}><Workflow size={17} className="nav-ic" /> Espaces inspi</Link>
       <Link href="/outils" className={`navitem ${path === "/outils" ? "active" : ""}`}><Calculator size={17} className="nav-ic" /> Outils</Link>
       <div className="section">

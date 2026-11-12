@@ -21,10 +21,12 @@ export function parisNow() {
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 
-type Push = { title: string; body: string; url?: string; tag?: string };
+type Push = { title: string; body: string; url?: string; tag?: string; ref?: string };
 
 // Envoie une notification à tous les appareils abonnés ; retire ceux qui ne sont plus valides
 export async function sendPush(msg: Push) {
+  // Toujours gardée dans la boîte de notifications de l'app
+  await db.notice.create({ data: { title: msg.title.slice(0, 200), body: (msg.body ?? "").slice(0, 1000), url: msg.url ?? "", ref: msg.ref ?? "" } }).catch(() => {});
   if (!pushConfigured()) throw new Error("Notifications non configurées (clés VAPID manquantes)");
   webpush.setVapidDetails("mailto:notifications@maderino.app", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
   const subs = await db.pushSub.findMany();

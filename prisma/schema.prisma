@@ -292,6 +292,18 @@ model DropLink {
   expiresAt  DateTime?  // fin de validité (vide = 1 semaine après la création)
   createdAt  DateTime   @default(now())
   files      DropFile[]
+  notes      DropNote[]
+}
+
+// Brief laissé par le client sur un lien de dépôt (texte et/ou vocal)
+model DropNote {
+  id        String   @id @default(cuid())
+  linkId    String
+  link      DropLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  author    String   @default("")
+  text      String   @default("")
+  audio     String   @default("") // Media.id
+  createdAt DateTime @default(now())
 }
 
 model DropFile {
@@ -303,4 +315,17 @@ model DropFile {
   fileId    String   @default("")
   author    String   @default("")
   createdAt DateTime @default(now())
+}
+
+// Notifications affichées dans l'app (copie de chaque notification envoyée sur le téléphone)
+model Notice {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @default("")
+  url       String   @default("")
+  ref       String   @default("") // élément lié (ex. « brief:<id> ») : permet d'agir depuis la notification
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

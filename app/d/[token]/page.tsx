@@ -4,8 +4,9 @@ import { CheckCircle2, CloudUpload, FileVideo, X, AlertTriangle } from "lucide-r
 import Logo from "@/components/Logo";
 import LivLoader from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
+import VoiceButton from "@/components/VoiceButton";
 
-type Info = { expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
+type Info = { notes?: { text: string; audio: boolean; author: string }[]; expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
 type Job = { dir: string; key: string; file: File; sent: number; status: "wait" | "up" | "ok" | "err"; error?: string };
 
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} Mo` : `${Math.ceil(n / 1e3)} Ko`);
@@ -21,6 +22,17 @@ export default function Drop({ params }: { params: { token: string } }) {
   const [over, setOver] = useState(false);
   const [done, setDone] = useState<{ n: number; total: number } | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  // Brief du client (texte et/ou vocal)
+  const [brief, setBrief] = useState("");
+  const [voice, setVoice] = useState("");
+  const [briefState, setBriefState] = useState<"" | "busy" | "ok">("");
+  async function sendBrief() {
+    if (!author.trim()) return setError("Indique ton prénom avant d'envoyer le brief.");
+    setBriefState("busy"); setError("");
+    const r = await post({ action: "brief", text: brief, audio: voice || undefined });
+    if (!r.ok) { setError((await r.json().catch(() => ({}))).error ?? "Erreur"); setBriefState(""); return; }
+    setBrief(""); setVoice(""); setBriefState("ok"); load();
+  }
   // iPhone / iPad : les navigateurs intégrés (WhatsApp, Instagram…) bloquent souvent la sélection de vidéos.
   // WhatsApp ne se signale pas : sur iOS on propose toujours d'ouvrir dans Safari (« x-safari-https » ouvre Safari, iOS 17+)
   const [ios, setIos] = useState<{ inApp: boolean } | null>(null);
@@ -217,6 +229,21 @@ export default function Drop({ params }: { params: { token: string } }) {
             <span>L&apos;écran reste allumé pendant l&apos;envoi. Si tu quittes l&apos;appli ou verrouilles ton téléphone, l&apos;envoi se met en pause et <b>reprend tout seul</b> là où il s&apos;était arrêté quand tu reviens sur cette page.</span>
           </div>
         )}
+      </section>
+
+      <section className="drop-card drop-brief">
+        <span className="rdv-group-label">Ton brief (facultatif)</span>
+        <p className="muted small">Explique ce que tu veux : idée, style, durée, musique… À l&apos;écrit ou en vocal.</p>
+        {voice
+          ? <div className="liv-voice-ready"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>Supprimer</button></div>
+          : <textarea rows={4} placeholder="Ex : vidéo de 30 s pour Instagram, ambiance douce, mettre en avant le soin visage…" value={brief} onChange={(e) => setBrief(e.target.value)} />}
+        <div className="row">
+          {!voice && <VoiceButton onDone={setVoice} />}
+          <span style={{ flex: 1 }} />
+          <button className="primary" disabled={briefState === "busy" || (!brief.trim() && !voice)} onClick={sendBrief}>{briefState === "busy" ? "Envoi…" : "Envoyer le brief"}</button>
+        </div>
+        {briefState === "ok" && <div className="drop-done">Brief bien reçu, merci !</div>}
+        {(info.notes?.length ?? 0) > 0 && <span className="muted small">{info.notes!.length} brief{info.notes!.length > 1 ? "s" : ""} déjà envoyé{info.notes!.length > 1 ? "s" : ""}.</span>}
       </section>
 
       {info.files.length > 0 && (

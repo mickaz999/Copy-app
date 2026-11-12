@@ -5,7 +5,7 @@ import { getSettings, parisNow, sendPush } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
-const find = (token: string) => db.dropLink.findUnique({ where: { token }, include: { files: { orderBy: { createdAt: "desc" } } } });
+const find = (token: string) => db.dropLink.findUnique({ where: { token }, include: { files: { orderBy: { createdAt: "desc" } }, notes: { orderBy: { createdAt: "asc" } } } });
 const gb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} Go` : `${Math.max(1, Math.round(n / 1e6))} Mo`);
 
 // Page de dépôt (sans connexion)
@@ -13,7 +13,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   const l = await find(params.token);
   if (!l || !l.active) return NextResponse.json({ error: "Ce lien de dépôt n'est plus actif." }, { status: 404 });
   if (dropExpiry(l).getTime() < Date.now()) return NextResponse.json({ error: "Ce lien de dépôt a expiré. Demande-moi un nouveau lien si besoin." }, { status: 410 });
-  return NextResponse.json({ expiresAt: dropExpiry(l), title: l.title, client: l.client, message: l.message, files: l.files.map((f) => ({ name: f.name, size: f.size, author: f.author, createdAt: f.createdAt })) });
+  return NextResponse.json({ notes: l.notes.map((n) => ({ text: n.text, audio: !!n.audio, author: n.author, createdAt: n.createdAt })), expiresAt: dropExpiry(l), title: l.title, client: l.client, message: l.message, files: l.files.map((f) => ({ name: f.name, size: f.size, author: f.author, createdAt: f.createdAt })) });
 }
 
 // start : prépare l'envoi d'un fichier sur Frame.io ; done : fichier reçu ; finish : fin d'un envoi groupé (notification + tâche)
@@ -34,6 +34,24 @@ export async function POST(req: Request, { params }: { params: { token: string }
       return NextResponse.json(await startUpload(l.accountId, folderId, name, size));
     }
     catch (e) { return NextResponse.json({ error: `Frame.io refuse l'envoi : ${(e as Error).message}` }, { status: 502 }); }
+  }
+  // Brief du client : texte et/ou message vocal
+  if (b.action === "brief") {
+    const text = String(b.text ?? "").trim().slice(0, 5000);
+    let audio = "";
+    if (b.audio) {
+      const m = String(b.audio).match(/^data:(audio\/[\w.+-]+)(?:;[^,]*)?;base64,(.+)$/);
+      if (!m || m[2].length > 4_000_000) return NextResponse.json({ error: "Message vocal trop long (3 min max)." }, { status: 400 });
+      audio = (await db.media.create({ data: { mime: m[1], data: Buffer.from(m[2], "base64") } })).id;
+    }
+    if (!text && !audio) return NextResponse.json({ error: "Écris ou enregistre ton brief." }, { status: 400 });
+    const note = await db.dropNote.create({ data: { linkId: l.id, author, text, audio } });
+    const s = await getSettings();
+    const msg = { title: `Brief reçu · ${l.title}`, body: `${author || l.client || "Le client"} : ${audio && !text ? "message vocal" : text.slice(0, 140)}`, url: "/notifs", tag: `brief-${note.id}`, ref: `brief:${note.id}` };
+    // Toujours dans la boîte de l'app ; sur le téléphone seulement si les notifications sont activées
+    if (!s.pushEnabled) await db.notice.create({ data: { title: msg.title, body: msg.body, url: msg.url, ref: msg.ref } }).catch(() => {});
+    if (s.pushEnabled) await sendPush({ ...msg }).catch(() => {});
+    return NextResponse.json({ ok: true });
   }
   if (b.action === "done") {
     await db.dropFile.create({ data: { linkId: l.id, name: String(b.name ?? "").slice(0, 300), size: Number(b.size) || 0, fileId: String(b.fileId ?? ""), author } });

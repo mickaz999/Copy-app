@@ -4,6 +4,7 @@ import { X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download
 import Logo from "@/components/Logo";
 import LivLoader, { MiniLoader } from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
+import VoiceButton from "@/components/VoiceButton";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
@@ -468,40 +469,6 @@ function SaveButton({ href, label }: { href: string; label: string }) {
   return <button disabled={busy} onClick={prepare}><Download size={16} /> {busy ? "Préparation…" : label}</button>;
 }
 
-// Enregistrement d'un message vocal (3 min max), renvoyé en data URL
-function VoiceButton({ onDone }: { onDone: (dataUrl: string) => void }) {
-  const [rec, setRec] = useState<MediaRecorder | null>(null);
-  const [secs, setSecs] = useState(0);
-  const [err, setErr] = useState("");
-  async function start() {
-    setErr("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
-      const r = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined);
-      const parts: Blob[] = [];
-      r.ondataavailable = (e) => parts.push(e.data);
-      r.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const fr = new FileReader();
-        fr.onload = () => onDone(String(fr.result));
-        fr.readAsDataURL(new Blob(parts, { type: r.mimeType || "audio/webm" }));
-        setRec(null);
-      };
-      r.start();
-      setRec(r); setSecs(0);
-      const started = Date.now();
-      const t = setInterval(() => {
-        const sec = Math.floor((Date.now() - started) / 1000);
-        setSecs(sec);
-        if (sec >= 180 || r.state !== "recording") { clearInterval(t); if (r.state === "recording") r.stop(); }
-      }, 250);
-    } catch { setErr("Micro non autorisé"); }
-  }
-  return rec
-    ? <button type="button" className="liv-rec on" onClick={() => rec.stop()}><Square size={12} fill="currentColor" /> {tc(secs)} · Arrêter</button>
-    : <button type="button" className="liv-rec" onClick={start} title={err || "Laisser un message vocal"}><Mic size={15} /> {err || "Vocal"}</button>;
-}
 
 // Aperçu réseau affiché à côté du lecteur (vidéo verticale, sur ordinateur)
 function MockPhone({ kind, src, poster, d }: { kind: Mock; src: string; poster: string; d: Data }) {
