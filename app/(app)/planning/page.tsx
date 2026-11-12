@@ -313,7 +313,7 @@ export default function Planning() {
       location: e.location, description: e.description ?? "",
     });
   }
-  useEffect(() => { if (view === "month" || timeGrid) loadEvents(); }, [view, rangeStart.getTime()]);
+  useEffect(() => { if (view === "month" || view === "today" || timeGrid) loadEvents(); }, [view, rangeStart.getTime()]);
 
   const visible = tasks.filter((t) => !filter || t.category === filter);
   const day = (t: Task) => t.date?.slice(0, 10) ?? null;
@@ -814,6 +814,37 @@ export default function Planning() {
         const left = todays.length - done;
         const R = 34, C = 2 * Math.PI * R;
         return (
+          <div className="today-split">
+          {/* Gauche : journée heure par heure (agendas + tâches avec horaire) */}
+          <section className="day-plan">
+            <div className="day-plan-h"><b>{new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</b></div>
+            {(() => {
+              const evs = events.filter((e) => !e.allDay && isoDay(new Date(e.start)) === today);
+              const allDay = events.filter((e) => e.allDay && eventDays(e).includes(today));
+              const timed = todays.filter((t) => t.startTime);
+              const items = [
+                ...evs.map((e) => { const s0 = new Date(e.start), e0 = new Date(e.end); return { k: e.id, s: s0.getHours() + s0.getMinutes() / 60, e: e0.getHours() + e0.getMinutes() / 60 || 24, label: e.title, time: hhmm(e.start), color: e.color, task: null as Task | null, ev: e }; }),
+                ...timed.map((t) => { const s0 = toHours(t.startTime); return { k: t.id, s: s0, e: t.endTime ? toHours(t.endTime) : s0 + 1, label: t.title, time: t.startTime, color: catColor(t), task: t, ev: null as Ev | null }; }),
+              ];
+              const H0 = Math.max(0, Math.min(HOUR_START, ...items.map((i) => Math.floor(i.s)))), H1 = Math.min(24, Math.max(HOUR_END, ...items.map((i) => Math.ceil(i.e))));
+              const PX = 52;
+              return (
+                <>
+                  {allDay.length > 0 && <div className="day-plan-all">{allDay.map((e) => <span key={e.id} style={{ ["--c" as string]: e.color }} onClick={() => openEvent(e)}>{e.title}</span>)}</div>}
+                  <div className="day-plan-grid" style={{ height: (H1 - H0) * PX }}>
+                    {Array.from({ length: H1 - H0 }, (_, i) => <div key={i} className="day-plan-hour" style={{ top: i * PX }}><span>{H0 + i}h</span></div>)}
+                    {nowH >= H0 && nowH <= H1 && <div className="day-plan-now" style={{ top: (nowH - H0) * PX }} />}
+                    {items.map((i) => (
+                      <div key={i.k} className={`day-plan-ev ${i.task ? "task" : ""} ${i.task?.status === "done" ? "done" : ""}`} style={{ top: (i.s - H0) * PX + 1, height: Math.max(26, (i.e - i.s) * PX - 3), ["--c" as string]: i.color }}
+                        onClick={() => (i.task ? setViewing(i.task) : i.ev && openEvent(i.ev))}>
+                        <b>{i.time}</b> {i.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </section>
           <div className="todo-view">
             {/* En-tête : progression du jour */}
             <div className="todo-hero">
@@ -841,6 +872,7 @@ export default function Planning() {
                 {lateTasks.map((t) => row(t, true))}
               </section>
             )}
+          </div>
           </div>
         );
       })()}

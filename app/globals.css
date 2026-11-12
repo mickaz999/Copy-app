@@ -1925,3 +1925,27 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .brief-task { display: grid; gap: 8px; margin-top: 8px; }
 .brief-task input:not([type=date]) { width: 100%; }
 .burger { position: relative; } .burger-badge { position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; color: #fff; background: var(--accent); }
+/* Planning, vue Aujourd'hui : journée heure par heure à gauche, tâches à droite */
+.today-split { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 22px; align-items: start; }
+.today-split .todo-view { max-width: none; }
+.today-split .todo-hero { margin-top: 0; }
+.day-plan { position: sticky; top: 14px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); padding: 14px 14px 18px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.day-plan-h { padding: 2px 4px 10px; text-transform: capitalize; font-size: 15px; }
+.day-plan-all { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.day-plan-all span { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; cursor: pointer; background: color-mix(in srgb, var(--c) 22%, transparent); border-left: 3px solid var(--c); }
+.day-plan-grid { position: relative; margin-left: 38px; }
+.day-plan-hour { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); }
+.day-plan-hour span { position: absolute; left: -38px; top: -8px; font-size: 11.5px; color: var(--muted); width: 32px; text-align: right; }
+.day-plan-now { position: absolute; left: -6px; right: 0; height: 2px; background: var(--accent); z-index: 3; }
+.day-plan-now::before { content: ""; position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.day-plan-ev { position: absolute; left: 4px; right: 0; z-index: 2; padding: 4px 8px; border-radius: 8px; font-size: 12.5px; line-height: 1.3; overflow: hidden; cursor: pointer; color: var(--text);
+  background: color-mix(in srgb, var(--c) 26%, var(--card)); border-left: 3px solid var(--c); }
+.day-plan-ev b { font-weight: 700; margin-right: 4px; }
+.day-plan-ev.task { background: color-mix(in srgb, var(--c) 14%, var(--card)); border: 1px dashed color-mix(in srgb, var(--c) 70%, transparent); border-left: 3px solid var(--c); }
+.day-plan-ev.done { opacity: .5; text-decoration: line-through; }
+@media (max-width: 900px) {
+  .today-split { grid-template-columns: 1fr; }
+  .day-plan { position: static; max-height: none; order: 2; }
+}
+/* Accueil sur mobile : rien ne déborde à droite */
+@media (max-width: 760px) { .home-card { min-width: 0; overflow: hidden; } .home-card-h { gap: 8px; } .home-card-h .link { flex: none; } }
