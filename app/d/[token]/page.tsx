@@ -78,26 +78,41 @@ export default function Drop({ params }: { params: { token: string } }) {
   const patch = (key: string, p: Partial<Job>) => setJobs((all) => all.map((j) => (j.key === key ? { ...j, ...p } : j)));
   const post = (body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ author, ...body }) });
 
+  // Page cachée (appli quittée, écran verrouillé) : le navigateur met l'envoi en pause ; on attend le retour
+  const waitVisible = () => new Promise<void>((ok) => {
+    if (document.visibilityState === "visible") return ok();
+    const on = () => { if (document.visibilityState === "visible") { document.removeEventListener("visibilitychange", on); ok(); } };
+    document.addEventListener("visibilitychange", on);
+  });
+  // Envoi en cours par fichier : on reprend au morceau où on s'était arrêté (pas de renvoi depuis le début)
+  const progress = useRef<Record<string, { fileId: string; type: string; urls: { url: string; size: number }[]; next: number; offset: number }>>({});
+
   async function sendOne(job: Job) {
-    patch(job.key, { status: "up", sent: 0, error: undefined });
-    const r = await post({ action: "start", name: job.file.name, size: job.file.size, dir: job.dir });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error ?? "Envoi refusé");
-    const type = j.mediaType || job.file.type || "application/octet-stream";
-    let offset = 0;
-    for (const part of j.urls as { url: string; size: number }[]) {
-      const chunk = job.file.slice(offset, offset + part.size);
-      // 3 essais par morceau (coupure réseau)
-      for (let attempt = 1; ; attempt++) {
-        const res = await fetch(part.url, { method: "PUT", body: chunk, headers: { "Content-Type": type, "x-amz-acl": "private" } }).catch(() => null);
-        if (res?.ok) break;
-        if (attempt >= 3) throw new Error("Coupure pendant l'envoi, réessaie");
-        await new Promise((ok) => setTimeout(ok, 1500 * attempt));
-      }
-      offset += part.size;
-      patch(job.key, { sent: Math.min(offset, job.file.size) });
+    patch(job.key, { status: "up", error: undefined });
+    let st = progress.current[job.key];
+    if (!st) {
+      const r = await post({ action: "start", name: job.file.name, size: job.file.size, dir: job.dir });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Envoi refusé");
+      st = progress.current[job.key] = { fileId: j.fileId, type: j.mediaType || job.file.type || "application/octet-stream", urls: j.urls, next: 0, offset: 0 };
     }
+    for (; st.next < st.urls.length; st.next++) {
+      const part = st.urls[st.next];
+      const chunk = job.file.slice(st.offset, st.offset + part.size);
+      // Coupure ou page mise en pause : on réessaie (en attendant que la page revienne au premier plan)
+      for (let attempt = 1; ; attempt++) {
+        await waitVisible();
+        const res = await fetch(part.url, { method: "PUT", body: chunk, headers: { "Content-Type": st.type, "x-amz-acl": "private" } }).catch(() => null);
+        if (res?.ok) break;
+        if (attempt >= 8) throw new Error("Connexion trop instable : appuie sur Envoyer pour reprendre");
+        await new Promise((ok) => setTimeout(ok, Math.min(1500 * attempt, 8000)));
+      }
+      st.offset += part.size;
+      patch(job.key, { sent: Math.min(st.offset, job.file.size) });
+    }
+    const j = st;
     await post({ action: "done", name: job.file.name, size: job.file.size, fileId: j.fileId });
+    delete progress.current[job.key];
     patch(job.key, { status: "ok", sent: job.file.size });
   }
 
@@ -105,6 +120,12 @@ export default function Drop({ params }: { params: { token: string } }) {
     if (!author.trim()) return setError("Indique ton prénom avant d'envoyer.");
     setError(""); setRunning(true);
     try { localStorage.setItem("drop-author", author); } catch {}
+    // Empêche l'écran de se mettre en veille pendant l'envoi (si le navigateur le permet)
+    let lock: { release: () => Promise<void> } | null = null;
+    const getLock = async () => { try { lock = await (navigator as any).wakeLock?.request("screen"); } catch {} };
+    await getLock();
+    const relock = () => { if (document.visibilityState === "visible") getLock(); };
+    document.addEventListener("visibilitychange", relock);
     const ok: Job[] = [];
     for (const job of jobs.filter((x) => x.status === "wait" || x.status === "err")) {
       try { await sendOne(job); ok.push(job); }
@@ -116,6 +137,8 @@ export default function Drop({ params }: { params: { token: string } }) {
       setDone({ n: ok.length, total });
       load();
     }
+    document.removeEventListener("visibilitychange", relock);
+    (lock as { release: () => Promise<void> } | null)?.release().catch(() => {});
     setRunning(false);
   }
 
@@ -188,7 +211,12 @@ export default function Drop({ params }: { params: { token: string } }) {
             {running ? `Envoi en cours… ${Math.round((sentSize / totalSize) * 100)} %` : `Envoyer ${pending.length} fichier${pending.length > 1 ? "s" : ""} (${size(pending.reduce((n, j) => n + j.file.size, 0))})`}
           </button>
         )}
-        {running && <p className="muted small">Garde cette page ouverte jusqu&apos;à la fin de l&apos;envoi.</p>}
+        {running && (
+          <div className="drop-keep">
+            <b>Garde cette page ouverte jusqu&apos;à la fin</b>
+            <span>L&apos;écran reste allumé pendant l&apos;envoi. Si tu quittes l&apos;appli ou verrouilles ton téléphone, l&apos;envoi se met en pause et <b>reprend tout seul</b> là où il s&apos;était arrêté quand tu reviens sur cette page.</span>
+          </div>
+        )}
       </section>
 
       {info.files.length > 0 && (

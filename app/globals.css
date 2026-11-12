@@ -1899,3 +1899,5 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .contact-icons a { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; color: var(--accent); background: rgba(255, 107, 0, .12); border: 1px solid rgba(255, 140, 60, .3); transition: transform .15s, background .15s; }
 .contact-icons a:hover { transform: translateY(-2px); background: rgba(255, 107, 0, .2); }
 .contact-icons a.wa { color: #fff; background: linear-gradient(135deg, #ffa25e, var(--accent)); border-color: transparent; }
+.drop-keep { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 107, 0, .1); border: 1px solid rgba(255, 140, 60, .3); font-size: 13px; color: var(--muted); }
+.drop-keep > b { color: var(--text); font-size: 14px; }
