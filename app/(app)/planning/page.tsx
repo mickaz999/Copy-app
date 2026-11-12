@@ -816,7 +816,7 @@ export default function Planning() {
         return (
           <div className="today-split">
           {/* Gauche : journée heure par heure (agendas + tâches avec horaire) */}
-          <section className="day-plan">
+          <section className="day-plan" ref={(el) => { if (el && !el.dataset.scrolled) { el.dataset.scrolled = "1"; const now = el.querySelector<HTMLElement>(".day-plan-now"); if (now) el.scrollTop = Math.max(0, now.offsetTop - 80); } }}>
             <div className="day-plan-h"><b>{new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</b></div>
             {(() => {
               const evs = events.filter((e) => !e.allDay && isoDay(new Date(e.start)) === today);
@@ -861,17 +861,18 @@ export default function Planning() {
               <button className="primary" onClick={() => newTask(today)}><Plus size={16} /> Ajouter</button>
             </div>
 
-            <section className="todo-group">
-              <h3 className="todo-gh">Aujourd&apos;hui <span>{todays.length}</span></h3>
-              {todays.length === 0 && <p className="muted small todo-empty">Rien de prévu aujourd&apos;hui. Profite.</p>}
-              {todays.map((t) => row(t))}
-            </section>
+            {/* En retard d'abord : à rattraper avant le reste */}
             {lateTasks.length > 0 && (
               <section className="todo-group late">
                 <h3 className="todo-gh"><AlertTriangle size={14} /> En retard <span>{lateTasks.length}</span></h3>
                 {lateTasks.map((t) => row(t, true))}
               </section>
             )}
+            <section className="todo-group">
+              <h3 className="todo-gh">Aujourd&apos;hui <span>{todays.length}</span></h3>
+              {todays.length === 0 && <p className="muted small todo-empty">Rien de prévu aujourd&apos;hui. Profite.</p>}
+              {todays.map((t) => row(t))}
+            </section>
           </div>
           </div>
         );

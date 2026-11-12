@@ -1952,3 +1952,14 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 }
 /* Accueil sur mobile : rien ne déborde à droite */
 @media (max-width: 760px) { .home-card { min-width: 0; overflow: hidden; } .home-card-h { gap: 8px; } .home-card-h .link { flex: none; } }
+/* Vue Aujourd'hui sur téléphone : même vue, journée en haut (calée sur l'heure actuelle), tâches dessous */
+@media (max-width: 900px) {
+  .today-split { gap: 14px; }
+  .day-plan { order: 0 !important; position: static; max-height: 46vh; overflow-y: auto; padding: 12px 10px 12px; border-radius: 18px; }
+  .day-plan-h { padding-bottom: 6px; font-size: 14px; }
+  .todo-view .todo-hero { margin-bottom: 14px; }
+}
+@media (min-width: 600px) and (max-width: 900px) {
+  .today-split { grid-template-columns: minmax(220px, 40%) minmax(0, 1fr); }
+  .day-plan { position: sticky; top: 70px; max-height: calc(100vh - 90px); }
+}
