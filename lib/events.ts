@@ -8,6 +8,7 @@ export type Event = {
   calendar: string; color: string;
   // Renseignés pour les événements Google modifiables depuis l'app
   calId?: string; eventId?: string; editable?: boolean;
+  link?: string; meet?: string; organizer?: string; attendees?: { name: string; status: string }[];
 };
 
 // Cache des flux iCal pour ne pas re-télécharger à chaque changement de mois
@@ -68,7 +69,7 @@ export async function getEvents(from: Date, to: Date, fresh = false) {
         const q = new URLSearchParams({
           timeMin: from.toISOString(), timeMax: to.toISOString(),
           singleEvents: "true", orderBy: "startTime", maxResults: "250",
-          fields: "nextPageToken,items(id,status,summary,location,description,start,end,extendedProperties)",
+          fields: "nextPageToken,items(id,status,summary,location,description,start,end,extendedProperties,htmlLink,hangoutLink,conferenceData(entryPoints),organizer,attendees(email,displayName,responseStatus,self))",
           ...(pageToken ? { pageToken } : {}),
         });
         const r = await gapi(cal.accountId, `/calendars/${encodeURIComponent(cal.calendarId)}/events?${q}`);
@@ -89,6 +90,10 @@ export async function getEvents(from: Date, to: Date, fresh = false) {
             calId: cal.id,
             eventId: e.id,
             editable: cal.writable,
+            link: e.htmlLink || "",
+            meet: e.hangoutLink || e.conferenceData?.entryPoints?.find((x: { entryPointType: string; uri: string }) => x.entryPointType === "video")?.uri || "",
+            organizer: e.organizer?.displayName || e.organizer?.email || "",
+            attendees: (e.attendees ?? []).map((a: { email: string; displayName?: string; responseStatus?: string }) => ({ name: a.displayName || a.email, status: a.responseStatus || "" })),
           });
         }
         pageToken = r.nextPageToken ?? "";

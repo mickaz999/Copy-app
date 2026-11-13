@@ -17,6 +17,7 @@ const propsOf = (t: Partial<Task>): Record<string, unknown> => { try { return JS
 type Ev = {
   id: string; title: string; start: string; end: string; allDay: boolean; location: string; description?: string;
   calendar: string; color: string; calId?: string; eventId?: string; editable?: boolean;
+  link?: string; meet?: string; organizer?: string; attendees?: { name: string; status: string }[];
 };
 type GCal = { id: string; calendarId: string; name: string; color: string; visible: boolean; writable: boolean };
 type GAccount = { id: string; email: string; calendars: GCal[] };
@@ -319,8 +320,10 @@ export default function Planning() {
     window.addEventListener("pointerup", up);
   }
 
-  function openEvent(e: Ev) {
-    if (!e.editable || !e.calId) return setShowEvent(e);
+  function openEvent(e: Ev) { setShowEvent(e); }
+  function editEvent(e: Ev) {
+    if (!e.editable || !e.calId) return;
+    setShowEvent(null);
     const endDay = e.allDay ? isoDay(addDays(new Date(e.end + "T00:00"), -1)) : isoDay(new Date(e.end));
     setEvForm({
       calId: e.calId, eventId: e.eventId, title: e.title, allDay: e.allDay,
@@ -1089,9 +1092,22 @@ export default function Planning() {
                 : `${new Date(showEvent.start).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · ${hhmm(showEvent.start)} – ${hhmm(showEvent.end)}`}
             </div>
             {showEvent.location && <div className="row" style={{ gap: 6 }}><MapPin size={15} /> {showEvent.location}</div>}
-            {showEvent.description && <div style={{ whiteSpace: "pre-wrap" }}>{showEvent.description}</div>}
-            <div className="muted">Agenda : {showEvent.calendar} (lecture seule)</div>
-            <div className="row"><span style={{ flex: 1 }} /><button onClick={() => setShowEvent(null)}>Fermer</button></div>
+            {showEvent.meet && <a className="ev-link ev-meet" href={showEvent.meet} target="_blank" rel="noreferrer">Rejoindre la visio</a>}
+            {showEvent.description && <div className="ev-desc" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }} dangerouslySetInnerHTML={{ __html: showEvent.description.replace(/<(?!\/?(a|b|i|br|p|ul|li|strong|em)\b)[^>]*>/gi, "").replace(/\son\w+=/gi, " x=").replace(/javascript:/gi, "") }} />}
+            {showEvent.organizer && <div className="muted small">Organisé par {showEvent.organizer}</div>}
+            {!!showEvent.attendees?.length && (
+              <div className="ev-att">
+                <b className="small">{showEvent.attendees.length} participant{showEvent.attendees.length > 1 ? "s" : ""}</b>
+                {showEvent.attendees.map((a, i) => <div key={i} className="small">{a.status === "accepted" ? "✓" : a.status === "declined" ? "✕" : "?"} {a.name}</div>)}
+              </div>
+            )}
+            <div className="muted small">Agenda : {showEvent.calendar}{showEvent.editable ? "" : " (lecture seule)"}</div>
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              {showEvent.link && <a className="ev-link" href={showEvent.link} target="_blank" rel="noreferrer">Ouvrir dans Google</a>}
+              <span style={{ flex: 1 }} />
+              {showEvent.editable && showEvent.calId && <button onClick={() => editEvent(showEvent)}>Modifier</button>}
+              <button onClick={() => setShowEvent(null)}>Fermer</button>
+            </div>
           </div>
         </div>
       )}

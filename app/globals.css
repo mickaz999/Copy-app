@@ -1964,3 +1964,7 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
   .day-plan { position: sticky; top: 70px; max-height: calc(100vh - 90px); }
 }
 .todo-view .todo-left { padding: 2px 9px; border-radius: 999px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
+.ev-link { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:10px; border:1px solid var(--border, #ddd); text-decoration:none; color:inherit; font-weight:600; font-size:14px; }
+.ev-meet { background: var(--accent, #f97316); color:#fff; border-color: transparent; align-self:flex-start; }
+.ev-desc a { color: var(--accent, #f97316); }
+.ev-att { display:flex; flex-direction:column; gap:3px; max-height:160px; overflow:auto; }
