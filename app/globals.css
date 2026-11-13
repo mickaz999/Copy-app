@@ -1979,3 +1979,7 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .cal-month .span-bar.past { opacity: .28; filter: grayscale(.6); }
 .cal-month .span-bar.past:hover { opacity: .8; filter: none; }
 @media (prefers-color-scheme: light) { .cal-month .day.past { background: rgba(0,0,0,.06) !important; } }
+/* Barre du haut mobile : toujours au-dessus du contenu, opaque */
+.topbar { z-index: 60 !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .topbar { background: #171513 !important; } }
+@media (prefers-color-scheme: light) { .topbar { background: #FAF6F0 !important; } }
