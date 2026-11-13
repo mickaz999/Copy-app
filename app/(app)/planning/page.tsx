@@ -875,10 +875,10 @@ export default function Planning() {
 
       {view === "today" && (() => {
         // To-do du jour : mêmes tâches, mêmes actions que le reste du Planning (statut, fiche, retours client…)
-        const dl = (t: Task) => `${t.endDate ?? t.date} ${t.endTime || "23:59"}`;
+        const dl = (t: Task) => `${endDay(t) ?? day(t)} ${t.endTime || "23:59"}`;
         const todays = visible.filter((t) => onDay(t, today) && t.status !== "waiting")
           .sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || dl(a).localeCompare(dl(b)) || (a.startTime || "99").localeCompare(b.startTime || "99"));
-        const done = todays.filter((t) => t.status === "done" && (t.endDate ?? t.date ?? "") <= today).length;
+        const done = todays.filter((t) => t.status === "done" && (endDay(t) ?? day(t) ?? "") <= today).length;
         const row = (t: Task, late = false) => (
           <div key={t.id} className={`todo-row ${t.status === "done" ? "done" : ""}`} style={catStyle(t)} onClick={() => setViewing(t)}>
             <div className="todo-main">
@@ -901,7 +901,7 @@ export default function Planning() {
           </div>
         );
         const lateOnly = lateTasks.filter((t) => !todays.some((x) => x.id === t.id));
-        const dueToday = todays.filter((t) => (t.endDate ?? t.date ?? "") <= today);
+        const dueToday = todays.filter((t) => (endDay(t) ?? day(t) ?? "") <= today);
         const total = dueToday.length + lateOnly.length;
         const pct = total ? Math.round((done / total) * 100) : 0;
         const left = total - done;
