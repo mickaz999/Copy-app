@@ -567,7 +567,9 @@ export default function Planning() {
   }
 
   const SpanBar = ({ sp, offset = 0 }: { sp: Span; offset?: number }) => {
-    const cls = `span-bar ${sp.head ? "head" : ""} ${sp.tail ? "tail" : ""}`;
+    const lastDay = sp.ev ? (sp.ev.allDay ? isoDay(addDays(new Date(sp.ev.end + "T00:00"), -1)) : isoDay(new Date(sp.ev.end))) : (sp.task?.endDate ?? sp.task?.date ?? "");
+    const isPast = !!lastDay && lastDay < today && !(sp.task && lateDays(sp.task) > 0);
+    const cls = `span-bar ${sp.head ? "head" : ""} ${sp.tail ? "tail" : ""} ${isPast ? "past" : ""}`;
     const pos = { gridColumn: `${sp.s + 1 + offset} / ${sp.e + 2 + offset}`, gridRow: sp.lane + 1 };
     if (sp.ev) {
       const e = sp.ev;
@@ -715,7 +717,7 @@ export default function Planning() {
                   return (
                     <div
                       key={k}
-                      className={`day ${d.getMonth() !== month.getMonth() ? "out" : ""} ${k === today ? "today" : ""} ${over === k ? "over" : ""} ${blockedDays.includes(k) ? "rdv-blocked" : ""}`}
+                      className={`day ${d.getMonth() !== month.getMonth() ? "out" : ""} ${k < today ? "past" : ""} ${k === today ? "today" : ""} ${over === k ? "over" : ""} ${blockedDays.includes(k) ? "rdv-blocked" : ""}`}
                       style={{ gridColumn: ci + 1 }}
                       onClick={() => newTask(k)}
                       {...dropProps(k)}

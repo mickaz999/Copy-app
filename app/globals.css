@@ -1972,3 +1972,10 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .wk-event.dragging { opacity: .35; }
 .wk-ghost { pointer-events: none; opacity: .9; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 5; color: #fff; }
 .chip.event[draggable="true"] { cursor: grab; }
+/* Vue mois : jours passés noircis */
+.cal-month .day.past { background: rgba(0,0,0,.55) !important; }
+.cal-month .day.past > :not(.dnum):not(.num) { opacity: .28; filter: grayscale(.6); transition: opacity .15s; }
+.cal-month .day.past:hover > * { opacity: .8; filter: none; }
+.cal-month .span-bar.past { opacity: .28; filter: grayscale(.6); }
+.cal-month .span-bar.past:hover { opacity: .8; filter: none; }
+@media (prefers-color-scheme: light) { .cal-month .day.past { background: rgba(0,0,0,.06) !important; } }
