@@ -1968,3 +1968,7 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .ev-meet { background: var(--accent, #f97316); color:#fff; border-color: transparent; align-self:flex-start; }
 .ev-desc a { color: var(--accent, #f97316); }
 .ev-att { display:flex; flex-direction:column; gap:3px; max-height:160px; overflow:auto; }
+@media (pointer: fine) { .wk-event.movable { cursor: grab; } }
+.wk-event.dragging { opacity: .35; }
+.wk-ghost { pointer-events: none; opacity: .9; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 5; color: #fff; }
+.chip.event[draggable="true"] { cursor: grab; }

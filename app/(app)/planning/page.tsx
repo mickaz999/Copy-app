@@ -265,6 +265,61 @@ export default function Planning() {
   const minAt = (x: { clientY: number }, col: Element) => HOUR_START * 60 + ((x.clientY - col.getBoundingClientRect().top) / HOUR_PX) * 60;
   const clampMin = (m: number) => Math.max(HOUR_START * 60, Math.min(HOUR_END * 60, m));
   const fmtMin = (m: number) => `${Math.floor(m / 60)}:${pad(m % 60)}`;
+  // Déplacer un événement Google (journée/heure) depuis le calendrier
+  async function patchEvent(e: Ev, start: string, end: string, allDay: boolean) {
+    if (!e.calId || !e.eventId) return;
+    setEvents((list) => list.map((x) => (x.id === e.id ? { ...x, start: allDay ? start : new Date(start).toISOString(), end: allDay ? end : new Date(end).toISOString() } : x)));
+    await fetch(`/api/google/events/${e.calId}/${encodeURIComponent(e.eventId)}`, {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: e.title, allDay, start, end, location: e.location, description: e.description ?? "" }),
+    }).catch(() => {});
+    loadEvents();
+  }
+  const fmtHM = (m: number) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  const localIso = (k: string, m: number) => `${k}T${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  function moveEventToDay(id: string, k: string) {
+    const e = events.find((x) => x.id === id);
+    if (!e?.editable) return;
+    if (e.allDay) {
+      const diff = Math.round((Date.parse(k) - Date.parse(e.start)) / 864e5);
+      const last = isoDay(addDays(new Date(e.end + "T00:00"), -1));
+      return patchEvent(e, k, isoDay(addDays(new Date(last + "T00:00"), diff)), true);
+    }
+    const s = new Date(e.start), en = new Date(e.end);
+    const sm = s.getHours() * 60 + s.getMinutes(), dur = Math.round((en.getTime() - s.getTime()) / 6e4);
+    const endD = new Date(new Date(`${k}T00:00`).getTime() + (sm + dur) * 6e4);
+    patchEvent(e, localIso(k, sm), `${isoDay(endD)}T${pad(endD.getHours())}:${pad(endD.getMinutes())}`, false);
+  }
+  // Glisser un bloc (événement ou tâche horaire) dans la grille semaine
+  const [drag, setDrag] = useState<{ id: string; k: string; s: number; dur: number; label: string; color: string } | null>(null);
+  const dragMoved = useRef(false);
+  function blockDown(x: React.PointerEvent, item: { id: string; k: string; s: number; dur: number; label: string; color: string }, drop: (k: string, s: number) => void) {
+    if (x.pointerType !== "mouse" || x.button !== 0) return;
+    if ((x.target as HTMLElement).closest(".st")) return;
+    x.stopPropagation();
+    const col0 = x.currentTarget.closest(".wk-col"); if (!col0) return;
+    const grab = minAt(x, col0) - item.s;
+    const y0 = x.clientY, x0 = x.clientX;
+    dragMoved.current = false;
+    let cur = { k: item.k, s: item.s };
+    const mv = (ev: PointerEvent) => {
+      if (!dragMoved.current && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+      dragMoved.current = true;
+      const col = (document.elementsFromPoint(ev.clientX, ev.clientY).find((n) => (n as HTMLElement).dataset?.day) as HTMLElement | undefined);
+      const k = col?.dataset.day ?? cur.k;
+      const c = col ?? col0;
+      const s = Math.max(0, Math.min(24 * 60 - item.dur, snap(minAt(ev, c) - grab)));
+      cur = { k, s };
+      setDrag({ ...item, k, s });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up);
+      setDrag(null);
+      if (dragMoved.current && (cur.k !== item.k || cur.s !== item.s)) drop(cur.k, cur.s);
+      setTimeout(() => { dragMoved.current = false; }, 0);
+    };
+    window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
+  }
   function colDown(x: React.PointerEvent, k: string) {
     if ((x.target as HTMLElement).closest(".wk-event, .wk-draft")) return;
     const col = x.currentTarget;
@@ -573,7 +628,7 @@ export default function Planning() {
   );
 
   const EventChip = ({ e }: { e: Ev }) => (
-    <div className="chip event" style={{ background: e.color }} title={`${e.title} · ${e.calendar}`} onClick={(x) => { x.stopPropagation(); openEvent(e); }}>
+    <div className="chip event" style={{ background: e.color }} title={`${e.title} · ${e.calendar}`} draggable={!!e.editable} onDragStart={(x) => x.dataTransfer.setData("id", "ev:" + e.id)} onClick={(x) => { x.stopPropagation(); openEvent(e); }}>
       {!e.allDay && <b>{hhmm(e.start)} </b>}{e.title}
     </div>
   );
@@ -582,7 +637,7 @@ export default function Planning() {
   const dropProps = (k: string) => ({
     onDragOver: (e: React.DragEvent) => { e.preventDefault(); setOver(k); },
     onDragLeave: () => setOver(null),
-    onDrop: (e: React.DragEvent) => { setOver(null); moveToDay(e.dataTransfer.getData("id"), k); },
+    onDrop: (e: React.DragEvent) => { setOver(null); const id = e.dataTransfer.getData("id"); if (id.startsWith("ev:")) moveEventToDay(id.slice(3), k); else moveToDay(id, k); },
   });
 
   const title =
@@ -727,6 +782,7 @@ export default function Planning() {
                   <div
                     key={k}
                     className="wk-col"
+                    data-day={k}
                     style={{ backgroundSize: `100% ${HOUR_PX}px, 100% ${HOUR_PX}px` }}
                     title="Clique ou glisse pour créer un événement"
                     onPointerDown={(x) => colDown(x, k)}
@@ -745,12 +801,20 @@ export default function Planning() {
                         <span className="wk-draft-handle" onPointerDown={(x) => draftDown(x, "end")} />
                       </div>
                     )}
+                    {drag?.k === k && (
+                      <div className="wk-event wk-ghost" style={{ top: (drag.s / 60 - HOUR_START) * HOUR_PX, height: Math.max(20, (drag.dur / 60) * HOUR_PX), background: drag.color }}>
+                        <b>{fmtMin(drag.s)}</b> {drag.label}
+                      </div>
+                    )}
                     {events.filter((e) => !e.allDay && isoDay(new Date(e.start)) === k).map((e) => {
                       const s = new Date(e.start), en = new Date(e.end);
                       const top = Math.max(0, (s.getHours() + s.getMinutes() / 60 - HOUR_START) * HOUR_PX);
                       const height = Math.max(20, ((en.getTime() - s.getTime()) / 36e5) * HOUR_PX);
                       return (
-                        <div key={e.id} className="wk-event" style={{ top, height, background: e.color }} onClick={(x) => { x.stopPropagation(); openEvent(e); }} title={e.title}>
+                        <div key={e.id} className={`wk-event ${e.editable ? "movable" : ""} ${drag?.id === e.id ? "dragging" : ""}`} style={{ top, height, background: e.color }}
+                          onPointerDown={(x) => e.editable && blockDown(x, { id: e.id, k, s: s.getHours() * 60 + s.getMinutes(), dur: Math.round((en.getTime() - s.getTime()) / 6e4), label: e.title, color: e.color },
+                            (nk, ns) => { const dur = Math.round((en.getTime() - s.getTime()) / 6e4), endD = new Date(new Date(`${nk}T00:00`).getTime() + (ns + dur) * 6e4); patchEvent(e, localIso(nk, ns), `${isoDay(endD)}T${pad(endD.getHours())}:${pad(endD.getMinutes())}`, false); })}
+                          onClick={(x) => { x.stopPropagation(); if (!dragMoved.current) openEvent(e); }} title={e.title}>
                           <b>{hhmm(e.start)}</b> {e.title}
                           {e.location && <div className="loc">{e.location}</div>}
                         </div>
@@ -761,7 +825,10 @@ export default function Planning() {
                       const top = Math.max(0, (s0 - HOUR_START) * HOUR_PX);
                       const height = Math.max(22, (e0 - s0) * HOUR_PX);
                       return (
-                        <div key={`t-${t.id}`} className={`wk-event task-event ${t.status} ${timeOver(t) ? "late-now" : ""}`} style={{ top, height, ...catStyle(t) }} onClick={(x) => { x.stopPropagation(); setViewing(t); }} title={t.title}>
+                        <div key={`t-${t.id}`} className={`wk-event task-event movable ${t.status} ${timeOver(t) ? "late-now" : ""} ${drag?.id === t.id ? "dragging" : ""}`} style={{ top, height, ...catStyle(t) }}
+                          onPointerDown={(x) => blockDown(x, { id: t.id, k, s: Math.round(s0 * 60), dur: Math.round((e0 - s0) * 60), label: t.title, color: catColor(t) },
+                            (nk, ns) => move(t.id, { date: nk, startTime: fmtHM(ns), ...(t.endTime ? { endTime: fmtHM(ns + Math.round((e0 - s0) * 60)) } : {}) }))}
+                          onClick={(x) => { x.stopPropagation(); if (!dragMoved.current) setViewing(t); }} title={t.title}>
                           <span className="st" onClick={(x) => { x.stopPropagation(); move(t.id, { status: NEXT_STATUS[t.status] ?? "todo" }); }}>
                             {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
                           </span>
