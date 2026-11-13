@@ -803,8 +803,9 @@ export default function Planning() {
 
       {view === "today" && (() => {
         // To-do du jour : mêmes tâches, mêmes actions que le reste du Planning (statut, fiche, retours client…)
+        const dl = (t: Task) => `${t.endDate ?? t.date} ${t.endTime || "23:59"}`;
         const todays = visible.filter((t) => onDay(t, today) && t.status !== "waiting")
-          .sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || (a.startTime || "99").localeCompare(b.startTime || "99"));
+          .sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || dl(a).localeCompare(dl(b)) || (a.startTime || "99").localeCompare(b.startTime || "99"));
         const done = todays.filter((t) => t.status === "done").length;
         const row = (t: Task, late = false) => (
           <div key={t.id} className={`todo-row ${t.status === "done" ? "done" : ""}`} style={catStyle(t)} onClick={() => setViewing(t)}>
