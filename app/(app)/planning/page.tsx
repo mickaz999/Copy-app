@@ -878,7 +878,7 @@ export default function Planning() {
         const dl = (t: Task) => `${t.endDate ?? t.date} ${t.endTime || "23:59"}`;
         const todays = visible.filter((t) => onDay(t, today) && t.status !== "waiting")
           .sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || dl(a).localeCompare(dl(b)) || (a.startTime || "99").localeCompare(b.startTime || "99"));
-        const done = todays.filter((t) => t.status === "done").length;
+        const done = todays.filter((t) => t.status === "done" && (t.endDate ?? t.date ?? "") <= today).length;
         const row = (t: Task, late = false) => (
           <div key={t.id} className={`todo-row ${t.status === "done" ? "done" : ""}`} style={catStyle(t)} onClick={() => setViewing(t)}>
             <div className="todo-main">
@@ -901,7 +901,8 @@ export default function Planning() {
           </div>
         );
         const lateOnly = lateTasks.filter((t) => !todays.some((x) => x.id === t.id));
-        const total = todays.length + lateOnly.length;
+        const dueToday = todays.filter((t) => (t.endDate ?? t.date ?? "") <= today);
+        const total = dueToday.length + lateOnly.length;
         const pct = total ? Math.round((done / total) * 100) : 0;
         const left = total - done;
         const R = 34, C = 2 * Math.PI * R;
