@@ -1963,3 +1963,4 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
   .today-split { grid-template-columns: minmax(220px, 40%) minmax(0, 1fr); }
   .day-plan { position: sticky; top: 70px; max-height: calc(100vh - 90px); }
 }
+.todo-view .todo-left { padding: 2px 9px; border-radius: 999px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }

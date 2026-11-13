@@ -60,6 +60,22 @@ function timeOver(t: Task) {
   return n.getHours() * 60 + n.getMinutes() >= end;
 }
 const latePill = (t: Task) => daysLate(t) > 0 ? `${daysLate(t)} j de retard` : timeOver(t) ? "en retard" : "";
+// Temps restant avant l'échéance d'une tâche sur plusieurs jours (« encore 1 j et 5 h »),
+// ou d'une tâche du jour qui a une heure de fin (« encore 3 h »)
+function timeLeft(t: Task) {
+  const endD = (t.endDate ?? t.date)?.slice(0, 10);
+  if (!endD) return "";
+  const today = isoDay(new Date());
+  if (endD === today && !t.endTime) return "";
+  const [h, m] = (t.endTime || "23:59").split(":").map(Number);
+  const [y, mo, d] = endD.split("-").map(Number);
+  const ms = new Date(y, mo - 1, d, h, m).getTime() - Date.now();
+  if (ms <= 0) return "";
+  const hours = Math.floor(ms / 36e5), days = Math.floor(hours / 24), rest = hours % 24;
+  if (days === 0) return hours === 0 ? `encore ${Math.max(1, Math.round(ms / 6e4))} min` : `encore ${hours} h`;
+  return `encore ${days} j${rest ? ` et ${rest} h` : ""}`;
+}
+
 // Sous-tâches (checklist) et progression
 type Sub = { id: string; title: string; done: boolean };
 const subsOf = (t: Pick<Task, "subtasks">): Sub[] => { try { return JSON.parse(t.subtasks || "[]"); } catch { return []; } };
@@ -803,6 +819,7 @@ export default function Planning() {
                   <span style={{ color: catColor(t) }}>{t.category}</span>
                   <span>{STATUS_LABEL[t.status]}</span>
                   {late && <span className="todo-late">{lateLabel(lateDays(t))}</span>}
+                  {!late && t.status !== "done" && timeLeft(t) && <span className="todo-left">{timeLeft(t)}</span>}
                 </span>
               </div>
               <Progress t={t} />
