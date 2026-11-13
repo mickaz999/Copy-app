@@ -827,8 +827,10 @@ export default function Planning() {
             </div>
           </div>
         );
-        const pct = todays.length ? Math.round((done / todays.length) * 100) : 0;
-        const left = todays.length - done;
+        const lateOnly = lateTasks.filter((t) => !todays.some((x) => x.id === t.id));
+        const total = todays.length + lateOnly.length;
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        const left = total - done;
         const R = 34, C = 2 * Math.PI * R;
         return (
           <div className="today-split">
@@ -871,8 +873,8 @@ export default function Planning() {
                 <text x="42" y="47" textAnchor="middle">{pct}%</text>
               </svg>
               <div className="todo-hero-txt">
-                <b>{todays.length === 0 ? "Journée libre" : left === 0 ? "Tout est fait, bravo" : `${left} tâche${left > 1 ? "s" : ""} à faire`}</b>
-                <span className="muted small">{done}/{todays.length} terminée{done > 1 ? "s" : ""} aujourd&apos;hui{lateTasks.length ? ` · ${lateTasks.length} en retard` : ""}</span>
+                <b>{total === 0 ? "Journée libre" : left === 0 ? "Tout est fait, bravo" : `${left} tâche${left > 1 ? "s" : ""} à faire`}</b>
+                <span className="muted small">{done}/{total} terminée{done > 1 ? "s" : ""} aujourd&apos;hui{lateTasks.length ? ` · ${lateTasks.length} en retard` : ""}</span>
                 <div className="todo-bar"><i style={{ width: `${pct}%` }} /></div>
               </div>
               <button className="primary" onClick={() => newTask(today)}><Plus size={16} /> Ajouter</button>
