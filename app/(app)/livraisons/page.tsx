@@ -231,11 +231,7 @@ export default function Livraisons() {
               )}
             </div>
             {d.mode !== "frame" && (
-              <label className="field-line liv-client">Client
-                <input list="clients" autoComplete="off" key={d.client} defaultValue={d.client} placeholder="Ajouter le client (facultatif)"
-                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                  onBlur={async (e) => { const v = e.target.value.trim(); if (v !== d.client) { await api(`livraisons/${d.id}`, "PATCH", { client: v }); setMsg({ ok: true, text: v ? `Client « ${v} » ajouté : la livraison apparaît sur son espace.` : "Client retiré." }); load(); } }} />
-              </label>
+              <ClientPick value={d.client} onChange={async (v) => { await api(`livraisons/${d.id}`, "PATCH", { client: v }); setMsg({ ok: true, text: v ? `Client « ${v} » ajouté : la livraison apparaît sur son espace.` : "Client retiré." }); load(); }} />
             )}
             {d.mode !== "frame" && <VoiceNote d={d} reload={load} onMsg={setMsg} />}
             {open === d.id && (
@@ -323,5 +319,31 @@ function VoiceNote({ d, reload, onMsg }: { d: Delivery; reload: () => void; onMs
         <button className="primary" disabled={busy || (!voice && !text.trim())} onClick={send}>{busy ? "Envoi…" : "Envoyer"}</button>
       </div>
     </div>
+  );
+}
+
+// Choix du client d'une livraison : liste déroulante (clients existants, nouveau client, aucun pour les agences)
+function ClientPick({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [names, setNames] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  useEffect(() => { api<{ name: string }[]>("clients").then((l) => setNames(l.map((c) => c.name))).catch(() => {}); }, []);
+  const list = value && !names.some((n) => n.toLowerCase() === value.toLowerCase()) ? [value, ...names] : names;
+  const cur = list.find((n) => n.toLowerCase() === value.toLowerCase()) ?? "";
+  if (adding) return (
+    <form className="row liv-client" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onChange(name.trim()); setAdding(false); setName(""); } }}>
+      <input autoFocus placeholder="Nom du client" value={name} onChange={(e) => setName(e.target.value)} />
+      <button className="primary" disabled={!name.trim()}>Ajouter</button>
+      <button type="button" className="ghost" onClick={() => setAdding(false)}>Annuler</button>
+    </form>
+  );
+  return (
+    <label className="field-line liv-client">Client
+      <select value={cur} onChange={(e) => e.target.value === "__new" ? setAdding(true) : onChange(e.target.value)}>
+        <option value="">Aucun (agence)</option>
+        {list.map((n) => <option key={n} value={n}>{n}</option>)}
+        <option value="__new">+ Nouveau client…</option>
+      </select>
+    </label>
   );
 }
