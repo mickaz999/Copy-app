@@ -16,9 +16,11 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   if (!d) return NextResponse.json({ error: "Lien de livraison invalide." }, { status: 404 });
   if (isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré. Demande-moi un nouveau lien si besoin.", expired: true }, { status: 410 });
   // Mail demandé avant de visionner (pour la relance avant la fin de validité)
-  const email = cleanEmail(req.headers.get("x-viewer"));
-  if (!email || !(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } })))
-    return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
+  // Une seule fois : le mail déjà donné (sur n'importe quel lien) est repris automatiquement
+  const cookie = req.headers.get("cookie")?.match(/(?:^|;\s*)liv_viewer=([^;]+)/)?.[1];
+  const email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
+  if (!email) return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
+  if (!(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }))) await addViewer(d, email);
   const files: F[] = JSON.parse(d.files);
   const versions = await pool(files, 6, async (f, i) => {
     try {
@@ -40,6 +42,11 @@ const cleanEmail = (v: unknown) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : "";
 };
 
+async function addViewer(d: { id: string; title: string }, email: string) {
+  try { await db.deliveryViewer.create({ data: { deliveryId: d.id, email } }); } catch { return; } // déjà enregistré
+  await notify(`Lien ouvert · ${d.title}`, `${email} a ouvert la livraison.`);
+}
+
 async function notify(title: string, body: string) {
   const s = await getSettings();
   if (s.pushEnabled) await sendPush({ title, body, url: "/livraisons", tag: `liv-${Date.now()}` }).catch(() => {});
@@ -54,12 +61,10 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (b.action === "viewer") {
     const email = cleanEmail(b.email);
     if (!email) return NextResponse.json({ error: "Adresse mail invalide." }, { status: 400 });
-    const existed = await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } });
-    if (!existed) {
-      await db.deliveryViewer.create({ data: { deliveryId: d.id, email } });
-      await notify(`Lien ouvert · ${d.title}`, `${email} a ouvert la livraison.`);
-    }
-    return NextResponse.json({ ok: true, email });
+    await addViewer(d, email);
+    const res = NextResponse.json({ ok: true, email });
+    res.cookies.set("liv_viewer", email, { path: "/", maxAge: 5 * 365 * 864e2, sameSite: "lax", secure: true, httpOnly: true });
+    return res;
   }
   const count = (JSON.parse(d.files) as F[]).length;
   const version = Math.min(count, Math.max(1, Number(b.version) || count));
