@@ -218,7 +218,7 @@ export default function Drop({ params }: { params: { token: string } }) {
         )}
 
         {error && <p className="neg">{error}</p>}
-        {done && !running && <div className="drop-done"><CheckCircle2 size={20} /> C&apos;est bien reçu : {done.n} fichier{done.n > 1 ? "s" : ""} ({size(done.total)}). Merci !</div>}
+        {done && !running && <div className="drop-done"><CheckCircle2 size={20} /> C&apos;est bien reçu : {done.n} fichier{done.n > 1 ? "s" : ""} ({size(done.total)}). Merci</div>}
         {pending.length > 0 && (
           <button className="primary drop-send" disabled={running} onClick={start}>
             {running ? `Envoi en cours… ${Math.round((sentSize / totalSize) * 100)} %` : `Envoyer ${pending.length} fichier${pending.length > 1 ? "s" : ""} (${size(pending.reduce((n, j) => n + j.file.size, 0))})`}
@@ -243,7 +243,7 @@ export default function Drop({ params }: { params: { token: string } }) {
           <span style={{ flex: 1 }} />
           <button className="primary" disabled={briefState === "busy" || (!brief.trim() && !voice)} onClick={sendBrief}>{briefState === "busy" ? "Envoi…" : "Envoyer le brief"}</button>
         </div>
-        {briefState === "ok" && <div className="drop-done">Brief bien reçu, merci !</div>}
+        {briefState === "ok" && <div className="drop-done">Brief bien reçu, merci</div>}
         {(info.notes?.length ?? 0) > 0 && <span className="muted small">{info.notes!.length} brief{info.notes!.length > 1 ? "s" : ""} déjà envoyé{info.notes!.length > 1 ? "s" : ""}.</span>}
       </section>
 
