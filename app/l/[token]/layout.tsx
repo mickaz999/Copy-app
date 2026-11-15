@@ -1,3 +1,5 @@
+import DeadLink from "@/components/DeadLink";
+import { isLegacy } from "@/lib/site";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { PUBLIC_URL, tokenOf } from "@/lib/site";
@@ -11,6 +13,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
   return { metadataBase: new URL(PUBLIC_URL), title, description, openGraph: { title, description, type: "website", siteName: "maderino production" }, twitter: { card: "summary_large_image", title, description } };
 }
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children, params }: { children: React.ReactNode; params: { token: string } }) {
+  if (isLegacy(params.token, 16)) return <DeadLink />;
   return children;
 }
