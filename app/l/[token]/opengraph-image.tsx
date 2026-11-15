@@ -15,5 +15,5 @@ export default async function Image({ params }: { params: { token: string } }) {
   const bg = files[0] ? await fileMedia(d.accountId, files[0].fileId).then((m) => m.thumb).catch(() => "") : "";
   const n = files.length;
   const sub = d.kind === "folder" ? "Dossier de livraison" : n > 1 ? `${n} fichiers à découvrir` : "Ta vidéo est prête";
-  return ogCard({ title: d.title, kicker: d.client ? `livraison · ${d.client.toLowerCase()}` : "livraison", sub, bg: bg || undefined });
+  return ogCard({ title: d.client.trim() ? `Livraison ${d.client.trim()}` : d.title, kicker: d.client.trim() ? d.title.toLowerCase() : "livraison", sub, bg: bg || undefined });
 }
