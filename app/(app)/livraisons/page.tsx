@@ -78,10 +78,20 @@ export default function Livraisons() {
   const link = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}`;
   const filesOf = (d: Delivery): File[] => JSON.parse(d.files || "[]");
 
+  const [notify, setNotify] = useState(true);
+  async function tellClient(id: string) {
+    try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "delivery", id }); setMsg({ ok: true, text: `Client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }); }
+    catch (e) { setMsg({ ok: false, text: errorText(e) }); }
+  }
   async function create() {
     try {
-      await api("livraisons", "POST", draft);
-      setDraft(null); setMsg({ ok: true, text: "Livraison créée : copie le lien et envoie-le au client." }); load();
+      const d = await api<{ id: string }>("livraisons", "POST", draft);
+      const withMail = notify && draft?.mode !== "frame" && !!draft?.client.trim();
+      setDraft(null); load();
+      if (withMail) {
+        try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "delivery", id: d.id }); setMsg({ ok: true, text: `Livraison créée, client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}). Elle apparaît sur son espace.` }); }
+        catch (e) { setMsg({ ok: true, text: `Livraison créée, mais mail non envoyé : ${errorText(e)}` }); }
+      } else setMsg({ ok: true, text: "Livraison créée : copie le lien et envoie-le au client." });
     } catch (e) { setMsg({ ok: false, text: errorText(e) }); }
   }
 
@@ -144,6 +154,7 @@ export default function Livraisons() {
             {!draft.folderId && <button onClick={() => setPicking("new")}><Plus size={15} /> {draft.files.length ? "Ajouter une version" : "Choisir sur Frame.io"}</button>}
             <span style={{ flex: 1 }} />
             <button onClick={() => setDraft(null)}>Annuler</button>
+            {draft.mode !== "frame" && <label className="check"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Prévenir le client par mail</label>}
             <button className="primary" disabled={!draft.title.trim() || (!draft.files.length && !draft.folderId)} onClick={create}>{draft.mode === "frame" ? "Suivre" : "Créer le lien"}</button>
           </div>
         </section>
@@ -177,6 +188,7 @@ export default function Livraisons() {
                 : <>
                     <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
                     <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
+                    {d.client && <button onClick={() => tellClient(d.id)}>Prévenir le client</button>}
                   </>}
               {d.kind !== "folder" && <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>}
               {d.mode !== "frame" && (
