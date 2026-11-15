@@ -4,7 +4,7 @@
   --border: rgba(28, 24, 20, .10); --hover: rgba(255, 255, 255, .85); --accent: #ff6b00; --accent-soft: rgba(255, 107, 0, .10);
   --green: #2f8f5b; --red: #e5484d; --yellow: #dfab01;
   --tag: #EFE7DC; --card: #FAF6F0;
-  --shadow: 0 10px 30px rgba(60, 40, 20, .08), inset 0 1px 0 rgba(255, 255, 255, .9);
+  --shadow: 0 1px 2px rgba(60, 40, 20, .05);
   --serif: "Playfair Display", Georgia, serif;
 }
 * { box-sizing: border-box; }
@@ -568,13 +568,14 @@ button.primary { background: linear-gradient(135deg, #ff9a4d, #ff6b00); box-shad
    Liquid glass (style iOS 26), réglages repris du site maderinoprod.com
    ===================================================================== */
 :root {
-  --glass-bg: rgba(255, 255, 255, .55);
-  --glass-bg-strong: rgba(255, 255, 255, .75);
-  --glass-border: rgba(255, 255, 255, .7);
+  /* unslop : surfaces pleines + filet fin, plus de flou ni de reflet */
+  --glass-bg: #FAF6F0;
+  --glass-bg-strong: #FFFDF9;
+  --glass-border: rgba(28, 24, 20, .08);
   --glass-edge: rgba(28, 24, 20, .08);
-  --glass-blur: blur(22px) saturate(180%);
-  --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, .75) 0%, rgba(255, 255, 255, .18) 45%, rgba(255, 255, 255, 0) 100%);
-  --glass-shadow: 0 10px 30px rgba(60, 40, 20, .10), 0 1px 2px rgba(60, 40, 20, .06), inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(255, 255, 255, .25);
+  --glass-blur: none;
+  --glass-shine: none;
+  --glass-shadow: 0 1px 2px rgba(60, 40, 20, .05);
 }
 
 /* Fond : quelques halos colorés pour que le verre ait quelque chose à flouter */
@@ -1610,16 +1611,14 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
     --bg: #0f0d0c; --side: #161412; --text: #f1ebe4; --muted: rgba(241, 235, 228, .58);
     --border: rgba(255, 255, 255, .09); --hover: rgba(255, 255, 255, .06); --accent-soft: rgba(255, 107, 0, .16);
     --tag: #221e1b; --card: #171513;
-    --shadow: 0 10px 30px rgba(0, 0, 0, .35);
-    --glass-bg: rgba(28, 25, 22, .72); --glass-bg-strong: rgba(38, 34, 30, .9); --glass-border: rgba(255, 255, 255, .08);
-    --glass-edge: rgba(255, 255, 255, .06); --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 50%);
-    --glass-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .04);
+    --shadow: none;
+    --glass-bg: #1a1816; --glass-bg-strong: #22201d; --glass-border: rgba(255, 255, 255, .08);
+    --glass-edge: rgba(255, 255, 255, .06); --glass-shine: none;
+    --glass-shadow: none;
   }
   body:not(:has(.liv)) {
     background:
-      radial-gradient(700px 500px at 85% 10%, rgba(255, 110, 30, .14), transparent 65%),
-      radial-gradient(600px 500px at 10% 85%, rgba(255, 140, 60, .08), transparent 65%),
-      linear-gradient(180deg, #0f0d0c, #12100e) fixed !important;
+      #0f0d0c !important;
   }
   .sidebar { background: rgba(22, 20, 18, .9) !important; box-shadow: none !important; }
   .overlay { background: rgba(0, 0, 0, .55) !important; }
@@ -2066,3 +2065,60 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .imsg-avatar { width: 26px; height: 26px; border-radius: 50%; flex: none; object-fit: cover; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
 .imsg-row.out { align-items: flex-end; gap: 6px; }
 .imsg-initial { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #8e8e93, #636366); }
+
+
+/* =====================================================================
+   unslop : nettoyage final (polices conservées telles quelles)
+   ===================================================================== */
+/* Fond uni beige, sans halos */
+body:not(:has(.liv)) { background: var(--bg); }
+@media (prefers-color-scheme: dark) { body:not(:has(.liv)) { background: var(--bg) !important; } }
+
+/* Plus de verre : aucun flou d'arrière-plan sur l'interface (la page livraison garde son fond flouté, c'est l'image) */
+.shell *, .overlay, .modal, .notice, .tag, .ok-pill, .late-pill { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.cal-month::before, .week::before, .table-wrap::before, .stat::before, .settings-card::before, .modal::before, .card::before { content: none; }
+.sidebar { background: var(--side) !important; box-shadow: none !important; border-right: 1px solid var(--border) !important; }
+.overlay { background: rgba(28, 24, 20, .28) !important; }
+.modal, .th-pop, .pick-menu { box-shadow: 0 12px 32px rgba(60, 40, 20, .12) !important; }
+
+/* Contrôles : surface pleine, filet, pas de reflet ni de saut au survol */
+button:not(.primary):not(.ghost):not(.tv-st.on), .gbutton, select, input:not([type=checkbox]):not([type=radio]):not([type=color]):not(.cell-input), textarea {
+  box-shadow: none !important; border-color: var(--border) !important;
+}
+button { transition: background-color .15s cubic-bezier(.2, 0, 0, 1), border-color .15s cubic-bezier(.2, 0, 0, 1), transform .1s cubic-bezier(.2, 0, 0, 1); }
+button:hover, button:not(.primary):not(.ghost):hover, button.primary:hover { transform: none; }
+button:active { transform: scale(.98); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px var(--accent-soft) !important; }
+
+/* Bouton principal : orange uni de la marque, sans dégradé ni lueur. Texte foncé pour le contraste (blanc sur #ff6b00 < 4.5:1) */
+button.primary {
+  background: var(--accent) !important; color: #1C1814 !important;
+  border: 1px solid transparent !important; box-shadow: none !important;
+}
+button.primary:hover { background: #f26500 !important; }
+
+/* Élément actif du menu : un pas de surface + filet */
+.navitem.active { background: var(--card) !important; box-shadow: none !important; border: 1px solid var(--border); }
+.navitem:hover { background: rgba(255, 255, 255, .5); }
+@media (prefers-color-scheme: dark) { .navitem:hover { background: var(--hover); } }
+
+/* Labels en casse normale */
+.sidebar .section, .rdv-group-label, .todo-gh { text-transform: none; letter-spacing: 0; }
+.sidebar .section { font-size: 12px; padding: 24px 8px 8px; }
+
+/* Vignettes de tâches : teinte de catégorie pleine, sans reflet */
+.chip.task, .span-bar.chip.task, .wk-event.task-event, .chip.event, .wk-event:not(.task-event) { box-shadow: none !important; }
+
+/* Signature : le point REC ne pulse plus en décor, il reste fixe.
+   Il ne clignote que quand un enregistrement est vraiment en cours (.rec.on / .liv-rec.on) */
+.eyebrow::before { animation: none; }
+
+/* Pas de zoom au survol, un simple changement d'opacité */
+.chip.task .st:hover, .port:hover, .port.out:hover, .thumb:hover .play, .liv-wcard:hover .liv-wplay { transform: none; }
+.liv-folder:hover .liv-cover img, .liv-wcard:hover img, .liv-wcard:hover video { transform: none; opacity: .9; }
+
+/* Chargeur client : on garde l'animation de chargement, sans halo ni lueur */
+.ldr-glow { display: none; }
+.ldr-play, .ldr-tri { filter: none; }
+.ldr-play { animation: none; }

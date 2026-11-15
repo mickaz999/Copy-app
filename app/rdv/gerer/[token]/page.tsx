@@ -59,7 +59,7 @@ export default function Gerer({ params }: { params: { token: string } }) {
             {view === "move" && a.slots && (
               <>
                 <button className="rdv-back" onClick={() => setView("")}><ChevronLeft size={16} /> Retour</button>
-                <SlotPicker slots={a.slots} onPick={(day, time) => !busy && confirm(`Déplacer au ${dayLabel(day)} à ${time} ?`) && act({ action: "move", day, time }, "RDV déplacé !")} />
+                <SlotPicker slots={a.slots} onPick={(day, time) => !busy && confirm(`Déplacer au ${dayLabel(day)} à ${time} ?`) && act({ action: "move", day, time }, "RDV déplacé")} />
               </>
             )}
 
