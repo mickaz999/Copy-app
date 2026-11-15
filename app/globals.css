@@ -2009,3 +2009,4 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv-thread-form { display: grid; gap: 8px; }
 .liv-thread-form textarea { width: 100%; }
 .liv-client input { max-width: 320px; }
+.liv-client select { max-width: 320px; }
