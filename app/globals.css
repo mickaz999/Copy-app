@@ -2014,3 +2014,27 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv-quality { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .liv-quality button { font-size: 12px; padding: 4px 10px !important; border-radius: 999px; }
 .liv-quality button.on { border-color: var(--accent) !important; color: var(--accent) !important; }
+
+/* Conversation façon iMessage (page de livraison) */
+.liv-col { display: grid; gap: 12px; align-content: start; position: sticky; top: 16px; }
+.liv-col .liv-side { position: static; }
+.liv-side.imsg { grid-template-rows: auto 1fr auto; max-height: 60vh; }
+.imsg-list { overflow-y: auto; display: grid; gap: 2px; align-content: start; padding: 2px; min-height: 80px; }
+.imsg-time { text-align: center; font-size: 11px; color: var(--muted); margin: 8px 0 4px; }
+.imsg-row { display: flex; margin: 2px 0; }
+.imsg-row.out { justify-content: flex-end; }
+.imsg-bubble { max-width: 82%; padding: 8px 12px; border-radius: 18px; font-size: 14px; line-height: 1.35; display: grid; gap: 6px; }
+.imsg-row.in .imsg-bubble { background: #e9e9eb; color: #000; border-bottom-left-radius: 5px; }
+.imsg-row.out .imsg-bubble { background: #0a84ff; color: #fff; border-bottom-right-radius: 5px; }
+.imsg-bubble p { margin: 0; white-space: pre-line; word-break: break-word; }
+.imsg-bubble audio { width: 230px; max-width: 100%; height: 34px; }
+.imsg-bar { display: flex; align-items: flex-end; gap: 6px; border: 1px solid var(--border); border-radius: 22px; padding: 4px 4px 4px 6px; }
+.imsg-bar textarea { flex: 1; border: 0 !important; background: transparent !important; resize: none; min-height: 32px; max-height: 120px; padding: 6px 4px !important; box-shadow: none !important; font-size: 14px; }
+.imsg-bar .liv-rec { padding: 5px 9px !important; }
+.imsg-voice { flex: 1; display: flex; align-items: center; gap: 6px; }
+.imsg-voice audio { flex: 1; height: 34px; }
+.imsg-send { width: 30px; height: 30px; padding: 0 !important; border-radius: 50% !important; display: grid; place-items: center; background: #0a84ff !important; color: #fff !important; border: 0 !important; flex: none; }
+.imsg-send:disabled { background: rgba(127,127,127,.35) !important; }
+.liv.dark .imsg-row.in .imsg-bubble, .liv-dark-solo .imsg-row.in .imsg-bubble { background: #3a3a3c; color: #fff; }
+@media (prefers-color-scheme: dark) { .imsg-row.in .imsg-bubble { background: #3a3a3c; color: #fff; } }
+@media (max-width: 900px) { .liv-col { position: static; } .liv-side.imsg { max-height: none; } .imsg-list { max-height: 50vh; } }

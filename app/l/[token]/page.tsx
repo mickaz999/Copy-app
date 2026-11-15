@@ -212,7 +212,6 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
           <h1>{d.title}</h1>
           {d.message && <p className="liv-msg">{d.message}</p>}
-          <DeliveryThread token={tokenOf(params.token)} messages={d.messages} onSent={() => load()} />
           <div className="liv-chips">
             <span>{multi ? `${d.versions.length} ${d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos"}` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
@@ -420,6 +419,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
             : null}
         </div>
 
+        {(d.feedback !== "off" || d.messages?.some((m) => m.fromMe)) && <div className="liv-col">
+        <DeliveryThread token={tokenOf(params.token)} messages={d.messages} onSent={() => load()} />
         {d.feedback !== "off" && <aside className="liv-side">
           <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
           {d.feedback === "ask" && !askOpen && comments.length === 0 ? (
@@ -461,6 +462,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           </form>
           </>}
         </aside>}
+        </div>}
       </div>
       </div>}
       {/* Avis mis en avant après validation, ou d'emblée pour un lien sans retours ni validation (téléchargement libre) */}
