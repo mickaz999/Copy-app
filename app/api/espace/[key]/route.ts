@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { addClientEmail, clientItems, emailsOf } from "@/lib/clients";
+import { keyFromSlug, addClientEmail, clientItems, emailsOf } from "@/lib/clients";
 import { dropExpiry, expiryOf, fileMedia, pool } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 
@@ -15,7 +15,7 @@ const COOKIE = { path: "/", maxAge: 5 * 365 * 864e2, sameSite: "lax" as const, s
 
 // Espace client : toutes ses livraisons et dépôts en cours (les expirés disparaissent)
 export async function GET(req: Request, { params }: { params: { key: string } }) {
-  const c = await db.client.findUnique({ where: { key: params.key } });
+  const c = await db.client.findUnique({ where: { key: keyFromSlug(params.key) } });
   if (!c) return NextResponse.json({ error: "Lien invalide." }, { status: 404 });
   const cookie = req.headers.get("cookie")?.match(/(?:^|;\s*)liv_viewer=([^;]+)/)?.[1];
   const email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
@@ -41,7 +41,7 @@ export async function GET(req: Request, { params }: { params: { key: string } })
 
 // { email } : première visite, le mail est gardé dans la fiche et sur l'appareil
 export async function POST(req: Request, { params }: { params: { key: string } }) {
-  const c = await db.client.findUnique({ where: { key: params.key } });
+  const c = await db.client.findUnique({ where: { key: keyFromSlug(params.key) } });
   if (!c) return NextResponse.json({ error: "Lien invalide." }, { status: 404 });
   const b = await req.json().catch(() => ({}));
   const email = cleanEmail(b.email);

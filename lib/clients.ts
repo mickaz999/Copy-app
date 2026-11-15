@@ -27,7 +27,10 @@ export async function addClientEmail(name: string, email: string) {
 
 // ——— Espace client et mails au client ———
 
-export const spaceUrl = (c: { key: string }) => `${PUBLIC_URL}/c/${c.key}`;
+// Lien lisible : /c/nom-du-client-<clé> (la clé = 12 derniers caractères, c'est elle qui compte)
+const slug = (n: string) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+export const spaceUrl = (c: { key: string; name?: string }) => `${PUBLIC_URL}/c/${c.name && slug(c.name) ? `${slug(c.name)}-` : ""}${c.key}`;
+export const keyFromSlug = (s: string) => decodeURIComponent(s).slice(-12);
 const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));
 
 // Ce qui est en cours pour un client : livraisons (page) et dépôts actifs, non expirés
