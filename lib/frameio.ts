@@ -112,7 +112,7 @@ async function loadMedia(accountId: string, fileId: string) {
     // Qualités de lecture proposées au client (proxies Frame.io)
     hq: url("high_quality"),
     efficient: url("efficient"),
-    originalPlay: l.original?.url ?? "",
+    originalPlay: l.original?.url ?? l.original?.download_url ?? "",
     status: (f?.status ?? "") as string,
   };
 }
