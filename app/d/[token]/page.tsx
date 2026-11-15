@@ -6,7 +6,7 @@ import LivLoader from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
 import VoiceButton from "@/components/VoiceButton";
 
-type Info = { notes?: { text: string; audio: boolean; author: string }[]; expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
+type Info = { space?: string; notes?: { text: string; audio: boolean; author: string }[]; expiresAt?: string; title: string; client: string; message: string; files: { name: string; size: number; author: string; createdAt: string }[] };
 type Job = { dir: string; key: string; file: File; sent: number; status: "wait" | "up" | "ok" | "err"; error?: string };
 
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} Mo` : `${Math.ceil(n / 1e3)} Ko`);
@@ -163,7 +163,7 @@ export default function Drop({ params }: { params: { token: string } }) {
   return (
     <div className="liv dark drop">
       <div className="liv-bg drop-bg" />
-      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Dépôt privé</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>{info.space ? <a className="liv-space" href={info.space}>← Tout mon espace</a> : <span className="muted small">Dépôt privé</span>}</div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{info.client ? `dépôt de rushs · ${info.client}` : "dépôt de rushs"}</span>

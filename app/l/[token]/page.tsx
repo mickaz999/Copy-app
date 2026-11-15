@@ -9,7 +9,7 @@ import DeliveryThread, { type Msg } from "@/components/DeliveryThread";
 
 type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { messages?: Msg[]; validation?: boolean; dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { space?: string; messages?: Msg[]; validation?: boolean; dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -202,7 +202,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
         {/* Sans vignette Frame.io, on prend une image de la vidéo elle-même */}
         {!cur?.thumb && cur?.play && isVideo && <video key={cur.v} src={`${cur.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden />}
       </div>
-      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Livraison privée</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>{d.space ? <a className="liv-space" href={d.space}>← Tout mon espace</a> : <span className="muted small">Livraison privée</span>}</div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
@@ -597,7 +597,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   return (
     <div className="liv dark">
       <div className="liv-bg" style={media?.thumb || (media && !isVid(media.mediaType)) ? { backgroundImage: `url("${media.thumb || media.play}")` } : undefined} />
-      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Livraison privée</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>{d.space ? <a className="liv-space" href={d.space}>← Tout mon espace</a> : <span className="muted small">Livraison privée</span>}</div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>

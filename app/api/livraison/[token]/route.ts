@@ -5,7 +5,7 @@ import { canDownload, expiryOf, fileMedia, isExpired, pool } from "@/lib/frameio
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
 import { publicMessages, saveAudio } from "@/lib/deliveryMessages";
-import { addClientEmail, emailsOf, nameKey } from "@/lib/clients";
+import { addClientEmail, emailsOf, nameKey, spaceFor, spacePath } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -43,6 +43,7 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   });
   const res = NextResponse.json({
     messages: publicMessages(params.token, d.messages),
+    space: spacePath(await spaceFor(d.client)),
     expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
