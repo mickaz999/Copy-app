@@ -29,7 +29,7 @@ export async function addClientEmail(name: string, email: string) {
 
 // Lien lisible : /c/nom-du-client-<clé> (la clé = 12 derniers caractères, c'est elle qui compte)
 const slug = slugify;
-export const spaceUrl = (c: { key: string; name?: string }) => `${PUBLIC_URL}/c/${c.name && slug(c.name) ? `${slug(c.name)}-` : ""}${c.key}`;
+export const spaceUrl = (c: { key: string; name?: string }) => `${PUBLIC_URL}/c/${(c.name && slug(c.name)) || "client"}-${c.key}`;
 export const keyFromSlug = (s: string) => decodeURIComponent(s).slice(-12);
 const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));
 
