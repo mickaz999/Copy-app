@@ -1,7 +1,8 @@
 import type { Delivery, DeliveryComment } from "@prisma/client";
 import { db } from "@/lib/db";
-import { fio } from "@/lib/frameio";
-import { getSettings, parisNow, sendPush } from "@/lib/notify";
+import { expiryOf, fio } from "@/lib/frameio";
+import { sendGmail } from "@/lib/google";
+import { getSettings, mailAccount, parisNow, sendPush } from "@/lib/notify";
 
 type Sub = { id: string; title: string; done: boolean };
 const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -171,4 +172,36 @@ export async function mergeDropTasks() {
     removed += dups.length;
   }
   return removed;
+}
+
+// Relance par mail des personnes qui ont ouvert un lien : 3 jours puis 1 jour avant la fin de validité
+const escHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+export async function remindExpiringDeliveries(appUrl: string) {
+  const acc = await mailAccount();
+  if (!acc) return 0;
+  const list = await db.delivery.findMany({ where: { mode: "page", viewers: { some: {} } }, include: { viewers: true } });
+  let sent = 0;
+  for (const d of list) {
+    const left = expiryOf(d).getTime() - Date.now();
+    if (left <= 0) continue;
+    const stage = left <= 864e5 ? 1 : left <= 3 * 864e5 ? 3 : 0;
+    if (!stage) continue;
+    const end = expiryOf(d).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    const link = `${appUrl}/l/${d.token}`;
+    for (const v of d.viewers) {
+      if (v.createdAt.getTime() > Date.now() - 6 * 36e5 && stage === 3) continue; // vient d'ouvrir le lien : pas de relance tout de suite
+      const key = `livexp-${d.id}-${v.email}-${stage}`;
+      try { await db.sentReminder.create({ data: { key } }); } catch { continue; }
+      const subject = stage === 1 ? `Dernier jour pour télécharger « ${d.title} »` : `Pense à télécharger « ${d.title} » (encore 3 jours)`;
+      const html = `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:auto;color:#1c1814">
+        <h2 style="margin:0 0 12px">${stage === 1 ? "Ton lien expire demain" : "Ton lien expire bientôt"}</h2>
+        <p>Bonjour,</p>
+        <p>Le lien de livraison <b>${escHtml(d.title)}</b> ne sera plus accessible après le <b>${end}</b> (heure de Paris).</p>
+        <p>Pense à télécharger tes fichiers avant cette date.</p>
+        <p style="margin-top:24px"><a href="${link}" style="background:#ff6a00;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px">Ouvrir la livraison</a></p>
+      </div>`;
+      await sendGmail(acc.id, v.email, subject, html).then(() => sent++).catch(() => db.sentReminder.delete({ where: { key } }).catch(() => {}));
+    }
+  }
+  return sent;
 }

@@ -65,9 +65,15 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const video = useRef<HTMLVideoElement>(null);
   const url = `/api/livraison/${params.token}`;
 
-  const load = () => fetch(url).then(async (r) => {
+  // Mail demandé avant de visionner (gardé sur l'appareil)
+  const [gate, setGate] = useState<{ title: string; client: string; expiresAt: string } | null>(null);
+  const [mail, setMail] = useState("");
+  const viewer = () => { try { return localStorage.getItem("liv-viewer") ?? ""; } catch { return ""; } };
+  const load = (who = viewer()) => fetch(url, { headers: { "x-viewer": who } }).then(async (r) => {
     const j = await r.json();
+    if (r.status === 401 && j.needEmail) { setGate(j); return; }
     if (!r.ok) throw new Error(j.error);
+    setGate(null);
     // Vidéos et photos mélangées, dans un ordre fixe pour ce lien (même ordre à chaque visite)
     if (j.kind === "videos") {
       let seed = [...params.token].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -111,6 +117,27 @@ export default function Livraison({ params }: { params: { token: string } }) {
     if (await post({ action: "comment", version: v, author, text, audio: voice || undefined, time: atTime && isVideo ? now : null })) { setText(""); setVoice(""); }
   }
 
+  async function enter(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError("");
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "viewer", email: mail }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setBusy(false); setError(j.error ?? "Erreur"); return; }
+    try { localStorage.setItem("liv-viewer", j.email); } catch {}
+    await load(j.email);
+    setBusy(false);
+  }
+
+  if (gate && !d) return (
+    <div className="rdv liv-dark-solo"><form className="rdv-card" onSubmit={enter}>
+      <a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>
+      <h1>{gate.title}</h1>
+      <p className="muted">Entre ton adresse mail pour voir la livraison. Tu recevras un rappel avant la fin de validité du lien{gate.expiresAt ? ` (${new Date(gate.expiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })})` : ""} pour ne pas oublier de télécharger tes fichiers.</p>
+      <input type="email" required autoFocus autoComplete="email" placeholder="ton@mail.com" value={mail} onChange={(e) => setMail(e.target.value)} />
+      {error && <p className="neg small">{error}</p>}
+      <button className="primary" disabled={busy}>{busy ? "…" : "Voir la livraison"}</button>
+    </form></div>
+  );
   if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><p className="neg">{error}</p><ContactBlock /></div></div>;
   if (!d) return <LivLoader />;
   if (d.kind === "folder") return <FolderDelivery d={d} token={params.token} reload={load} />;
