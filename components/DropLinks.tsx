@@ -23,6 +23,11 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
   useEffect(() => { load(); }, []);
   const link = (d: Drop) => `${PUBLIC_URL}/d/${d.token}`;
 
+  const [notify, setNotify] = useState(true);
+  async function tellClient(id: string) {
+    try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "drop", id }); setMsg({ ok: true, text: `Client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }); }
+    catch (e) { setMsg({ ok: false, text: errorText(e) }); }
+  }
   async function create() {
     if (!draft) return;
     setBusy(true);
@@ -30,6 +35,9 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
       const d = await api<Drop>("drops", "POST", { ...draft, newFolder: draft.create ? draft.newFolder || draft.title : "" });
       navigator.clipboard?.writeText(link(d)).catch(() => {});
       setMsg({ ok: true, text: "Lien de dépôt créé et copié : envoie-le au client." });
+      if (notify && draft.client.trim()) await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "drop", id: d.id })
+        .then((r) => setMsg({ ok: true, text: `Lien de dépôt créé, client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }))
+        .catch((e) => setMsg({ ok: true, text: `Lien créé et copié, mais mail non envoyé : ${errorText(e)}` }));
       setDraft(null); load();
     } catch (e) { setMsg({ ok: false, text: errorText(e) }); }
     finally { setBusy(false); }
@@ -61,6 +69,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
           <div className="row">
             <button onClick={() => setDraft(null)}>Annuler</button>
             <span style={{ flex: 1 }} />
+            <label className="check"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Prévenir le client par mail</label>
             <button className="primary" disabled={busy || !draft.title.trim() || !draft.folderId} onClick={create}>{busy ? "Création…" : "Créer le lien"}</button>
           </div>
         </div>
@@ -79,6 +88,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
             </div>
             <div className="row">
               <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
+              {d.client && <button onClick={() => tellClient(d.id)}>Prévenir le client</button>}
               <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
               <span className={`small ${expiry(d).getTime() < Date.now() ? "neg" : "muted"}`}>{expiry(d).getTime() < Date.now() ? "Expiré le" : "Valable jusqu'au"} {expiry(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
               <button onClick={async () => { await api(`drops/${d.id}`, "PATCH", { action: "extend" }); setMsg({ ok: true, text: `Lien « ${d.title} » prolongé d'une semaine.` }); load(); }}>Prolonger d&apos;une semaine</button>

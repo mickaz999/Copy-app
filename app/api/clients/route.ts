@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { clientFor, emailsOf, nameKey } from "@/lib/clients";
+import { clientFor, emailsOf, nameKey, notifyClient, spaceUrl } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +12,17 @@ export async function GET() {
   ]);
   for (const n of Array.from(new Set([...deliveries, ...drops].map((d) => d.client.trim()).filter(Boolean)))) await clientFor(n).catch(() => {});
   const clients = await db.client.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json(clients.map((c) => ({ ...c, emails: emailsOf(c), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
+  return NextResponse.json(clients.map((c) => ({ ...c, space: spaceUrl(c), emails: emailsOf(c), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
 }
 
 // { name } : nouveau client | { id, emails, note } : mise à jour | { id, delete: true }
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
+  // Prévenir le client par mail (nouvelle livraison / nouveau lien de dépôt)
+  if (b.action === "notify") {
+    try { return NextResponse.json({ sent: await notifyClient(b.kind === "drop" ? "drop" : "delivery", String(b.id)) }); }
+    catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 400 }); }
+  }
   if (b.id && b.delete) { await db.client.delete({ where: { id: String(b.id) } }); return NextResponse.json({ ok: true }); }
   if (b.id) {
     const emails = Array.from(new Set((Array.isArray(b.emails) ? b.emails : []).map((e: unknown) => String(e).trim().toLowerCase()).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))));

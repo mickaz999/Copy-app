@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Copy, ExternalLink, Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 
 type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
-type C = { id: string; name: string; emails: string[]; note: string; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
+type C = { space: string; id: string; name: string; emails: string[]; note: string; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
 
 export default function Clients() {
   const [list, setList] = useState<C[]>([]);
@@ -20,7 +20,7 @@ export default function Clients() {
     <div className="content narrow">
       <div className="eyebrow">clients</div>
       <h1 className="title">tes <span className="accent">clients.</span></h1>
-      <p className="muted">Les mails enregistrés ici ne sont plus demandés sur les liens de livraison de ce client : il arrive directement sur ses vidéos, même sur un nouvel appareil, y compris sur les liens déjà envoyés. Les mails donnés sur un lien s'ajoutent tout seuls.</p>
+      <p className="muted">Chaque client a son espace (lien fixe) : ses livraisons et dépôts de rushs en cours s'y ajoutent tout seuls, et disparaissent une fois expirés. Les mails enregistrés ici reçoivent les mails « nouvelle livraison » et les rappels avant expiration, et ne sont plus demandés au client. Les mails donnés sur un lien s'ajoutent tout seuls.</p>
       <form className="row" style={{ margin: "12px 0 16px" }} onSubmit={async (e) => { e.preventDefault(); if (!name.trim()) return; await api("clients", "POST", { name }); setName(""); load(); }}>
         <input placeholder="Nouveau client" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="primary"><Plus size={16} /> Ajouter</button>
@@ -36,6 +36,10 @@ export default function Clients() {
           </div>
           {open === c.id && (
             <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                <button className="primary" onClick={() => navigator.clipboard?.writeText(c.space)}><Copy size={15} /> Copier son espace client</button>
+                <button onClick={() => window.open(c.space, "_blank")}><ExternalLink size={15} /> Voir</button>
+              </div>
               <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
                 {c.emails.map((e) => <span key={e} className="ok-pill">{e} <X size={13} style={{ cursor: "pointer" }} onClick={() => save(c, { emails: c.emails.filter((x) => x !== e) })} /></span>)}
               </div>
