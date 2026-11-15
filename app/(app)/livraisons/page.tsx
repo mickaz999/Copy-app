@@ -116,6 +116,7 @@ export default function Livraisons() {
     <div className="content narrow">
       <div className="eyebrow">livraisons</div>
       <h1 className="title">tes <span className="accent">livraisons.</span></h1>
+      {!draft && <ClientList />}
       {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} onClick={() => setMsg(null)}>{msg.text}</div>}
 
       {info && !info.configured && <section className="settings-card warn"><p>Il manque <b>FRAMEIO_CLIENT_ID</b> et <b>FRAMEIO_CLIENT_SECRET</b> dans les variables Vercel.</p></section>}
@@ -229,6 +230,13 @@ export default function Livraisons() {
                 </label>
               )}
             </div>
+            {d.mode !== "frame" && (
+              <label className="field-line liv-client">Client
+                <input list="clients" autoComplete="off" key={d.client} defaultValue={d.client} placeholder="Ajouter le client (facultatif)"
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                  onBlur={async (e) => { const v = e.target.value.trim(); if (v !== d.client) { await api(`livraisons/${d.id}`, "PATCH", { client: v }); setMsg({ ok: true, text: v ? `Client « ${v} » ajouté : la livraison apparaît sur son espace.` : "Client retiré." }); load(); } }} />
+              </label>
+            )}
             {d.mode !== "frame" && <VoiceNote d={d} reload={load} onMsg={setMsg} />}
             {open === d.id && (
               <div className="liv-detail">
