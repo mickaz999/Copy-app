@@ -6,6 +6,7 @@ import Logo from "@/components/Logo";
 import LivLoader, { MiniLoader } from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
 import VoiceButton from "@/components/VoiceButton";
+import VoicePlayer from "@/components/VoicePlayer";
 import DeliveryThread, { type Msg } from "@/components/DeliveryThread";
 
 type Version = { qualities?: { key: string; label: string; url: string }[]; locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
@@ -154,8 +155,8 @@ export default function Livraison({ params }: { params: { token: string } }) {
   // Échange unique : retours (commentaires) + messages (notes vocales et réponses), dans l'ordre
   const hasMine = !!d.messages?.some((m) => m.fromMe);
   const feed = [
-    ...comments.map((c) => ({ id: `c${c.id}`, mine: false, text: c.text, audio: c.audio ?? "", time: c.time, resolved: c.resolved, at: c.createdAt })),
-    ...(d.messages ?? []).map((m) => ({ id: `m${m.id}`, mine: m.fromMe, text: m.text, audio: m.audio, time: null as number | null, resolved: false, at: m.createdAt })),
+    ...comments.map((c) => ({ author: c.author, id: `c${c.id}`, mine: false, text: c.text, audio: c.audio ?? "", time: c.time, resolved: c.resolved, at: c.createdAt })),
+    ...(d.messages ?? []).map((m) => ({ author: m.author, id: `m${m.id}`, mine: m.fromMe, text: m.text, audio: m.audio, time: null as number | null, resolved: false, at: m.createdAt })),
   ].sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
   async function sendAny(e?: React.FormEvent) {
     e?.preventDefault();
@@ -453,14 +454,16 @@ export default function Livraison({ params }: { params: { token: string } }) {
                 <div key={x.id}>
                   {showTime && <div className="imsg-time">{new Date(x.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>}
                   <div className={`imsg-row ${x.mine ? "in" : "out"} ${x.resolved ? "done" : ""}`}>
+                    {x.mine && <img className="imsg-avatar" src="/icons/icon-192.png" alt="maderino production" />}
                     <div className="imsg-bubble">
                       {(x.time !== null || x.resolved) && <span className="imsg-meta">
                         {x.time !== null && <button type="button" className="imsg-tc" onClick={() => seek(x.time!)}>{tc(x.time)}</button>}
                         {x.resolved && <span>✓ corrigé</span>}
                       </span>}
-                      {x.audio && <audio controls preload="metadata" src={x.audio} />}
+                      {x.audio && <VoicePlayer src={x.audio} />}
                       {x.text && !(x.audio && /^Message vocal$/.test(x.text)) && <p>{x.text}</p>}
                     </div>
+                    {!x.mine && <span className="imsg-initial">{((x.author || author || d.client || "?").trim()[0] || "?").toUpperCase()}</span>}
                   </div>
                 </div>
               );
@@ -477,7 +480,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
             )}
             <div className="imsg-bar">
               {voice
-                ? <div className="imsg-voice"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>✕</button></div>
+                ? <div className="imsg-voice"><VoicePlayer src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>✕</button></div>
                 : <>
                     <VoiceButton onDone={setVoice} />
                     <textarea rows={1} placeholder={isVideo && atTime && d.feedback !== "off" ? `Ton retour à ${tc(now)}…` : "iMessage"} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAny(); } }} />

@@ -2052,3 +2052,17 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv-foot .logo .pt { width: 5px; height: 5px; margin-right: 3px; }
 .liv-foot .logo .accent { transform: translateY(-1px); }
 .liv-foot .muted { opacity: .8; }
+
+/* Message vocal façon WhatsApp */
+.vp { display: flex; align-items: center; gap: 8px; min-width: 210px; width: 100%; }
+.vp-btn { width: 32px; height: 32px; padding: 0 !important; border-radius: 50% !important; display: grid; place-items: center; flex: none; border: 0 !important; background: rgba(0,0,0,.12) !important; color: inherit !important; }
+.imsg-row.out .vp-btn { background: rgba(255,255,255,.25) !important; }
+.vp-wave { flex: 1; height: 28px; display: flex; align-items: center; gap: 2px; cursor: pointer; }
+.vp-wave span { flex: 1; min-width: 2px; border-radius: 2px; background: currentColor; opacity: .35; transition: opacity .15s; }
+.vp-wave span.on { opacity: 1; }
+.vp-time { font-size: 11px; font-variant-numeric: tabular-nums; opacity: .85; flex: none; min-width: 30px; text-align: right; }
+.imsg-bubble:has(.vp) { min-width: 240px; }
+.imsg-row.in { align-items: flex-end; gap: 6px; }
+.imsg-avatar { width: 26px; height: 26px; border-radius: 50%; flex: none; object-fit: cover; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+.imsg-row.out { align-items: flex-end; gap: 6px; }
+.imsg-initial { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #8e8e93, #636366); }

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, MessageCircle } from "lucide-react";
 import VoiceButton from "@/components/VoiceButton";
+import VoicePlayer from "@/components/VoicePlayer";
 
 export type Msg = { id: string; fromMe: boolean; author: string; text: string; audio: string; createdAt: string };
 
@@ -40,10 +41,12 @@ export default function DeliveryThread({ token, messages, onSent }: { token: str
             <div key={m.id} className="imsg-row-wrap">
               {showTime && <div className="imsg-time">{when(m.createdAt)}</div>}
               <div className={`imsg-row ${m.fromMe ? "in" : "out"}`}>
-                <div className="imsg-bubble">
-                  {m.audio && <audio controls preload="metadata" src={m.audio} />}
+                {m.fromMe && <img className="imsg-avatar" src="/icons/icon-192.png" alt="maderino production" />}
+                    <div className="imsg-bubble">
+                  {m.audio && <VoicePlayer src={m.audio} />}
                   {m.text && <p>{m.text}</p>}
                 </div>
+                {!m.fromMe && <span className="imsg-initial">{((m.author || "?").trim()[0] || "?").toUpperCase()}</span>}
               </div>
             </div>
           );
@@ -52,7 +55,7 @@ export default function DeliveryThread({ token, messages, onSent }: { token: str
       </div>
       <form className="imsg-bar" onSubmit={send}>
         {voice
-          ? <div className="imsg-voice"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>✕</button></div>
+          ? <div className="imsg-voice"><VoicePlayer src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>✕</button></div>
           : <>
               <VoiceButton onDone={setVoice} />
               <textarea rows={1} placeholder="iMessage" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
