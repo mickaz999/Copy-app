@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { expiryOf, fio } from "@/lib/frameio";
 import { sendGmail } from "@/lib/google";
 import { emailsOf, mailHtml, nameKey, spaceUrl } from "@/lib/clients";
-import { PUBLIC_URL } from "@/lib/site";
+import { deliveryUrl } from "@/lib/site";
 import { getSettings, mailAccount, parisNow, sendPush } from "@/lib/notify";
 
 type Sub = { id: string; title: string; done: boolean };
@@ -195,7 +195,7 @@ export async function remindExpiringDeliveries(_appUrl?: string) {
     const to = Array.from(new Set([...d.viewers.map((v) => v.email), ...(c ? emailsOf(c) : [])]));
     if (!to.length) continue;
     const end = expiryOf(d).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-    const link = c ? spaceUrl(c) : `${PUBLIC_URL}/l/${d.token}`;
+    const link = c ? spaceUrl(c) : deliveryUrl(d);
     const fresh = Date.now() - d.createdAt.getTime() < 864e5; // livraison toute neuve : pas de rappel « 7 jours » dès sa création
     for (const email of to) {
       if (stage === 7 && fresh) continue;

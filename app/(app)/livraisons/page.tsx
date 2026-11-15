@@ -4,7 +4,7 @@ import { Mic, Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
-import { PUBLIC_URL } from "@/lib/site";
+import { PUBLIC_URL, deliveryUrl } from "@/lib/site";
 import ClientPick from "@/components/ClientPick";
 import VoiceButton from "@/components/VoiceButton";
 
@@ -77,7 +77,7 @@ export default function Livraisons() {
   }, []);
 
   // Client renseigné : on envoie son espace (tout ce qu'il a en cours) ; sinon (agence) le lien direct
-  const direct = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}`;
+  const direct = (d: Delivery) => deliveryUrl(d);
   const link = (d: Delivery) => d.space || direct(d);
   const filesOf = (d: Delivery): File[] => JSON.parse(d.files || "[]");
 

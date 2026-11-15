@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CloudUpload, Copy, ExternalLink, Folder, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker, { FrameProject } from "@/components/FramePicker";
-import { PUBLIC_URL } from "@/lib/site";
+import { PUBLIC_URL, dropUrl } from "@/lib/site";
 import ClientPick from "@/components/ClientPick";
 
 type Drop = { space?: string; notes?: { id: string; author: string; text: string; audio: string; createdAt: string }[]; id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
@@ -21,7 +21,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
   const [busy, setBusy] = useState(false);
   const load = () => api<Drop[]>("drops").then(setList).catch(() => {});
   useEffect(() => { load(); }, []);
-  const direct = (d: Drop) => `${PUBLIC_URL}/d/${d.token}`;
+  const direct = (d: Drop) => dropUrl(d);
   const link = (d: Drop) => d.space || direct(d);
 
   const [notify, setNotify] = useState(true);

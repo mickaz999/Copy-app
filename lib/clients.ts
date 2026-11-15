@@ -1,7 +1,7 @@
 import { dropExpiry, expiryOf } from "@/lib/frameio";
 import { sendGmail } from "@/lib/google";
 import { mailAccount } from "@/lib/notify";
-import { PUBLIC_URL } from "@/lib/site";
+import { PUBLIC_URL, slugify } from "@/lib/site";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 
@@ -28,7 +28,7 @@ export async function addClientEmail(name: string, email: string) {
 // ——— Espace client et mails au client ———
 
 // Lien lisible : /c/nom-du-client-<clé> (la clé = 12 derniers caractères, c'est elle qui compte)
-const slug = (n: string) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+const slug = slugify;
 export const spaceUrl = (c: { key: string; name?: string }) => `${PUBLIC_URL}/c/${c.name && slug(c.name) ? `${slug(c.name)}-` : ""}${c.key}`;
 export const keyFromSlug = (s: string) => decodeURIComponent(s).slice(-12);
 const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));

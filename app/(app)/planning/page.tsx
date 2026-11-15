@@ -6,7 +6,7 @@ import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLin
 import FramePicker, { FrameFile } from "@/components/FramePicker";
 import ClientPick from "@/components/ClientPick";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
-import { PUBLIC_URL } from "@/lib/site";
+import { PUBLIC_URL, deliveryUrl } from "@/lib/site";
 
 type Task = { id: string; title: string; notes: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string; endTime: string; props: string; subtasks?: string; deliveryId?: string; repeat: string; repeatUntil: string | null; repeatSpawned?: boolean };
 
@@ -1714,7 +1714,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
       await api(`tasks/${task.id}`, "PATCH", { deliveryId: d.id });
       onLinked(d.id);
       const n = JSON.parse(d.files || "[]").length;
-      const link = d.mode === "frame" ? "" : `${PUBLIC_URL}/l/${d.token}`;
+      const link = d.mode === "frame" ? "" : d.space || deliveryUrl(d);
       if (link) navigator.clipboard?.writeText(link).catch(() => {});
       // Client renseigné : la livraison va sur son espace, et il est prévenu par mail s'il a un mail connu
       if (d.mode !== "frame" && d.client && notify) await api("clients", "POST", { action: "notify", kind: "delivery", id: d.id }).catch(() => {});

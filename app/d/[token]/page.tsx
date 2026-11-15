@@ -1,4 +1,5 @@
 "use client";
+import { tokenOf } from "@/lib/site";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, CloudUpload, FileVideo, X, AlertTriangle } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -13,7 +14,7 @@ const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : n >= 1e6 
 
 // Page de dépôt de rushs : les fichiers partent directement du navigateur vers Frame.io, morceau par morceau
 export default function Drop({ params }: { params: { token: string } }) {
-  const url = `/api/drop/${params.token}`;
+  const url = `/api/drop/${tokenOf(params.token)}`;
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState("");
   const [author, setAuthor] = useState("");
