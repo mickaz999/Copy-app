@@ -1,7 +1,7 @@
 "use client";
 import { tokenOf } from "@/lib/site";
 import { useEffect, useRef, useState } from "react";
-import { X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
+import { ArrowUp, X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 import LivLoader, { MiniLoader } from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
@@ -34,6 +34,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [mock, setMock] = useState<Mock>("player");
   // Retours « sur demande » : le formulaire s'ouvre seulement si le client le souhaite
   const [askOpen, setAskOpen] = useState(false);
+  const feedEnd = useRef<HTMLDivElement>(null);
   const [voice, setVoice] = useState("");
   // Qualité de lecture choisie (vide = par défaut) ; la lecture reprend au même moment
   const [quality, setQuality] = useState("");
@@ -150,6 +151,22 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const cur = d.versions.find((x) => x.v === v) ?? d.versions[d.versions.length - 1];
   const isVideo = !cur?.mediaType || cur.mediaType.startsWith("video");
   const comments = d.comments.filter((c) => c.version === cur?.v).sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
+  // Échange unique : retours (commentaires) + messages (notes vocales et réponses), dans l'ordre
+  const hasMine = !!d.messages?.some((m) => m.fromMe);
+  const feed = [
+    ...comments.map((c) => ({ id: `c${c.id}`, mine: false, text: c.text, audio: c.audio ?? "", time: c.time, resolved: c.resolved, at: c.createdAt })),
+    ...(d.messages ?? []).map((m) => ({ id: `m${m.id}`, mine: m.fromMe, text: m.text, audio: m.audio, time: null as number | null, resolved: false, at: m.createdAt })),
+  ].sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
+  async function sendAny(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (busy || (!text.trim() && !voice)) return;
+    // Avec un moment de la vidéo (ou sans message de ma part) : c'est un retour → tâche « Modifs » ; sinon une réponse à mon message
+    const asComment = d!.feedback !== "off" && ((isVideo && atTime) || !hasMine);
+    const ok = asComment
+      ? await post({ action: "comment", version: v, author, text, audio: voice || undefined, time: atTime && isVideo ? now : null })
+      : await post({ action: "reply", author, text, audio: voice || undefined });
+    if (ok) { setText(""); setVoice(""); }
+  }
   const seek = (t: number) => { if (video.current) { video.current.currentTime = t; video.current.play().catch(() => {}); } };
   // Plusieurs vidéos différentes (nom Frame.io) ou versions d'une même vidéo (V1, V2…)
   const multi = d.kind === "videos";
@@ -419,50 +436,58 @@ export default function Livraison({ params }: { params: { token: string } }) {
             : null}
         </div>
 
-        {(d.feedback !== "off" || d.messages?.some((m) => m.fromMe)) && <div className="liv-col">
-        <DeliveryThread token={tokenOf(params.token)} messages={d.messages} onSent={() => load()} />
-        {d.feedback !== "off" && <aside className="liv-side">
-          <h3><MessageSquare size={16} /> Retours · {lab(cur)}</h3>
-          {d.feedback === "ask" && !askOpen && comments.length === 0 ? (
+        {(d.feedback !== "off" || hasMine) && <aside className="liv-side imsg">
+          <h3><MessageCircle size={16} /> Échange · {lab(cur)}</h3>
+          {d.feedback === "ask" && !askOpen && feed.length === 0 ? (
             <div className="liv-ask">
-              <p>{approved ? "Merci pour ta validation. Une remarque malgré tout ? C'est ici." : (!needOk ? "Une remarque sur ce fichier ? C'est ici." : <>Tout te convient ? Valide simplement {multi ? (isImg(cur) ? "la photo" : "la vidéo") : `la V${cur.v}`} avec le bouton Valider.</>)}</p>
-              <button onClick={() => setAskOpen(true)}><MessageSquare size={15} /> J&apos;ai une remarque</button>
+              <p>{approved ? "Merci pour ta validation ! Une remarque ou une question malgré tout ? Écris-moi ici." : (!needOk ? "Une remarque ou une question ? Écris-moi ici, à l'écrit ou en vocal." : <>Tout te convient ? Valide simplement {multi ? (isImg(cur) ? "la photo" : "la vidéo") : `la V${cur.v}`} avec le bouton Valider. Une remarque ou une question ? Écris-moi ici.</>)}</p>
+              <button onClick={() => setAskOpen(true)}><MessageCircle size={15} /> Écrire un message</button>
             </div>
           ) : <>
-          <div className="liv-comments">
-            {comments.length === 0 && <p className="muted small">{isVideo ? "Aucun retour pour l'instant. Mets pause sur un moment précis et écris ton commentaire." : "Aucun retour pour l'instant. Écris ton commentaire sur cette photo."}</p>}
-            {comments.map((c) => (
-              <div key={c.id} className={`liv-comment ${c.resolved ? "done" : ""}`}>
-                <div className="liv-c-head">
-                  {c.time !== null && <button className="liv-tc" onClick={() => seek(c.time!)}>{tc(c.time)}</button>}
-                  <b>{c.author}</b>
-                  {c.resolved && <span className="ok-pill small">corrigé</span>}
+          <div className="imsg-list">
+            {feed.length === 0 && <p className="muted small">{isVideo ? "Mets pause sur un moment précis et écris ton retour, ou envoie un vocal." : "Écris ton retour sur cette photo, ou envoie un vocal."}</p>}
+            {feed.map((x, i) => {
+              const prev = feed[i - 1];
+              const showTime = !prev || Date.parse(x.at) - Date.parse(prev.at) > 30 * 60_000;
+              return (
+                <div key={x.id}>
+                  {showTime && <div className="imsg-time">{new Date(x.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>}
+                  <div className={`imsg-row ${x.mine ? "in" : "out"} ${x.resolved ? "done" : ""}`}>
+                    <div className="imsg-bubble">
+                      {(x.time !== null || x.resolved) && <span className="imsg-meta">
+                        {x.time !== null && <button type="button" className="imsg-tc" onClick={() => seek(x.time!)}>{tc(x.time)}</button>}
+                        {x.resolved && <span>✓ corrigé</span>}
+                      </span>}
+                      {x.audio && <audio controls preload="metadata" src={x.audio} />}
+                      {x.text && !(x.audio && /^Message vocal$/.test(x.text)) && <p>{x.text}</p>}
+                    </div>
+                  </div>
                 </div>
-                {c.audio ? <audio controls preload="none" src={c.audio} /> : <p>{c.text}</p>}
-              </div>
-            ))}
+              );
+            })}
+            <div ref={feedEnd} />
           </div>
-          <form className="liv-form" onSubmit={comment}>
-            <input placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />
-            {voice
-              ? <div className="liv-voice-ready"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>Supprimer</button></div>
-              : <textarea required rows={3} placeholder={isVideo && atTime ? `Ton retour à ${tc(now)}…` : "Ton retour…"} value={text} onChange={(e) => setText(e.target.value)} />}
-            <div className="row">
-              {isVideo && (
-                // Bascule : retour lié au moment de la vidéo, ou retour général
-                <button type="button" className={`liv-when ${atTime ? "on" : ""}`} onClick={() => setAtTime(!atTime)} title="Touche pour changer">
-                  <Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Retour général"}
-                </button>
-              )}
-              {!voice && <VoiceButton onDone={setVoice} />}
-              <span style={{ flex: 1 }} />
-              <button className="primary" disabled={busy || (!text.trim() && !voice)}>Envoyer</button>
+          <form className="imsg-form" onSubmit={sendAny}>
+            {!author && d.feedback !== "off" && <input className="imsg-name" placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />}
+            {isVideo && d.feedback !== "off" && (
+              // Bascule : retour lié au moment de la vidéo, ou message général
+              <button type="button" className={`liv-when ${atTime ? "on" : ""}`} onClick={() => setAtTime(!atTime)} title="Touche pour changer">
+                <Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Message général"}
+              </button>
+            )}
+            <div className="imsg-bar">
+              {voice
+                ? <div className="imsg-voice"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>✕</button></div>
+                : <>
+                    <VoiceButton onDone={setVoice} />
+                    <textarea rows={1} placeholder={isVideo && atTime && d.feedback !== "off" ? `Ton retour à ${tc(now)}…` : "iMessage"} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAny(); } }} />
+                  </>}
+              <button className="imsg-send" disabled={busy || (!text.trim() && !voice)} aria-label="Envoyer"><ArrowUp size={16} /></button>
             </div>
             {error && <p className="neg small">{error}</p>}
           </form>
           </>}
         </aside>}
-        </div>}
       </div>
       </div>}
       {/* Avis mis en avant après validation, ou d'emblée pour un lien sans retours ni validation (téléchargement libre) */}

@@ -2038,3 +2038,10 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv.dark .imsg-row.in .imsg-bubble, .liv-dark-solo .imsg-row.in .imsg-bubble { background: #3a3a3c; color: #fff; }
 @media (prefers-color-scheme: dark) { .imsg-row.in .imsg-bubble { background: #3a3a3c; color: #fff; } }
 @media (max-width: 900px) { .liv-col { position: static; } .liv-side.imsg { max-height: none; } .imsg-list { max-height: 50vh; } }
+.imsg-form { display: grid; gap: 6px; }
+.imsg-form .liv-when { justify-self: start; }
+.imsg-name { font-size: 13px; padding: 6px 10px !important; border-radius: 12px; }
+.imsg-meta { display: flex; gap: 6px; align-items: center; font-size: 11px; opacity: .9; }
+.imsg-tc { font-size: 11px; font-weight: 700; padding: 1px 7px !important; border-radius: 999px; background: rgba(255,255,255,.25) !important; color: inherit !important; border: 0 !important; }
+.imsg-row.in .imsg-tc { background: rgba(0,0,0,.12) !important; }
+.imsg-row.done .imsg-bubble { opacity: .6; }
