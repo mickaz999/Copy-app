@@ -46,6 +46,7 @@ export default function DeliveryThread({ token, messages, onSent }: { token: str
                   {m.audio && <VoicePlayer src={m.audio} />}
                   {m.text && <p>{m.text}</p>}
                 </div>
+                {!m.fromMe && <span className="imsg-initial">{((m.author || "?").trim()[0] || "?").toUpperCase()}</span>}
               </div>
             </div>
           );
