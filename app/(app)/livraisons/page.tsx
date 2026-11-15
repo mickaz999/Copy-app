@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
 import { PUBLIC_URL } from "@/lib/site";
-import ClientList from "@/components/ClientList";
+import ClientPick from "@/components/ClientPick";
 import VoiceButton from "@/components/VoiceButton";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
@@ -116,7 +116,6 @@ export default function Livraisons() {
     <div className="content narrow">
       <div className="eyebrow">livraisons</div>
       <h1 className="title">tes <span className="accent">livraisons.</span></h1>
-      {!draft && <ClientList />}
       {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} onClick={() => setMsg(null)}>{msg.text}</div>}
 
       {info && !info.configured && <section className="settings-card warn"><p>Il manque <b>FRAMEIO_CLIENT_ID</b> et <b>FRAMEIO_CLIENT_SECRET</b> dans les variables Vercel.</p></section>}
@@ -143,7 +142,7 @@ export default function Livraisons() {
             ? "Le client reçoit ta page à tes couleurs. Ses retours créent une tâche « Modifs » dans le Planning."
             : "Tu continues à partager le lien Frame.io de l'agence. L'app lit les commentaires laissés sur Frame (toutes les 5 min) et les ajoute à une tâche « Modifs » dans le Planning."}</p>
           <label className="field-line">Titre du projet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Clip « Été 2026 »" /></label>
-          <label className="field-line">Client<input list="clients" autoComplete="off" value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} placeholder="Choisis ou tape un nom" /><ClientList /></label>
+          {draft.mode !== "frame" && <ClientPick value={draft.client} onChange={(v) => setDraft({ ...draft, client: v })} />}
           {draft.mode === "page" && <>
             <label className="field-line">Message au client (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Salut ! Voici la V1 du clip, dis-moi ce que tu en penses." /></label>
             <NetPicker value={draft.networks} onChange={(networks) => setDraft({ ...draft, networks })} />
@@ -237,7 +236,6 @@ export default function Livraisons() {
             {open === d.id && (
               <div className="liv-detail">
                 <label className="field-line">Titre<input defaultValue={d.title} onBlur={async (e) => { if (e.target.value !== d.title) { await api(`livraisons/${d.id}`, "PATCH", { title: e.target.value }); load(); } }} /></label>
-                <label className="field-line">Client<input defaultValue={d.client} onBlur={async (e) => { if (e.target.value !== d.client) { await api(`livraisons/${d.id}`, "PATCH", { client: e.target.value }); load(); } }} /></label>
                 {files.length > 1 && <KindPicker value={d.kind} onChange={async (kind) => { await api(`livraisons/${d.id}`, "PATCH", { kind }); load(); }} />}
                 {d.mode !== "frame" && <NetPicker value={JSON.parse(d.networks || "[]")} onChange={async (networks) => { await api(`livraisons/${d.id}`, "PATCH", { networks }); load(); }} />}
                 <label className="field-line">Message au client<textarea rows={2} defaultValue={d.message} onBlur={async (e) => { if (e.target.value !== d.message) { await api(`livraisons/${d.id}`, "PATCH", { message: e.target.value }); load(); } }} /></label>
@@ -322,28 +320,3 @@ function VoiceNote({ d, reload, onMsg }: { d: Delivery; reload: () => void; onMs
   );
 }
 
-// Choix du client d'une livraison : liste déroulante (clients existants, nouveau client, aucun pour les agences)
-function ClientPick({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [names, setNames] = useState<string[]>([]);
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-  useEffect(() => { api<{ name: string }[]>("clients").then((l) => setNames(l.map((c) => c.name))).catch(() => {}); }, []);
-  const list = value && !names.some((n) => n.toLowerCase() === value.toLowerCase()) ? [value, ...names] : names;
-  const cur = list.find((n) => n.toLowerCase() === value.toLowerCase()) ?? "";
-  if (adding) return (
-    <form className="row liv-client" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onChange(name.trim()); setAdding(false); setName(""); } }}>
-      <input autoFocus placeholder="Nom du client" value={name} onChange={(e) => setName(e.target.value)} />
-      <button className="primary" disabled={!name.trim()}>Ajouter</button>
-      <button type="button" className="ghost" onClick={() => setAdding(false)}>Annuler</button>
-    </form>
-  );
-  return (
-    <label className="field-line liv-client">Client
-      <select value={cur} onChange={(e) => e.target.value === "__new" ? setAdding(true) : onChange(e.target.value)}>
-        <option value="">Aucun (agence)</option>
-        {list.map((n) => <option key={n} value={n}>{n}</option>)}
-        <option value="__new">+ Nouveau client…</option>
-      </select>
-    </label>
-  );
-}

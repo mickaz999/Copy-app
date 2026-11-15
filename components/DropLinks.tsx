@@ -4,7 +4,7 @@ import { CloudUpload, Copy, ExternalLink, Folder, Plus, Trash2 } from "lucide-re
 import { api } from "@/lib/api";
 import FramePicker, { FrameProject } from "@/components/FramePicker";
 import { PUBLIC_URL } from "@/lib/site";
-import ClientList from "@/components/ClientList";
+import ClientPick from "@/components/ClientPick";
 
 type Drop = { notes?: { id: string; author: string; text: string; audio: string; createdAt: string }[]; id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
 // Valable 1 semaine après la création, sauf prolongation
@@ -53,7 +53,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
       {draft && (
         <div className="liv-detail">
           <label className="field-line">Projet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Rushs mariage Alizé & Thomas" /></label>
-          <label className="field-line">Client<input list="clients" autoComplete="off" placeholder="Choisis ou tape un nom" value={draft.client} onChange={(e) => setDraft({ ...draft, client: e.target.value })} /><ClientList /></label>
+          <ClientPick value={draft.client} onChange={(v) => setDraft({ ...draft, client: v })} />
           <label className="field-line">Message (facultatif)<textarea rows={2} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="Dépose ici tous les rushs de la journée, merci !" /></label>
           <div className="field-line">Destination sur Frame.io
             <div className="row">
