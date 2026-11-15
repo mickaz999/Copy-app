@@ -1697,7 +1697,11 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
   const [notify, setNotify] = useState(true);
   const base = task.title.replace(/^Modifs V\d+ · /, "");
   useEffect(() => {
-    api<DeliveryLite[]>("livraisons").then((l) => { setList(l); if (!task.deliveryId) setTarget(l.find((d) => d.title === base)?.id ?? "new-page"); }).catch(() => setList([]));
+    api<DeliveryLite[]>("livraisons").then((l) => {
+      setList(l);
+      // Livraison liée supprimée (ou absente) : on retombe sur celle du même nom, sinon une nouvelle
+      if (!task.deliveryId || !l.some((d) => d.id === task.deliveryId)) setTarget(l.find((d) => d.title === base)?.id ?? "new-page");
+    }).catch(() => setList([]));
   }, []);
 
   async function pick(accountId: string, files: FrameFile[]) {
@@ -1707,7 +1711,8 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
       if (target.startsWith("new-")) {
         d = await api<DeliveryLite>("livraisons", "POST", { title: base, client: target === "new-page" ? client.trim() : "", accountId, files, mode: target === "new-frame" ? "frame" : "page", kind: files.length > 1 ? "videos" : "versions" });
       } else {
-        const cur = list!.find((x) => x.id === target)!;
+        const cur = list?.find((x) => x.id === target);
+        if (!cur) return setError("Cette livraison n'existe plus : choisis « Nouvelle livraison » dans la liste.");
         if (cur.accountId !== accountId) return setError("Choisis une vidéo du même compte Frame.io que cette livraison.");
         d = await api<DeliveryLite>(`livraisons/${cur.id}`, "PATCH", { files: [...JSON.parse(cur.files || "[]"), ...files] });
       }
