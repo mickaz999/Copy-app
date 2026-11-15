@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
+import { Mic, Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
 import { PUBLIC_URL } from "@/lib/site";
 import ClientList from "@/components/ClientList";
+import VoiceButton from "@/components/VoiceButton";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
@@ -13,7 +14,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[] };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[]; messages?: { id: string; fromMe: boolean; author: string; text: string; audio: string; createdAt: string }[] };
 // Fin de validité du lien : 1 mois après la création, sauf prolongation ; supprimé 7 jours après
 const expiry = (d: { createdAt: string; expiresAt: string | null }) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 30 * 864e5);
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
@@ -228,6 +229,7 @@ export default function Livraisons() {
                 </label>
               )}
             </div>
+            {d.mode !== "frame" && <VoiceNote d={d} reload={load} onMsg={setMsg} />}
             {open === d.id && (
               <div className="liv-detail">
                 <label className="field-line">Titre<input defaultValue={d.title} onBlur={async (e) => { if (e.target.value !== d.title) { await api(`livraisons/${d.id}`, "PATCH", { title: e.target.value }); load(); } }} /></label>
@@ -275,6 +277,43 @@ export default function Livraisons() {
 
       {picking && info && <FramePicker projects={info.projects} onPick={pick} onClose={() => setPicking(null)}
         onPickFolder={picking === "new" ? (accountId, f) => { setDraft((d) => d && { ...d, accountId, files: [], folderId: f.id, folderName: f.name, kind: "folder", mode: "page", title: d.title || f.name }); setPicking(null); } : undefined} />}
+    </div>
+  );
+}
+
+// Note vocale pour le client (affichée sur sa page de livraison) et ses réponses
+function VoiceNote({ d, reload, onMsg }: { d: Delivery; reload: () => void; onMsg: (m: { ok: boolean; text: string }) => void }) {
+  const [voice, setVoice] = useState("");
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const msgs = d.messages ?? [];
+  const [on, setOn] = useState(false);
+  async function send() {
+    setBusy(true);
+    try { await api(`livraisons/${d.id}/messages`, "POST", { audio: voice || undefined, text }); setVoice(""); setText(""); onMsg({ ok: true, text: "Message envoyé : le client le voit sur sa page, avec un endroit pour te répondre." }); reload(); }
+    catch (e) { onMsg({ ok: false, text: errorText(e) }); }
+    finally { setBusy(false); }
+  }
+  // Désactivé par défaut : j'active la note vocale sur la livraison quand j'en ai besoin
+  if (!on && !msgs.length) return <div className="row"><button onClick={() => setOn(true)}><Mic size={15} /> Ajouter une note vocale</button></div>;
+  return (
+    <div className="liv-thread admin">
+      {!msgs.length && <div className="row"><b className="small">Note vocale pour le client</b><button className="ghost" onClick={() => { setOn(false); setVoice(""); setText(""); }}>Annuler</button></div>}
+      {msgs.map((m) => (
+        <div key={m.id} className={`liv-bubble ${m.fromMe ? "me" : "you"}`}>
+          <span className="liv-bubble-who">{m.fromMe ? "Toi" : m.author || d.client || "Client"} · {new Date(m.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+            {m.fromMe && <button className="ghost" title="Supprimer" onClick={async () => { await api(`livraisons/${d.id}/messages`, "POST", { delete: m.id }); reload(); }}><Trash2 size={13} /></button>}
+          </span>
+          {m.audio && <audio controls preload="none" src={`/api/livraison/${d.token}/msg?id=${m.id}`} />}
+          {m.text && <p>{m.text}</p>}
+        </div>
+      ))}
+      <div className="row">
+        {voice
+          ? <div className="liv-voice-ready"><audio controls src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>Supprimer</button></div>
+          : <><VoiceButton onDone={setVoice} /><input placeholder={msgs.length ? "Répondre au client…" : "Note vocale ou message pour le client"} value={text} onChange={(e) => setText(e.target.value)} style={{ flex: 1 }} /></>}
+        <button className="primary" disabled={busy || (!voice && !text.trim())} onClick={send}>{busy ? "Envoi…" : "Envoyer"}</button>
+      </div>
     </div>
   );
 }
