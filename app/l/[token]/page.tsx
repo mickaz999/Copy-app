@@ -1,4 +1,5 @@
 "use client";
+import { tokenOf } from "@/lib/site";
 import { useEffect, useRef, useState } from "react";
 import { X, ArrowUpRight, ChevronLeft, Mic, Square, Star, CheckCircle2, Download, MessageSquare, Clock, Folder, FileImage, Film, ChevronRight, Layers, Heart, MessageCircle, Send, Bookmark, Music2, ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Play, Pause, SkipForward, Volume2, Settings, Maximize, Subtitles, RectangleHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -67,7 +68,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [ratio, setRatio] = useState(16 / 9);
   const ratioFor = useRef("");
   const video = useRef<HTMLVideoElement>(null);
-  const url = `/api/livraison/${params.token}`;
+  const url = `/api/livraison/${tokenOf(params.token)}`;
 
   // Mail demandé avant de visionner (gardé sur l'appareil)
   const [gate, setGate] = useState<{ title: string; client: string; expiresAt: string } | null>(null);
@@ -80,7 +81,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
     setGate(null);
     // Vidéos et photos mélangées, dans un ordre fixe pour ce lien (même ordre à chaque visite)
     if (j.kind === "videos") {
-      let seed = [...params.token].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+      let seed = [...tokenOf(params.token)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
       const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
       const list = [...j.versions];
       for (let i = list.length - 1; i > 0; i--) { const k = Math.floor(rnd() * (i + 1)); [list[i], list[k]] = [list[k], list[i]]; }
@@ -144,7 +145,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   );
   if (error && !d) return <div className="rdv liv-dark-solo"><div className="rdv-card"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><p className="neg">{error}</p><ContactBlock /></div></div>;
   if (!d) return <LivLoader />;
-  if (d.kind === "folder") return <FolderDelivery d={d} token={params.token} reload={load} />;
+  if (d.kind === "folder") return <FolderDelivery d={d} token={tokenOf(params.token)} reload={load} />;
 
   const cur = d.versions.find((x) => x.v === v) ?? d.versions[d.versions.length - 1];
   const isVideo = !cur?.mediaType || cur.mediaType.startsWith("video");
@@ -211,7 +212,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
           <h1>{d.title}</h1>
           {d.message && <p className="liv-msg">{d.message}</p>}
-          <DeliveryThread token={params.token} messages={d.messages} onSent={() => load()} />
+          <DeliveryThread token={tokenOf(params.token)} messages={d.messages} onSent={() => load()} />
           <div className="liv-chips">
             <span>{multi ? `${d.versions.length} ${d.versions.every(isImg) ? "photos" : d.versions.some(isImg) ? "fichiers" : "vidéos"}` : `Version ${cur.v}${d.versions.length > 1 ? ` sur ${d.versions.length}` : ""}`}</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
@@ -324,7 +325,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           <div className={`liv-stage mock-${isVideo ? pm : "player"}`}>
           {cur?.ready && (isVideo
             ? <div className="mock-screen" onClick={() => { if (pm !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
-              <video key={`${cur.v}-${quality}`} ref={video} src={cur.qualities?.find((x) => x.key === quality)?.url || cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
+              <video key={`${cur.v}-${quality}`} ref={video} src={(cur.qualities?.find((x) => x.key === quality) ?? cur.qualities?.[0])?.url || cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
                 // Le lecteur lit une version recompressée par Frame.io : le téléchargement passe uniquement par le bouton (fichier original)

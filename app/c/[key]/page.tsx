@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, CloudUpload, Film, ChevronRight } from "lucide-react";
 import Logo from "@/components/Logo";
+import { deliveryUrl, dropUrl } from "@/lib/site";
 import LivLoader from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
 
@@ -64,7 +65,7 @@ export default function Espace({ params }: { params: { key: string } }) {
       {empty && <p className="muted">Rien en cours pour l&apos;instant. Tes prochaines livraisons apparaîtront ici.</p>}
       {d.deliveries.length > 0 && <div className="esp-sec"><h3>Tes livraisons</h3>
         {d.deliveries.map((x) => (
-          <a key={x.token} className="esp-item" href={`/l/${x.token}`}>
+          <a key={x.token} className="esp-item" href={deliveryUrl({ token: x.token, client: d.name }).replace(/^https?:\/\/[^/]+/, "")}>
             <span className="esp-thumb">{x.thumb ? <img src={x.thumb} alt="" /> : <Film size={20} />}</span>
             <span className="esp-txt">
               <b>{x.title}</b>
@@ -76,7 +77,7 @@ export default function Espace({ params }: { params: { key: string } }) {
       </div>}
       {d.drops.length > 0 && <div className="esp-sec"><h3>Envoie-moi tes fichiers</h3>
         {d.drops.map((x) => (
-          <a key={x.token} className="esp-item" href={`/d/${x.token}`}>
+          <a key={x.token} className="esp-item" href={dropUrl({ token: x.token, client: d.name }).replace(/^https?:\/\/[^/]+/, "")}>
             <span className="esp-thumb"><CloudUpload size={20} /></span>
             <span className="esp-txt"><b>{x.title}</b><span className="muted small">dépôt ouvert · {left(x.expiresAt)}</span></span>
             <ChevronRight size={18} className="muted" />

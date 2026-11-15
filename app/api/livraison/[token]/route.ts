@@ -37,11 +37,11 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     try {
       const m = await fileMedia(d.accountId, f.fileId);
       const dl = canDownload(d, i + 1);
-      // Choix de qualité : proxies HD / léger, et l'original quand le téléchargement est débloqué
+      // Choix de qualité dispo dès le départ (même avant validation) : HD, léger, original
       const qualities = [
-        ...(m.hq && dl ? [{ key: "hq", label: "HD", url: m.hq }] : []),
+        ...(m.hq ? [{ key: "hq", label: "HD", url: m.hq }] : []),
         ...(m.efficient ? [{ key: "light", label: "Léger", url: m.efficient }] : []),
-        ...(dl && m.originalPlay && m.originalPlay !== m.hq ? [{ key: "original", label: "Original", url: m.originalPlay }] : []),
+        ...(m.originalPlay && m.originalPlay !== m.hq ? [{ key: "original", label: "Original", url: m.originalPlay }] : []),
       ];
       return { qualities, v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), old: d.kind !== "videos" && i + 1 < files.length, ready: !!m.play };
     } catch {
