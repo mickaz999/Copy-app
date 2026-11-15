@@ -4,7 +4,7 @@ import { api, isoDay } from "@/lib/api";
 import { REPEATS, nextDate } from "@/lib/repeat";
 import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, ChevronLeft, ChevronRight, Lock, LockOpen, Clapperboard, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import FramePicker, { FrameFile } from "@/components/FramePicker";
-import ClientList from "@/components/ClientList";
+import ClientPick from "@/components/ClientPick";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 import { PUBLIC_URL } from "@/lib/site";
 
@@ -1742,7 +1742,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
         </select>
       </label>
       {target === "new-page" && <>
-        <label className="field-line">Client (facultatif)<input list="clients" autoComplete="off" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Choisis ou tape un nom" /><ClientList /></label>
+        <ClientPick value={client} onChange={setClient} />
         {client.trim() && <label className="check"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Prévenir le client par mail</label>}
       </>}
       <p className="muted small">Choisis la ou les vidéos exportées, ou ferme pour passer. Pour une nouvelle livraison, plusieurs vidéos = des vidéos différentes (modifiable dans Livraisons).</p>
