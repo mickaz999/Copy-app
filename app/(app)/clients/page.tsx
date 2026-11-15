@@ -1,0 +1,55 @@
+"use client";
+import { useEffect, useState } from "react";
+import { Plus, Trash2, X } from "lucide-react";
+import { api } from "@/lib/api";
+
+type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
+type C = { id: string; name: string; emails: string[]; note: string; deliveries: D[] };
+
+export default function Clients() {
+  const [list, setList] = useState<C[]>([]);
+  const [open, setOpen] = useState("");
+  const [name, setName] = useState("");
+  const [mail, setMail] = useState("");
+  const load = () => api<C[]>("clients").then(setList).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const save = async (c: C, patch: Partial<C>) => { const n = { ...c, ...patch }; setList((l) => l.map((x) => (x.id === c.id ? n : x))); await api("clients", "POST", { id: c.id, emails: n.emails, note: n.note }); };
+
+  return (
+    <div className="content narrow">
+      <div className="eyebrow">clients</div>
+      <h1 className="title">tes <span className="accent">clients.</span></h1>
+      <p className="muted">Les mails enregistrés ici ne sont plus demandés sur les liens de livraison de ce client : il arrive directement sur ses vidéos, même sur un nouvel appareil. Les mails donnés sur un lien s'ajoutent tout seuls.</p>
+      <form className="row" style={{ margin: "12px 0 16px" }} onSubmit={async (e) => { e.preventDefault(); if (!name.trim()) return; await api("clients", "POST", { name }); setName(""); load(); }}>
+        <input placeholder="Nouveau client" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="primary"><Plus size={16} /> Ajouter</button>
+      </form>
+      {list.length === 0 && <p className="muted">Aucun client pour l'instant.</p>}
+      {list.map((c) => (
+        <section key={c.id} className="settings-card">
+          <div className="liv-row" onClick={() => { setOpen(open === c.id ? "" : c.id); setMail(""); }}>
+            <div>
+              <b>{c.name}</b>
+              <div className="muted small">{c.deliveries.length} livraison{c.deliveries.length > 1 ? "s" : ""} · {c.emails.length ? c.emails.join(", ") : "aucun mail"}</div>
+            </div>
+          </div>
+          {open === c.id && (
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                {c.emails.map((e) => <span key={e} className="ok-pill">{e} <X size={13} style={{ cursor: "pointer" }} onClick={() => save(c, { emails: c.emails.filter((x) => x !== e) })} /></span>)}
+              </div>
+              <form className="row" onSubmit={(e) => { e.preventDefault(); const m = mail.trim().toLowerCase(); if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) { save(c, { emails: Array.from(new Set([...c.emails, m])) }); setMail(""); } }}>
+                <input type="email" placeholder="ajouter un mail" value={mail} onChange={(e) => setMail(e.target.value)} />
+                <button className="ghost"><Plus size={15} /></button>
+              </form>
+              <textarea placeholder="Note (contact, habitudes, tarifs…)" defaultValue={c.note} onBlur={(e) => e.target.value !== c.note && save(c, { note: e.target.value })} />
+              {c.deliveries.length > 0 && <div className="muted small">{c.deliveries.map((d) => <div key={d.id}>· {d.title} — {new Date(d.createdAt).toLocaleDateString("fr-FR")}{d.approvedAt ? " ✓ validée" : ""}</div>)}</div>}
+              <div><button className="ghost" onClick={async () => { if (confirm(`Supprimer la fiche « ${c.name} » ? (les livraisons restent)`)) { await api("clients", "POST", { id: c.id, delete: true }); load(); } }}><Trash2 size={15} /> Supprimer la fiche</button></div>
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}

@@ -69,7 +69,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [gate, setGate] = useState<{ title: string; client: string; expiresAt: string } | null>(null);
   const [mail, setMail] = useState("");
   const viewer = () => { try { return localStorage.getItem("liv-viewer") ?? ""; } catch { return ""; } };
-  const load = (who = viewer()) => fetch(url, { headers: { "x-viewer": who } }).then(async (r) => {
+  const load = (who = viewer()) => fetch(url, { headers: { "x-viewer": who, "x-client": new URLSearchParams(window.location.search).get("c") ?? "" } }).then(async (r) => {
     const j = await r.json();
     if (r.status === 401 && j.needEmail) { setGate(j); return; }
     if (!r.ok) throw new Error(j.error);

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Inbox, House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X } from "lucide-react";
+import { Inbox, House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X, Users } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -96,6 +96,7 @@ export default function Sidebar() {
       <Link href="/planning" className={`navitem ${path === "/planning" ? "active" : ""}`}><CalendarDays size={17} className="nav-ic" /> Planning</Link>
       <Link href="/rendez-vous" className={`navitem ${path === "/rendez-vous" ? "active" : ""}`}><CalendarClock size={17} className="nav-ic" /> Rendez-vous</Link>
       <Link href="/livraisons" className={`navitem ${path === "/livraisons" ? "active" : ""}`}><Clapperboard size={17} className="nav-ic" /> Livraisons</Link>
+      <Link href="/clients" className={`navitem ${path === "/clients" ? "active" : ""}`}><Users size={17} className="nav-ic" /> Clients</Link>
       <Link href="/compta" className={`navitem ${path === "/compta" ? "active" : ""}`}><Wallet size={17} className="nav-ic" /> Compta EI</Link>
       <Link href="/reglages" className={`navitem ${path === "/reglages" ? "active" : ""}`}><Bell size={17} className="nav-ic" /> Réglages</Link>
       <Link href="/inspi" className={`navitem ${path.startsWith("/inspi") ? "active" : ""}`}><Workflow size={17} className="nav-ic" /> Espaces inspi</Link>

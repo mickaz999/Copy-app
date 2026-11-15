@@ -262,6 +262,17 @@ model Delivery {
   viewers    DeliveryViewer[]
 }
 
+// Base clients (clients récurrents) : mails connus → le lien de livraison ne redemande pas le mail
+model Client {
+  id        String   @id @default(cuid())
+  nameKey   String   @unique // nom en minuscules (lien avec Delivery.client)
+  name      String
+  emails    String   @default("[]") // JSON
+  key       String   @unique // clé ajoutée aux liens (?c=…) pour reconnaître le client sur un nouvel appareil
+  note      String   @default("")
+  createdAt DateTime @default(now())
+}
+
 // Personnes qui ont ouvert le lien de livraison (mail demandé à l'entrée), relancées avant la fin de validité
 model DeliveryViewer {
   id         String   @id @default(cuid())

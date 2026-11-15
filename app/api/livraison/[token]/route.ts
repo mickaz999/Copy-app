@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { canDownload, expiryOf, fileMedia, isExpired, pool } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
+import { addClientEmail, emailsOf, nameKey } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,7 +19,14 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   // Mail demandé avant de visionner (pour la relance avant la fin de validité)
   // Une seule fois : le mail déjà donné (sur n'importe quel lien) est repris automatiquement
   const cookie = req.headers.get("cookie")?.match(/(?:^|;\s*)liv_viewer=([^;]+)/)?.[1];
-  const email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
+  let email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
+  // Client récurrent (lien avec ?c=…) : son mail est déjà connu, rien à demander
+  let fromClient = false;
+  const ck = req.headers.get("x-client");
+  if (!email && ck && d.client) {
+    const c = await db.client.findUnique({ where: { key: ck } });
+    if (c && c.nameKey === nameKey(d.client) && emailsOf(c)[0]) { email = emailsOf(c)[0]; fromClient = true; }
+  }
   if (!email) return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
   if (!(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }))) await addViewer(d, email);
   const files: F[] = JSON.parse(d.files);
@@ -30,11 +38,13 @@ export async function GET(req: Request, { params }: { params: { token: string } 
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }
   });
-  return NextResponse.json({
+  const res = NextResponse.json({
     expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
+  if (fromClient) res.cookies.set("liv_viewer", email, { path: "/", maxAge: 5 * 365 * 864e2, sameSite: "lax", secure: true, httpOnly: true });
+  return res;
 }
 
 const cleanEmail = (v: unknown) => {
@@ -42,7 +52,8 @@ const cleanEmail = (v: unknown) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : "";
 };
 
-async function addViewer(d: { id: string; title: string }, email: string) {
+async function addViewer(d: { id: string; title: string; client: string }, email: string) {
+  if (d.client) await addClientEmail(d.client, email).catch(() => {});
   try { await db.deliveryViewer.create({ data: { deliveryId: d.id, email } }); } catch { return; } // déjà enregistré
   await notify(`Lien ouvert · ${d.title}`, `${email} a ouvert la livraison.`);
 }

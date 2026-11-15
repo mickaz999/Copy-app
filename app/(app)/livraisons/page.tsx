@@ -13,7 +13,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[] };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[]; ck?: string };
 // Fin de validité du lien : 1 mois après la création, sauf prolongation ; supprimé 7 jours après
 const expiry = (d: { createdAt: string; expiresAt: string | null }) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 30 * 864e5);
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
@@ -75,7 +75,7 @@ export default function Livraisons() {
     load();
   }, []);
 
-  const link = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}`;
+  const link = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}${d.ck ? `?c=${d.ck}` : ""}`;
   const filesOf = (d: Delivery): File[] => JSON.parse(d.files || "[]");
 
   async function create() {

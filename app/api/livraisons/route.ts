@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { clientFor, nameKey } from "@/lib/clients";
 import { db } from "@/lib/db";
 import { nets } from "@/lib/frameio";
 
@@ -13,8 +14,12 @@ export async function GET(req: Request) {
   const list = await db.delivery.findMany({ orderBy: { createdAt: "desc" }, include: { comments: { orderBy: { createdAt: "asc" } }, viewers: { orderBy: { createdAt: "asc" } } } });
   // Tâches « Modifs » liées, avec leur avancement
   const tasks = await db.task.findMany({ where: { deliveryId: { in: list.map((d) => d.id) } } });
+  // Clé client pour les liens (le client récurrent n'a pas à redonner son mail)
+  const keys = new Map<string, string>();
+  for (const n of Array.from(new Set(list.map((d) => d.client.trim()).filter(Boolean)))) { const c = await clientFor(n).catch(() => null); if (c) keys.set(c.nameKey, c.key); }
   return NextResponse.json(list.map((d) => ({
     ...d,
+    ck: keys.get(nameKey(d.client)) ?? "",
     linked: tasks.filter((t) => t.deliveryId === d.id).map((t) => {
       const subs: { done: boolean }[] = JSON.parse(t.subtasks || "[]");
       return { id: t.id, title: t.title, status: t.status, done: subs.filter((s) => s.done).length, total: subs.length };
