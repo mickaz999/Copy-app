@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { COOKIE as SESSION, verifyToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { keyFromSlug, addClientEmail, clientItems, emailsOf } from "@/lib/clients";
 import { dropExpiry, expiryOf, fileMedia, pool } from "@/lib/frameio";
@@ -20,8 +21,9 @@ export async function GET(req: Request, { params }: { params: { key: string } })
   const cookie = req.headers.get("cookie")?.match(/(?:^|;\s*)liv_viewer=([^;]+)/)?.[1];
   const email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
   // Mail demandé une seule fois : déjà donné sur cet appareil, ou déjà connu dans la fiche client
-  if (!email && !emailsOf(c).length) return NextResponse.json({ needEmail: true, name: c.name }, { status: 401 });
-  if (email) await addClientEmail(c.name, email).catch(() => {});
+  const admin = await verifyToken(req.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${SESSION}=([^;]+)`))?.[1]);
+  if (!email && !admin && !emailsOf(c).length) return NextResponse.json({ needEmail: true, name: c.name }, { status: 401 });
+  if (email && !admin) await addClientEmail(c.name, email).catch(() => {});
   const { deliveries, drops } = await clientItems(c.nameKey);
   const items = await pool(deliveries, 6, async (d) => {
     const files: { fileId: string }[] = JSON.parse(d.files || "[]");
@@ -35,7 +37,7 @@ export async function GET(req: Request, { params }: { params: { key: string } })
     deliveries: items,
     drops: drops.map((l) => ({ token: l.token, title: l.title, expiresAt: dropExpiry(l), createdAt: l.createdAt })),
   });
-  if (email && !cookie) res.cookies.set("liv_viewer", email, COOKIE);
+  if (email && !cookie && !admin) res.cookies.set("liv_viewer", email, COOKIE);
   return res;
 }
 

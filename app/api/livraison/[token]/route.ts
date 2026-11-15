@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { COOKIE as SESSION, verifyToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canDownload, expiryOf, fileMedia, isExpired, pool } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
@@ -27,8 +28,10 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     const c = await db.client.findUnique({ where: { nameKey: nameKey(d.client) } });
     if (c && emailsOf(c)[0]) { email = emailsOf(c)[0]; fromClient = true; }
   }
-  if (!email) return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
-  if (!(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }))) await addViewer(d, email);
+  // Moi (connecté à l'app) : je vois le lien sans mail, sans être compté comme visiteur
+  const admin = await verifyToken(req.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${SESSION}=([^;]+)`))?.[1]);
+  if (!email && !admin) return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
+  if (email && !admin && !(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }))) await addViewer(d, email);
   const files: F[] = JSON.parse(d.files);
   const versions = await pool(files, 6, async (f, i) => {
     try {
@@ -44,7 +47,7 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
-  if (fromClient) res.cookies.set("liv_viewer", email, { path: "/", maxAge: 5 * 365 * 864e2, sameSite: "lax", secure: true, httpOnly: true });
+  if (fromClient && !admin) res.cookies.set("liv_viewer", email, { path: "/", maxAge: 5 * 365 * 864e2, sameSite: "lax", secure: true, httpOnly: true });
   return res;
 }
 
