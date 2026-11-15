@@ -4,6 +4,7 @@ import { api, isoDay } from "@/lib/api";
 import { REPEATS, nextDate } from "@/lib/repeat";
 import { RotateCcw, MessageSquareReply, CircleDashed, Clock, Circle, ExternalLink, Pencil, Trash2, AlertTriangle, ArrowDown, ArrowUp, Calendar, CalendarCheck, CalendarCog, Check, ChevronLeft, ChevronRight, Lock, LockOpen, Clapperboard, CircleDot, MapPin, MoreHorizontal, Plus, RefreshCw, Repeat, Tag, Type, X } from "lucide-react";
 import FramePicker, { FrameFile } from "@/components/FramePicker";
+import ClientList from "@/components/ClientList";
 import { PropValue, Prop, PropType, PROP_TYPES, PROP_ICONS, nextOptionColor } from "@/components/TaskProps";
 import { PUBLIC_URL } from "@/lib/site";
 
@@ -1692,6 +1693,8 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
   const [target, setTarget] = useState(task.deliveryId || "");
   const [done, setDone] = useState<{ text: string; link: string } | null>(null);
   const [error, setError] = useState("");
+  const [client, setClient] = useState("");
+  const [notify, setNotify] = useState(true);
   const base = task.title.replace(/^Modifs V\d+ · /, "");
   useEffect(() => {
     api<DeliveryLite[]>("livraisons").then((l) => { setList(l); if (!task.deliveryId) setTarget(l.find((d) => d.title === base)?.id ?? "new-page"); }).catch(() => setList([]));
@@ -1702,7 +1705,7 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
     try {
       let d: DeliveryLite;
       if (target.startsWith("new-")) {
-        d = await api<DeliveryLite>("livraisons", "POST", { title: base, client: "", accountId, files, mode: target === "new-frame" ? "frame" : "page", kind: files.length > 1 ? "videos" : "versions" });
+        d = await api<DeliveryLite>("livraisons", "POST", { title: base, client: target === "new-page" ? client.trim() : "", accountId, files, mode: target === "new-frame" ? "frame" : "page", kind: files.length > 1 ? "videos" : "versions" });
       } else {
         const cur = list!.find((x) => x.id === target)!;
         if (cur.accountId !== accountId) return setError("Choisis une vidéo du même compte Frame.io que cette livraison.");
@@ -1713,6 +1716,8 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
       const n = JSON.parse(d.files || "[]").length;
       const link = d.mode === "frame" ? "" : `${PUBLIC_URL}/l/${d.token}`;
       if (link) navigator.clipboard?.writeText(link).catch(() => {});
+      // Client renseigné : la livraison va sur son espace, et il est prévenu par mail s'il a un mail connu
+      if (d.mode !== "frame" && d.client && notify) await api("clients", "POST", { action: "notify", kind: "delivery", id: d.id }).catch(() => {});
       setDone({ text: d.mode === "frame" ? `Vidéo liée au suivi Frame « ${d.title} » (V${n}). Les commentaires arriveront dans le Planning.` : `V${n} ajoutée à « ${d.title} ». Lien copié : envoie-le au client.`, link });
     } catch (e) { setError(errorText(e)); }
   }
@@ -1736,6 +1741,10 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
           <option value="new-frame">Nouveau suivi Frame « {base} » (agence)</option>
         </select>
       </label>
+      {target === "new-page" && <>
+        <label className="field-line">Client (facultatif)<input list="clients" autoComplete="off" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Choisis ou tape un nom" /><ClientList /></label>
+        {client.trim() && <label className="check"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Prévenir le client par mail</label>}
+      </>}
       <p className="muted small">Choisis la ou les vidéos exportées, ou ferme pour passer. Pour une nouvelle livraison, plusieurs vidéos = des vidéos différentes (modifiable dans Livraisons).</p>
       {error && <p className="neg small">{error}</p>}
     </FramePicker>
