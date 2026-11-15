@@ -2008,3 +2008,4 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv-bubble-who { font-size: 12px; font-weight: 700; opacity: .8; display: flex; align-items: center; gap: 6px; }
 .liv-thread-form { display: grid; gap: 8px; }
 .liv-thread-form textarea { width: 100%; }
+.liv-client input { max-width: 320px; }
