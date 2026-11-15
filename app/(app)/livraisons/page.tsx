@@ -7,6 +7,7 @@ import DropLinks from "@/components/DropLinks";
 import { PUBLIC_URL, deliveryUrl } from "@/lib/site";
 import ClientPick from "@/components/ClientPick";
 import VoiceButton from "@/components/VoiceButton";
+import VoicePlayer from "@/components/VoicePlayer";
 
 type Project = { accountId: string; account: string; workspace: string; id: string; name: string; rootFolderId: string };
 type Info = { configured: boolean; connected: boolean; projects: Project[]; error?: string };
@@ -309,7 +310,7 @@ function VoiceNote({ d, reload, onMsg }: { d: Delivery; reload: () => void; onMs
           <span className="liv-bubble-who">{m.fromMe ? "Toi" : m.author || d.client || "Client"} · {new Date(m.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
             {m.fromMe && <button className="ghost" title="Supprimer" onClick={async () => { await api(`livraisons/${d.id}/messages`, "POST", { delete: m.id }); reload(); }}><Trash2 size={13} /></button>}
           </span>
-          {m.audio && <audio controls preload="none" src={`/api/livraison/${d.token}/msg?id=${m.id}`} />}
+          {m.audio && <VoicePlayer src={`/api/livraison/${d.token}/msg?id=${m.id}`} />}
           {m.text && <p>{m.text}</p>}
         </div>
       ))}
