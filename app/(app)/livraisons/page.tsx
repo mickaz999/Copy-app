@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
+import { Mic, Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
@@ -287,14 +287,18 @@ function VoiceNote({ d, reload, onMsg }: { d: Delivery; reload: () => void; onMs
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const msgs = d.messages ?? [];
+  const [on, setOn] = useState(false);
   async function send() {
     setBusy(true);
     try { await api(`livraisons/${d.id}/messages`, "POST", { audio: voice || undefined, text }); setVoice(""); setText(""); onMsg({ ok: true, text: "Message envoyé : le client le voit sur sa page, avec un endroit pour te répondre." }); reload(); }
     catch (e) { onMsg({ ok: false, text: errorText(e) }); }
     finally { setBusy(false); }
   }
+  // Désactivé par défaut : j'active la note vocale sur la livraison quand j'en ai besoin
+  if (!on && !msgs.length) return <div className="row"><button onClick={() => setOn(true)}><Mic size={15} /> Ajouter une note vocale</button></div>;
   return (
     <div className="liv-thread admin">
+      {!msgs.length && <div className="row"><b className="small">Note vocale pour le client</b><button className="ghost" onClick={() => { setOn(false); setVoice(""); setText(""); }}>Annuler</button></div>}
       {msgs.map((m) => (
         <div key={m.id} className={`liv-bubble ${m.fromMe ? "me" : "you"}`}>
           <span className="liv-bubble-who">{m.fromMe ? "Toi" : m.author || d.client || "Client"} · {new Date(m.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
