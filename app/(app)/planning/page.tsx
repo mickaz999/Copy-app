@@ -1687,7 +1687,7 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onS
 }
 
 // Fin d'une tâche Clients : rattacher la ou les vidéos exportées sur Frame.io à une livraison
-type DeliveryLite = { id: string; token: string; title: string; client: string; mode: string; accountId: string; files: string };
+type DeliveryLite = { space?: string; id: string; token: string; title: string; client: string; mode: string; accountId: string; files: string };
 function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => void; onLinked: (deliveryId: string) => void }) {
   const [list, setList] = useState<DeliveryLite[] | null>(null);
   const [target, setTarget] = useState(task.deliveryId || "");

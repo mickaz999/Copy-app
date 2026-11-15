@@ -2010,3 +2010,7 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .liv-thread-form textarea { width: 100%; }
 .liv-client input { max-width: 320px; }
 .liv-client select { max-width: 320px; }
+.liv-space { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.liv-quality { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.liv-quality button { font-size: 12px; padding: 4px 10px !important; border-radius: 999px; }
+.liv-quality button.on { border-color: var(--accent) !important; color: var(--accent) !important; }

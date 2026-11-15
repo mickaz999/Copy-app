@@ -109,6 +109,10 @@ async function loadMedia(accountId: string, fileId: string) {
     // Fichier original tel qu'envoyé (download_url force le téléchargement ; jamais une version recompressée)
     original: l.original?.download_url ?? "",
     thumb: url("thumbnail"),
+    // Qualités de lecture proposées au client (proxies Frame.io)
+    hq: url("high_quality"),
+    efficient: url("efficient"),
+    originalPlay: l.original?.url ?? "",
     status: (f?.status ?? "") as string,
   };
 }

@@ -14,7 +14,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[]; messages?: { id: string; fromMe: boolean; author: string; text: string; audio: string; createdAt: string }[] };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[]; space?: string; messages?: { id: string; fromMe: boolean; author: string; text: string; audio: string; createdAt: string }[] };
 // Fin de validité du lien : 1 mois après la création, sauf prolongation ; supprimé 7 jours après
 const expiry = (d: { createdAt: string; expiresAt: string | null }) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 30 * 864e5);
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
@@ -76,7 +76,9 @@ export default function Livraisons() {
     load();
   }, []);
 
-  const link = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}`;
+  // Client renseigné : on envoie son espace (tout ce qu'il a en cours) ; sinon (agence) le lien direct
+  const direct = (d: Delivery) => `${PUBLIC_URL}/l/${d.token}`;
+  const link = (d: Delivery) => d.space || direct(d);
   const filesOf = (d: Delivery): File[] => JSON.parse(d.files || "[]");
 
   const [notify, setNotify] = useState(true);
@@ -187,8 +189,9 @@ export default function Livraisons() {
                     <button onClick={async () => { try { const r = await api<{ added: number }>(`livraisons/${d.id}`, "PATCH", { action: "sync" }); setMsg({ ok: true, text: r.added ? `${r.added} nouveau(x) retour(s) Frame ajouté(s) au Planning.` : "Aucun nouveau commentaire sur Frame." }); load(); } catch (e) { setMsg({ ok: false, text: errorText(e) }); } }}><RefreshCw size={15} /> Vérifier Frame</button>
                   </>
                 : <>
-                    <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
-                    <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
+                    <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: d.space ? `Lien de l'espace ${d.client} copié : la livraison y est, avec tout ce qu'il a en cours.` : "Lien copié." }); }}><Copy size={15} /> {d.space ? "Copier son espace" : "Copier le lien"}</button>
+                    {d.space && <button onClick={() => { navigator.clipboard.writeText(direct(d)); setMsg({ ok: true, text: "Lien direct de la livraison copié." }); }}><Link2 size={15} /> Lien direct</button>}
+                    <button onClick={() => window.open(direct(d), "_blank")}><ExternalLink size={15} /> Voir</button>
                     {d.client && <button onClick={() => tellClient(d.id)}>Prévenir le client</button>}
                   </>}
               {d.kind !== "folder" && <button onClick={() => setPicking(d.id)}><Plus size={15} /> Nouvelle version</button>}

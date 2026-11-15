@@ -7,9 +7,9 @@ import ContactBlock from "@/components/ContactBlock";
 import VoiceButton from "@/components/VoiceButton";
 import DeliveryThread, { type Msg } from "@/components/DeliveryThread";
 
-type Version = { locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
+type Version = { qualities?: { key: string; label: string; url: string }[]; locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
-type Data = { messages?: Msg[]; validation?: boolean; dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
+type Data = { space?: string; messages?: Msg[]; validation?: boolean; dlMode?: string; expiresAt?: string; feedback?: string; reviewUrl?: string; folderId?: string; title: string; client: string; kind: string; approved: number[]; networks: Mock[]; message: string; createdAt: string; download: boolean; approvedV: number; versions: Version[]; comments: Comment[] };
 
 // Aperçus : la vidéo mise en situation sur les réseaux, pour que le client se projette
 // Vertical : réseaux « courts » ; horizontal : YouTube seulement
@@ -34,6 +34,9 @@ export default function Livraison({ params }: { params: { token: string } }) {
   // Retours « sur demande » : le formulaire s'ouvre seulement si le client le souhaite
   const [askOpen, setAskOpen] = useState(false);
   const [voice, setVoice] = useState("");
+  // Qualité de lecture choisie (vide = par défaut) ; la lecture reprend au même moment
+  const [quality, setQuality] = useState("");
+  const resumeAt = useRef(0);
   // Galerie : la vidéo / photo choisie s'ouvre en grand dans une fenêtre
   const [lb, setLb] = useState(false);
   // Indication « glisse pour passer » à la première ouverture sur téléphone
@@ -202,7 +205,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
         {/* Sans vignette Frame.io, on prend une image de la vidéo elle-même */}
         {!cur?.thumb && cur?.play && isVideo && <video key={cur.v} src={`${cur.play}#t=1`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden />}
       </div>
-      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Livraison privée</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>{d.space ? <a className="liv-space" href={d.space}>← Tout mon espace</a> : <span className="muted small">Livraison privée</span>}</div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
@@ -309,16 +312,24 @@ export default function Livraison({ params }: { params: { token: string } }) {
             )}
           </div>
           <div className={`liv-scene ${dual ? "dual" : ""}`} style={dual ? { ["--ratio" as string]: ratio } : undefined}>
+          {cur?.ready && isVideo && (cur.qualities?.length ?? 0) > 1 && (
+            <div className="liv-quality">
+              <span className="muted small">Qualité</span>
+              {cur.qualities!.map((x) => (
+                <button key={x.key} className={(quality || cur.qualities![0].key) === x.key ? "on" : ""} onClick={() => { resumeAt.current = video.current?.currentTime ?? 0; setQuality(x.key); }}>{x.label}</button>
+              ))}
+            </div>
+          )}
           {!cur?.ready && <div className="liv-wait">Vidéo en cours de préparation sur Frame.io, réessaie dans quelques minutes.</div>}
           <div className={`liv-stage mock-${isVideo ? pm : "player"}`}>
           {cur?.ready && (isVideo
             ? <div className="mock-screen" onClick={() => { if (pm !== "player" && video.current) video.current.paused ? video.current.play() : video.current.pause(); }}>
-              <video key={cur.v} ref={video} src={cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
+              <video key={`${cur.v}-${quality}`} ref={video} src={cur.qualities?.find((x) => x.key === quality)?.url || cur.play} poster={cur.thumb || undefined} controls={pm === "player"} playsInline preload="auto" loop={pm !== "player" && pm !== "youtube"}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
                 // Téléchargement non autorisé : on retire l'option du menu du lecteur et le clic droit
                 // Le lecteur lit une version recompressée par Frame.io : le téléchargement passe uniquement par le bouton (fichier original)
                 controlsList="nodownload" disablePictureInPicture={!cur.original} onContextMenu={(e) => e.preventDefault()}
-                onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
+                onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { if (resumeAt.current) { e.currentTarget.currentTime = resumeAt.current; resumeAt.current = 0; e.currentTarget.play().catch(() => {}); } setDuration(e.currentTarget.duration); if (e.currentTarget.videoHeight) setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight); }}
                 style={pm === "player" ? { aspectRatio: String(ratio), width: `min(100%, calc(var(--liv-h) * ${ratio}))` } : undefined} />
               {pm !== "player" && pm !== "youtube" && !playing && <span className="mock-play"><Play size={30} fill="#fff" /></span>}
               {pm === "youtube" && (
@@ -597,7 +608,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   return (
     <div className="liv dark">
       <div className="liv-bg" style={media?.thumb || (media && !isVid(media.mediaType)) ? { backgroundImage: `url("${media.thumb || media.play}")` } : undefined} />
-      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Livraison privée</span></div>
+      <div className="liv-top"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a>{d.space ? <a className="liv-space" href={d.space}>← Tout mon espace</a> : <span className="muted small">Livraison privée</span>}</div>
       <header className="liv-hero">
         <div className="liv-hero-text">
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>

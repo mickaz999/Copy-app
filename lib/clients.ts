@@ -71,3 +71,11 @@ export async function notifyClient(kind: "delivery" | "drop", id: string) {
   for (const e of to) await sendGmail(acc.id, e, subject, html);
   return to.length;
 }
+
+// Lien de l'espace du client d'une livraison / d'un dépôt (vide = pas de client, ex. agence)
+export async function spaceFor(name: string) {
+  if (!name.trim()) return "";
+  const c = await clientFor(name).catch(() => null);
+  return c ? spaceUrl(c) : "";
+}
+export const spacePath = (url: string) => url.replace(/^https?:\/\/[^/]+/, "");

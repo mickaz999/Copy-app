@@ -5,7 +5,7 @@ import { canDownload, expiryOf, fileMedia, isExpired, pool } from "@/lib/frameio
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
 import { publicMessages, saveAudio } from "@/lib/deliveryMessages";
-import { addClientEmail, emailsOf, nameKey } from "@/lib/clients";
+import { addClientEmail, emailsOf, nameKey, spaceFor, spacePath } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -36,13 +36,21 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   const versions = await pool(files, 6, async (f, i) => {
     try {
       const m = await fileMedia(d.accountId, f.fileId);
-      return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), old: d.kind !== "videos" && i + 1 < files.length, ready: !!m.play };
+      const dl = canDownload(d, i + 1);
+      // Choix de qualité : proxies HD / léger, et l'original quand le téléchargement est débloqué
+      const qualities = [
+        ...(m.hq && dl ? [{ key: "hq", label: "HD", url: m.hq }] : []),
+        ...(m.efficient ? [{ key: "light", label: "Léger", url: m.efficient }] : []),
+        ...(dl && m.originalPlay && m.originalPlay !== m.hq ? [{ key: "original", label: "Original", url: m.originalPlay }] : []),
+      ];
+      return { qualities, v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), old: d.kind !== "videos" && i + 1 < files.length, ready: !!m.play };
     } catch {
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }
   });
   const res = NextResponse.json({
     messages: publicMessages(params.token, d.messages),
+    space: spacePath(await spaceFor(d.client)),
     expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),

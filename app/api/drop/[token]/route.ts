@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { dropExpiry, ensurePath, startUpload } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 import { dropTask } from "@/lib/deliveryTasks";
+import { spaceFor, spacePath } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   const l = await find(params.token);
   if (!l || !l.active) return NextResponse.json({ error: "Ce lien de dépôt n'est plus actif." }, { status: 404 });
   if (dropExpiry(l).getTime() < Date.now()) return NextResponse.json({ error: "Ce lien de dépôt a expiré. Demande-moi un nouveau lien si besoin." }, { status: 410 });
-  return NextResponse.json({ notes: l.notes.map((n) => ({ text: n.text, audio: !!n.audio, author: n.author, createdAt: n.createdAt })), expiresAt: dropExpiry(l), title: l.title, client: l.client, message: l.message, files: l.files.map((f) => ({ name: f.name, size: f.size, author: f.author, createdAt: f.createdAt })) });
+  return NextResponse.json({ space: spacePath(await spaceFor(l.client)), notes: l.notes.map((n) => ({ text: n.text, audio: !!n.audio, author: n.author, createdAt: n.createdAt })), expiresAt: dropExpiry(l), title: l.title, client: l.client, message: l.message, files: l.files.map((f) => ({ name: f.name, size: f.size, author: f.author, createdAt: f.createdAt })) });
 }
 
 // start : prépare l'envoi d'un fichier sur Frame.io ; done : fichier reçu ; finish : fin d'un envoi groupé (notification + tâche)

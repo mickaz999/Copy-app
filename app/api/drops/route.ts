@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { spaceFor } from "@/lib/clients";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { createFolder } from "@/lib/frameio";
@@ -6,7 +7,10 @@ import { createFolder } from "@/lib/frameio";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(await db.dropLink.findMany({ orderBy: { createdAt: "desc" }, include: { files: { orderBy: { createdAt: "desc" } }, notes: { orderBy: { createdAt: "asc" } } } }));
+  const list = await db.dropLink.findMany({ orderBy: { createdAt: "desc" }, include: { files: { orderBy: { createdAt: "desc" } }, notes: { orderBy: { createdAt: "asc" } } } });
+  const spaces = new Map<string, string>();
+  for (const n of Array.from(new Set(list.map((d) => d.client.trim()).filter(Boolean)))) spaces.set(n, await spaceFor(n));
+  return NextResponse.json(list.map((d) => ({ ...d, space: spaces.get(d.client.trim()) ?? "" })));
 }
 
 // Nouveau lien de dépôt ; newFolder = nom du sous-dossier à créer dans le dossier choisi

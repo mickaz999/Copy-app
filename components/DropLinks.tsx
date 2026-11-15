@@ -6,7 +6,7 @@ import FramePicker, { FrameProject } from "@/components/FramePicker";
 import { PUBLIC_URL } from "@/lib/site";
 import ClientPick from "@/components/ClientPick";
 
-type Drop = { notes?: { id: string; author: string; text: string; audio: string; createdAt: string }[]; id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
+type Drop = { space?: string; notes?: { id: string; author: string; text: string; audio: string; createdAt: string }[]; id: string; token: string; title: string; client: string; message: string; folderName: string; active: boolean; createdAt: string; expiresAt: string | null; files: { name: string; size: number; author: string; createdAt: string }[] };
 // Valable 1 semaine après la création, sauf prolongation
 const expiry = (d: Drop) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 7 * 864e5);
 const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} Go` : `${Math.max(1, Math.round(n / 1e6))} Mo`);
@@ -21,7 +21,8 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
   const [busy, setBusy] = useState(false);
   const load = () => api<Drop[]>("drops").then(setList).catch(() => {});
   useEffect(() => { load(); }, []);
-  const link = (d: Drop) => `${PUBLIC_URL}/d/${d.token}`;
+  const direct = (d: Drop) => `${PUBLIC_URL}/d/${d.token}`;
+  const link = (d: Drop) => d.space || direct(d);
 
   const [notify, setNotify] = useState(true);
   async function tellClient(id: string) {
@@ -87,7 +88,8 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
               {!d.active ? <span className="late-pill">fermé</span> : expiry(d).getTime() < Date.now() && <span className="late-pill">expiré</span>}
             </div>
             <div className="row">
-              <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /> Copier le lien</button>
+              <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: d.space ? `Lien de l'espace ${d.client} copié : le dépôt y est, avec tout ce qu'il a en cours.` : "Lien copié." }); }}><Copy size={15} /> {d.space ? "Copier son espace" : "Copier le lien"}</button>
+              {d.space && <button onClick={() => { navigator.clipboard.writeText(direct(d)); setMsg({ ok: true, text: "Lien direct du dépôt copié." }); }}>Lien direct</button>}
               {d.client && <button onClick={() => tellClient(d.id)}>Prévenir le client</button>}
               <button onClick={() => window.open(link(d), "_blank")}><ExternalLink size={15} /> Voir</button>
               <span className={`small ${expiry(d).getTime() < Date.now() ? "neg" : "muted"}`}>{expiry(d).getTime() < Date.now() ? "Expiré le" : "Valable jusqu'au"} {expiry(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
