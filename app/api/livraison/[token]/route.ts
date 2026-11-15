@@ -3,13 +3,14 @@ import { db } from "@/lib/db";
 import { canDownload, expiryOf, fileMedia, isExpired, pool } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 import { commentToTask } from "@/lib/deliveryTasks";
+import { publicMessages, saveAudio } from "@/lib/deliveryMessages";
 import { addClientEmail, emailsOf, nameKey } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type F = { fileId: string; name: string };
-const find = (token: string) => db.delivery.findUnique({ where: { token }, include: { comments: { orderBy: { createdAt: "asc" } } } });
+const find = (token: string) => db.delivery.findUnique({ where: { token }, include: { comments: { orderBy: { createdAt: "asc" } }, messages: { orderBy: { createdAt: "asc" } } } });
 
 // Page client (sans connexion) : versions avec leurs liens de lecture Frame.io, commentaires
 export async function GET(req: Request, { params }: { params: { token: string } }) {
@@ -38,6 +39,7 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     }
   });
   const res = NextResponse.json({
+    messages: publicMessages(params.token, d.messages),
     expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
@@ -79,6 +81,18 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const count = (JSON.parse(d.files) as F[]).length;
   const version = Math.min(count, Math.max(1, Number(b.version) || count));
   const author = String(b.author ?? "").trim().slice(0, 80) || d.client || "Client";
+  // Réponse du client à mon message (texte ou vocal), indépendante des retours sur la vidéo
+  if (b.action === "reply") {
+    if (!d.messages.some((m) => m.fromMe)) return NextResponse.json({ error: "Rien à répondre." }, { status: 400 });
+    try {
+      const audio = await saveAudio(b.audio);
+      const text = String(b.text ?? "").trim().slice(0, 3000);
+      if (!audio && !text) return NextResponse.json({ error: "Écris ou enregistre ta réponse." }, { status: 400 });
+      const m = await db.deliveryMessage.create({ data: { deliveryId: d.id, fromMe: false, author, text, audio } });
+      await notify(`Réponse · ${d.title}`, `${author} : ${audio && !text ? "message vocal" : text.slice(0, 140)}`);
+      return NextResponse.json(m);
+    } catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 400 }); }
+  }
   if (b.action === "comment") {
     if (d.feedback === "off") return NextResponse.json({ error: "Les retours sont fermés pour cette livraison." }, { status: 403 });
     // Message vocal : envoyé en base64 (3 min max), gardé dans Media

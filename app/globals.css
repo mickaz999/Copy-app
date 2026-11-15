@@ -1995,3 +1995,16 @@ button.todo-check.on:not(.primary) { background: var(--green) !important; border
 .esp-txt { display: grid; gap: 2px; flex: 1; min-width: 0; }
 .esp-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .esp-ok { display: inline-flex; align-items: center; gap: 3px; color: #2fa36b; }
+
+/* Échange vocal sur une livraison */
+.liv-thread { display: grid; gap: 8px; max-width: 640px; margin: 8px 0; }
+.liv-bubble { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); max-width: 92%; }
+.liv-bubble.me { background: var(--accent-soft); border-color: var(--accent); justify-self: start; }
+.liv-bubble.you { justify-self: end; }
+.liv-thread.admin .liv-bubble.me { justify-self: end; }
+.liv-thread.admin .liv-bubble.you { justify-self: start; }
+.liv-bubble p { margin: 0; white-space: pre-line; }
+.liv-bubble audio { width: 100%; min-width: 220px; height: 36px; }
+.liv-bubble-who { font-size: 12px; font-weight: 700; opacity: .8; display: flex; align-items: center; gap: 6px; }
+.liv-thread-form { display: grid; gap: 8px; }
+.liv-thread-form textarea { width: 100%; }

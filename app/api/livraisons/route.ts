@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     const s = await db.notifSettings.upsert({ where: { id: 1 }, create: {}, update: {} });
     return NextResponse.json({ reviewUrl: s.reviewUrl });
   }
-  const list = await db.delivery.findMany({ orderBy: { createdAt: "desc" }, include: { comments: { orderBy: { createdAt: "asc" } }, viewers: { orderBy: { createdAt: "asc" } } } });
+  const list = await db.delivery.findMany({ orderBy: { createdAt: "desc" }, include: { comments: { orderBy: { createdAt: "asc" } }, viewers: { orderBy: { createdAt: "asc" } }, messages: { orderBy: { createdAt: "asc" } } } });
   // Tâches « Modifs » liées, avec leur avancement
   const tasks = await db.task.findMany({ where: { deliveryId: { in: list.map((d) => d.id) } } });
   return NextResponse.json(list.map((d) => ({

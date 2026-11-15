@@ -260,6 +260,7 @@ model Delivery {
   createdAt  DateTime @default(now())
   comments   DeliveryComment[]
   viewers    DeliveryViewer[]
+  messages   DeliveryMessage[]
 }
 
 // Base clients (clients récurrents) : mails connus → le lien de livraison ne redemande pas le mail
@@ -271,6 +272,18 @@ model Client {
   key       String   @unique // clé ajoutée aux liens (?c=…) pour reconnaître le client sur un nouvel appareil
   note      String   @default("")
   createdAt DateTime @default(now())
+}
+
+// Échange sur une livraison : notes vocales / messages de moi et réponses du client
+model DeliveryMessage {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  fromMe     Boolean  @default(false)
+  author     String   @default("")
+  text       String   @default("")
+  audio      String   @default("") // Media.id
+  createdAt  DateTime @default(now())
 }
 
 // Personnes qui ont ouvert le lien de livraison (mail demandé à l'entrée), relancées avant la fin de validité
