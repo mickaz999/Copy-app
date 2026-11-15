@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const [deliveries, drops] = await Promise.all([
     db.delivery.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, title: true, client: true, createdAt: true, expiresAt: true, approvedV: true, approvedAt: true } }),
-    db.dropLink.findMany({ select: { client: true } }),
+    db.dropLink.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, title: true, client: true, active: true, createdAt: true, expiresAt: true, _count: { select: { files: true } } } }),
   ]);
   for (const n of Array.from(new Set([...deliveries, ...drops].map((d) => d.client.trim()).filter(Boolean)))) await clientFor(n).catch(() => {});
   const clients = await db.client.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json(clients.map((c) => ({ ...c, emails: emailsOf(c), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey) })));
+  return NextResponse.json(clients.map((c) => ({ ...c, emails: emailsOf(c), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
 }
 
 // { name } : nouveau client | { id, emails, note } : mise à jour | { id, delete: true }

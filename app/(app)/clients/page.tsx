@@ -4,7 +4,7 @@ import { Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 
 type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
-type C = { id: string; name: string; emails: string[]; note: string; deliveries: D[] };
+type C = { id: string; name: string; emails: string[]; note: string; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
 
 export default function Clients() {
   const [list, setList] = useState<C[]>([]);
@@ -20,7 +20,7 @@ export default function Clients() {
     <div className="content narrow">
       <div className="eyebrow">clients</div>
       <h1 className="title">tes <span className="accent">clients.</span></h1>
-      <p className="muted">Les mails enregistrés ici ne sont plus demandés sur les liens de livraison de ce client : il arrive directement sur ses vidéos, même sur un nouvel appareil. Les mails donnés sur un lien s'ajoutent tout seuls.</p>
+      <p className="muted">Les mails enregistrés ici ne sont plus demandés sur les liens de livraison de ce client : il arrive directement sur ses vidéos, même sur un nouvel appareil, y compris sur les liens déjà envoyés. Les mails donnés sur un lien s'ajoutent tout seuls.</p>
       <form className="row" style={{ margin: "12px 0 16px" }} onSubmit={async (e) => { e.preventDefault(); if (!name.trim()) return; await api("clients", "POST", { name }); setName(""); load(); }}>
         <input placeholder="Nouveau client" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="primary"><Plus size={16} /> Ajouter</button>
@@ -31,7 +31,7 @@ export default function Clients() {
           <div className="liv-row" onClick={() => { setOpen(open === c.id ? "" : c.id); setMail(""); }}>
             <div>
               <b>{c.name}</b>
-              <div className="muted small">{c.deliveries.length} livraison{c.deliveries.length > 1 ? "s" : ""} · {c.emails.length ? c.emails.join(", ") : "aucun mail"}</div>
+              <div className="muted small">{c.deliveries.length} livraison{c.deliveries.length > 1 ? "s" : ""} · {c.drops.length} dépôt{c.drops.length > 1 ? "s" : ""} de rushs · {c.emails.length ? c.emails.join(", ") : "aucun mail"}</div>
             </div>
           </div>
           {open === c.id && (
@@ -44,7 +44,8 @@ export default function Clients() {
                 <button className="ghost"><Plus size={15} /></button>
               </form>
               <textarea placeholder="Note (contact, habitudes, tarifs…)" defaultValue={c.note} onBlur={(e) => e.target.value !== c.note && save(c, { note: e.target.value })} />
-              {c.deliveries.length > 0 && <div className="muted small">{c.deliveries.map((d) => <div key={d.id}>· {d.title} — {new Date(d.createdAt).toLocaleDateString("fr-FR")}{d.approvedAt ? " ✓ validée" : ""}</div>)}</div>}
+              {c.drops.length > 0 && <div className="muted small"><b>Dépôts de rushs</b>{c.drops.map((d) => <div key={d.id}>· {d.title} — {d.files} fichier{d.files > 1 ? "s" : ""} reçu{d.files > 1 ? "s" : ""}{d.active ? "" : " (fermé)"}</div>)}</div>}
+              {c.deliveries.length > 0 && <div className="muted small"><b>Livraisons</b>{c.deliveries.map((d) => <div key={d.id}>· {d.title} — {new Date(d.createdAt).toLocaleDateString("fr-FR")}{d.approvedAt ? " ✓ validée" : ""}</div>)}</div>}
               <div><button className="ghost" onClick={async () => { if (confirm(`Supprimer la fiche « ${c.name} » ? (les livraisons restent)`)) { await api("clients", "POST", { id: c.id, delete: true }); load(); } }}><Trash2 size={15} /> Supprimer la fiche</button></div>
             </div>
           )}

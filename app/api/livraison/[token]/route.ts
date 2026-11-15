@@ -20,12 +20,11 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   // Une seule fois : le mail déjà donné (sur n'importe quel lien) est repris automatiquement
   const cookie = req.headers.get("cookie")?.match(/(?:^|;\s*)liv_viewer=([^;]+)/)?.[1];
   let email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
-  // Client récurrent (lien avec ?c=…) : son mail est déjà connu, rien à demander
+  // Client récurrent (mail déjà dans sa fiche) : rien à demander, y compris sur les liens déjà envoyés
   let fromClient = false;
-  const ck = req.headers.get("x-client");
-  if (!email && ck && d.client) {
-    const c = await db.client.findUnique({ where: { key: ck } });
-    if (c && c.nameKey === nameKey(d.client) && emailsOf(c)[0]) { email = emailsOf(c)[0]; fromClient = true; }
+  if (!email && d.client) {
+    const c = await db.client.findUnique({ where: { nameKey: nameKey(d.client) } });
+    if (c && emailsOf(c)[0]) { email = emailsOf(c)[0]; fromClient = true; }
   }
   if (!email) return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
   if (!(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }))) await addViewer(d, email);
