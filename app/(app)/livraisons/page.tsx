@@ -80,7 +80,7 @@ export default function Livraisons() {
 
   const [notify, setNotify] = useState(true);
   async function tellClient(id: string) {
-    try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "delivery", id }); setMsg({ ok: true, text: `Client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }); }
+    try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "delivery", id }); setMsg({ ok: true, text: r.sent ? `Client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` : "Pas de mail connu pour ce client : ajoute-le dans sa fiche pour le prévenir." }); }
     catch (e) { setMsg({ ok: false, text: errorText(e) }); }
   }
   async function create() {
@@ -89,8 +89,8 @@ export default function Livraisons() {
       const withMail = notify && draft?.mode !== "frame" && !!draft?.client.trim();
       setDraft(null); load();
       if (withMail) {
-        try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "delivery", id: d.id }); setMsg({ ok: true, text: `Livraison créée, client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}). Elle apparaît sur son espace.` }); }
-        catch (e) { setMsg({ ok: true, text: `Livraison créée, mais mail non envoyé : ${errorText(e)}` }); }
+        try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "delivery", id: d.id }); setMsg({ ok: true, text: r.sent ? `Livraison créée, client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}). Elle apparaît sur son espace.` : "Livraison créée : elle apparaît sur l'espace du client." }); }
+        catch { setMsg({ ok: true, text: "Livraison créée : elle apparaît sur l'espace du client." }); }
       } else setMsg({ ok: true, text: "Livraison créée : copie le lien et envoie-le au client." });
     } catch (e) { setMsg({ ok: false, text: errorText(e) }); }
   }
