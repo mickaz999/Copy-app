@@ -11,10 +11,14 @@ type F = { fileId: string; name: string };
 const find = (token: string) => db.delivery.findUnique({ where: { token }, include: { comments: { orderBy: { createdAt: "asc" } } } });
 
 // Page client (sans connexion) : versions avec leurs liens de lecture Frame.io, commentaires
-export async function GET(_: Request, { params }: { params: { token: string } }) {
+export async function GET(req: Request, { params }: { params: { token: string } }) {
   const d = await find(params.token);
   if (!d) return NextResponse.json({ error: "Lien de livraison invalide." }, { status: 404 });
   if (isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré. Demande-moi un nouveau lien si besoin.", expired: true }, { status: 410 });
+  // Mail demandé avant de visionner (pour la relance avant la fin de validité)
+  const email = cleanEmail(req.headers.get("x-viewer"));
+  if (!email || !(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } })))
+    return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
   const files: F[] = JSON.parse(d.files);
   const versions = await pool(files, 6, async (f, i) => {
     try {
@@ -31,6 +35,11 @@ export async function GET(_: Request, { params }: { params: { token: string } })
   });
 }
 
+const cleanEmail = (v: unknown) => {
+  const e = String(v ?? "").trim().toLowerCase().slice(0, 200);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : "";
+};
+
 async function notify(title: string, body: string) {
   const s = await getSettings();
   if (s.pushEnabled) await sendPush({ title, body, url: "/livraisons", tag: `liv-${Date.now()}` }).catch(() => {});
@@ -42,6 +51,16 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (!d) return NextResponse.json({ error: "Lien de livraison invalide." }, { status: 404 });
   if (isExpired(d)) return NextResponse.json({ error: "Ce lien de livraison a expiré." }, { status: 410 });
   const b = await req.json().catch(() => ({}));
+  if (b.action === "viewer") {
+    const email = cleanEmail(b.email);
+    if (!email) return NextResponse.json({ error: "Adresse mail invalide." }, { status: 400 });
+    const existed = await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } });
+    if (!existed) {
+      await db.deliveryViewer.create({ data: { deliveryId: d.id, email } });
+      await notify(`Lien ouvert · ${d.title}`, `${email} a ouvert la livraison.`);
+    }
+    return NextResponse.json({ ok: true, email });
+  }
   const count = (JSON.parse(d.files) as F[]).length;
   const version = Math.min(count, Math.max(1, Number(b.version) || count));
   const author = String(b.author ?? "").trim().slice(0, 80) || d.client || "Client";

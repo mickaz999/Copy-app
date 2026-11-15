@@ -13,7 +13,7 @@ type Item = { id: string; name: string; type: string; mediaType: string; created
 const when = (iso: string) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 type File = { fileId: string; name: string };
 type Comment = { audio?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean };
-type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null };
+type Delivery = { id: string; token: string; title: string; client: string; message: string; networks: string; mode: string; linked: { id: string; title: string; status: string; done: number; total: number }[]; accountId: string; files: string; download: boolean; approvedV: number; approvedAt: string | null; comments: Comment[]; kind: string; approved: string; dlMode: string; feedback: string; validation: boolean; createdAt: string; expiresAt: string | null; viewers?: { email: string }[] };
 // Fin de validité du lien : 1 mois après la création, sauf prolongation ; supprimé 7 jours après
 const expiry = (d: { createdAt: string; expiresAt: string | null }) => new Date(d.expiresAt ?? Date.parse(d.createdAt) + 30 * 864e5);
 // Choix : versions d'une même vidéo ou plusieurs vidéos différentes
@@ -157,7 +157,7 @@ export default function Livraisons() {
             <div className="liv-row" onClick={() => setOpen(open === d.id ? "" : d.id)}>
               <div>
                 <b>{d.title}</b>{d.client && <span className="muted"> · {d.client}</span>}
-                <div className="muted small">{d.kind === "folder" ? "Dossier Frame (en direct)" : d.kind === "videos" ? `${files.length} vidéos` : `V${files.length}`} · {d.comments.length} retour{d.comments.length > 1 ? "s" : ""}{todo ? ` (${todo} à traiter)` : ""}</div>
+                <div className="muted small">{d.kind === "folder" ? "Dossier Frame (en direct)" : d.kind === "videos" ? `${files.length} vidéos` : `V${files.length}`} · {d.comments.length} retour{d.comments.length > 1 ? "s" : ""}{todo ? ` (${todo} à traiter)` : ""}{d.viewers?.length ? ` · vu par ${d.viewers.map((x) => x.email).join(", ")}` : ""}</div>
               </div>
               {d.mode !== "frame" && expiry(d).getTime() < Date.now() && <span className="late-pill">lien expiré</span>}
               {d.kind === "videos" && JSON.parse(d.approved || "[]").length ? <span className="ok-pill"><CheckCircle2 size={14} /> {JSON.parse(d.approved).length}/{files.length} validées</span> : d.approvedV ? <span className="ok-pill"><CheckCircle2 size={14} /> V{d.approvedV} validée</span> : todo ? <span className="late-pill"><MessageSquare size={12} /> {todo}</span> : null}

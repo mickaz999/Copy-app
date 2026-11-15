@@ -259,6 +259,17 @@ model Delivery {
   approvedV  Int      @default(0)    // numéro de la version validée
   createdAt  DateTime @default(now())
   comments   DeliveryComment[]
+  viewers    DeliveryViewer[]
+}
+
+// Personnes qui ont ouvert le lien de livraison (mail demandé à l'entrée), relancées avant la fin de validité
+model DeliveryViewer {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  email      String
+  createdAt  DateTime @default(now())
+  @@unique([deliveryId, email])
 }
 
 model DeliveryComment {
