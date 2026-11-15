@@ -55,12 +55,12 @@ export function mailHtml(title: string, lines: string[], button: string, href: s
 // « Nouvelle livraison » / « Nouveau lien de dépôt » : mail à tous les mails connus du client
 export async function notifyClient(kind: "delivery" | "drop", id: string) {
   const acc = await mailAccount();
-  if (!acc) throw new Error("Aucun compte Google avec l'autorisation Gmail.");
+  if (!acc) return 0;
   const item = kind === "delivery" ? await db.delivery.findUnique({ where: { id } }) : await db.dropLink.findUnique({ where: { id } });
-  if (!item || !item.client.trim()) throw new Error("Indique d'abord le client.");
+  if (!item || !item.client.trim()) return 0;
   const c = await clientFor(item.client);
   const to = c ? emailsOf(c) : [];
-  if (!c || !to.length) throw new Error(`Aucun mail pour « ${item.client} » : ajoute-le dans sa fiche (page Clients).`);
+  if (!c || !to.length) return 0; // pas de mail connu : rien à envoyer, sans erreur
   const t = esc(item.title);
   const [subject, html] = kind === "delivery"
     ? [`Nouvelle livraison · ${item.title}`, mailHtml("Ta livraison est en ligne", [`<b>${t}</b> t'attend sur ton espace.`, "Tu peux la regarder, laisser tes retours et la valider."], "Voir ma livraison", spaceUrl(c))]

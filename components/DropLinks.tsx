@@ -25,7 +25,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
 
   const [notify, setNotify] = useState(true);
   async function tellClient(id: string) {
-    try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "drop", id }); setMsg({ ok: true, text: `Client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }); }
+    try { const r = await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "drop", id }); setMsg({ ok: true, text: r.sent ? `Client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` : "Pas de mail connu pour ce client : ajoute-le dans sa fiche pour le prévenir." }); }
     catch (e) { setMsg({ ok: false, text: errorText(e) }); }
   }
   async function create() {
@@ -36,8 +36,8 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
       navigator.clipboard?.writeText(link(d)).catch(() => {});
       setMsg({ ok: true, text: "Lien de dépôt créé et copié : envoie-le au client." });
       if (notify && draft.client.trim()) await api<{ sent: number }>("clients", "POST", { action: "notify", kind: "drop", id: d.id })
-        .then((r) => setMsg({ ok: true, text: `Lien de dépôt créé, client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }))
-        .catch((e) => setMsg({ ok: true, text: `Lien créé et copié, mais mail non envoyé : ${errorText(e)}` }));
+        .then((r) => r.sent && setMsg({ ok: true, text: `Lien de dépôt créé et copié, client prévenu par mail (${r.sent} adresse${r.sent > 1 ? "s" : ""}).` }))
+        .catch(() => {});
       setDraft(null); load();
     } catch (e) { setMsg({ ok: false, text: errorText(e) }); }
     finally { setBusy(false); }
