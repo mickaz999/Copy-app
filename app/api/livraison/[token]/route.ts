@@ -36,7 +36,14 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   const versions = await pool(files, 6, async (f, i) => {
     try {
       const m = await fileMedia(d.accountId, f.fileId);
-      return { v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), old: d.kind !== "videos" && i + 1 < files.length, ready: !!m.play };
+      const dl = canDownload(d, i + 1);
+      // Choix de qualité : proxies HD / léger, et l'original quand le téléchargement est débloqué
+      const qualities = [
+        ...(m.hq && dl ? [{ key: "hq", label: "HD", url: m.hq }] : []),
+        ...(m.efficient ? [{ key: "light", label: "Léger", url: m.efficient }] : []),
+        ...(dl && m.originalPlay && m.originalPlay !== m.hq ? [{ key: "original", label: "Original", url: m.originalPlay }] : []),
+      ];
+      return { qualities, v: i + 1, name: f.name || m.name, mediaType: m.mediaType, play: canDownload(d, i + 1) ? m.play : m.light, thumb: m.thumb, original: canDownload(d, i + 1) ? m.original : "", locked: d.download && !canDownload(d, i + 1), old: d.kind !== "videos" && i + 1 < files.length, ready: !!m.play };
     } catch {
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }
