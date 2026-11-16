@@ -43,7 +43,7 @@ export default function Rdv({ params }: { params: { slug: string } }) {
         {info && done && (
           <div className="rdv-done">
             <CalendarCheck size={34} />
-            <h1>C&apos;est noté !</h1>
+            <h1>C&apos;est noté</h1>
             <p>{dayLabel(done.day)}, de {done.time} à {done.end}.</p>
             <p>{done.mode === "visio" ? "En visio, avec ce lien :" : `Je t'appelle sur WhatsApp au ${form.phone}.`}</p>
             {done.meet && <a className="link" href={done.meet} target="_blank" rel="noreferrer">{done.meet.replace("https://", "")}</a>}

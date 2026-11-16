@@ -40,7 +40,7 @@ export default function BookingSettings({ calendars }: { calendars: { id: string
 
       {b.enabled && (
         <div className="row">
-          <button className="primary" onClick={() => { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}><Copy size={16} /> {copied ? "Copié !" : "Copier le lien"}</button>
+          <button className="primary" onClick={() => { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}><Copy size={16} /> {copied ? "Copié" : "Copier le lien"}</button>
           <button onClick={() => window.open(link, "_blank")}><ExternalLink size={16} /> Voir</button>
           <button onClick={async () => confirm("L'ancien lien ne marchera plus. Continuer ?") && setB(await api<Booking>("booking", "POST", { regenerate: true }))}><RefreshCw size={16} /> Nouveau lien</button>
         </div>
