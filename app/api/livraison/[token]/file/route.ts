@@ -21,7 +21,11 @@ export async function GET(req: Request, { params }: { params: { token: string } 
       await notifyDownload(d, "des fichiers du dossier");
       return NextResponse.redirect(m.original);
     }
-    return NextResponse.json({ name: m.name, mediaType: m.mediaType, play: m.play, thumb: m.thumb, canDownload: d.download && !!m.original });
+    const qualities = [
+      ...(m.originalPlay || m.hq ? [{ key: "original", label: "Original", url: m.originalPlay || m.hq }] : []),
+      ...(m.efficient ? [{ key: "light", label: "Léger", url: m.efficient }] : []),
+    ];
+    return NextResponse.json({ name: m.name, mediaType: m.mediaType, play: m.play, qualities, thumb: m.thumb, canDownload: d.download && !!m.original });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
