@@ -587,7 +587,7 @@ const ago = (iso?: string) => {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 864e5);
   return days <= 0 ? "aujourd'hui" : days === 1 ? "hier" : days < 30 ? `il y a ${days} j` : new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 };
-type Media = { name: string; mediaType: string; play: string; thumb: string; canDownload: boolean };
+type Media = { qualities?: { key: string; label: string; url: string }[]; name: string; mediaType: string; play: string; thumb: string; canDownload: boolean };
 function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: () => Promise<unknown> }) {
   const base = `/api/livraison/${token}`;
   // Fil d'Ariane : dossiers ouverts depuis le dossier livré (le premier = racine)
@@ -597,6 +597,9 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   const [error, setError] = useState("");
   const [file, setFile] = useState<Item | null>(null);
   const [media, setMedia] = useState<Media | null>(null);
+  const [fq, setFq] = useState("");
+  const fResume = useRef(0);
+  const fVideo = useRef<HTMLVideoElement>(null);
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
   const [now, setNow] = useState(0);
@@ -678,7 +681,14 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
             <div className="liv-fileview">
               {!media && <div className="liv-wait"><MiniLoader label="Chargement de la vidéo" /></div>}
               {media && (isVid(media.mediaType)
-                ? <video key={file.id} src={media.play} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList="nodownload" onContextMenu={(e) => e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
+                ? <>
+                  {(media.qualities?.length ?? 0) > 1 && (
+                    <div className="liv-quality">
+                      <span className="muted small">Qualité</span>
+                      {media.qualities!.map((x) => <button key={x.key} className={(fq || media.qualities![0].key) === x.key ? "on" : ""} onClick={() => { fResume.current = fVideo.current?.currentTime ?? 0; setFq(x.key); }}>{x.label}</button>)}
+                    </div>
+                  )}
+                  <video ref={fVideo} key={`${file.id}-${fq}`} src={(media.qualities?.find((x) => x.key === fq) ?? media.qualities?.[0])?.url || media.play} onLoadedMetadata={(e) => { if (fResume.current) { e.currentTarget.currentTime = fResume.current; fResume.current = 0; e.currentTarget.play().catch(() => {}); } }} poster={media.thumb || undefined} controls playsInline preload="metadata" controlsList="nodownload" onContextMenu={(e) => e.preventDefault()} onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} /></>
                 : <img src={media.play} alt="" onContextMenu={(e) => e.preventDefault()} />)}
               <div className="liv-actions">
                 <span className="liv-file">{fname(file)}</span>
