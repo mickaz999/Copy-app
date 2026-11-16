@@ -69,7 +69,14 @@ export async function buildDigest(day: string) {
   const evs = events
     .filter((e) => (e.allDay ? e.start <= day && day < e.end : new Date(e.start).toLocaleDateString("sv-SE", { timeZone: TZ }) === day))
     .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start));
-  return { evs, todays, late, dueToday };
+  // Streams (agenda des lives, ou titre « live » / « stream ») à part des RDV et autres événements
+  const cal = await liveCalendar((await getSettings()).liveCalendar).catch(() => undefined);
+  const isStream = (e: (typeof evs)[number]) => (cal && e.calendar === cal.name) || /\b(live|stream)/i.test(e.title);
+  // « Day off » / « Pas de stream » dans l'agenda des lives : ni stream ni RDV
+  const noLive = (e: (typeof evs)[number]) => /pas de (live|stream)|day ?off|\boff\b|repos/i.test(e.title);
+  const streams = evs.filter((e) => isStream(e) && !noLive(e));
+  const rdv = evs.filter((e) => !isStream(e));
+  return { evs: rdv, streams, todays, late, dueToday };
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
@@ -88,9 +95,10 @@ export function digestHtml(day: string, d: Awaited<ReturnType<typeof buildDigest
     <h1 style="font-size:28px;letter-spacing:-0.03em;margin:18px 0 4px">ta journée <span style="font-family:Georgia,serif;font-style:italic;font-weight:400;color:#ff6a00">${esc(title)}.</span></h1>
     ${section(`En retard (${d.late.length})`, d.late.map((x) => row(`${x.days} j`, `<b style="color:#b42318">${esc(x.t.title)}</b>`, "#e5484d")), "#b42318")}
     ${section(`À rendre aujourd'hui (${d.dueToday.length})`, d.dueToday.map((t) => row("Jour J", `<b>${esc(t.title)}</b>`, "#ff6b00")), "#c2410c")}
+    ${section(`Streams (${d.streams.length})`, d.streams.map((e) => row(e.allDay ? "Journée" : time(e.start), `🎮 ${esc(e.title)}`, "#9146ff")), "#6d28d9")}
     ${section(`Rendez-vous (${d.evs.length})`, d.evs.map((e) => row(e.allDay ? "Journée" : time(e.start), `${esc(e.title)}${e.location ? `<br><span style="color:#8a8079;font-size:12px">${esc(e.location)}</span>` : ""}`, e.color)))}
     ${section(`Tâches du jour (${d.todays.length})`, d.todays.map((t) => row(t.status === "doing" ? "En cours" : "À faire", esc(t.title), "#ff6a00")))}
-    ${!d.late.length && !d.evs.length && !d.todays.length && !d.dueToday.length ? `<p style="color:#8a8079">Rien de prévu aujourd'hui. Profite.</p>` : ""}
+    ${!d.late.length && !d.evs.length && !d.streams.length && !d.todays.length && !d.dueToday.length ? `<p style="color:#8a8079">Rien de prévu aujourd'hui. Profite.</p>` : ""}
     <p style="margin-top:28px"><a href="${appUrl}/planning" style="background:#ff6a00;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px">Ouvrir le planning</a></p>
   </div></div>`;
 }
@@ -112,13 +120,13 @@ export async function runCron(appUrl: string) {
     if (s.emailEnabled && s.emailTo) {
       const acc = await mailAccount();
       if (acc) {
-        await sendGmail(acc.id, s.emailTo, `Ton planning du jour · ${d.dueToday.length ? `${d.dueToday.length} à rendre, ` : ""}${d.evs.length} RDV, ${d.todays.length} tâches${d.late.length ? `, ${d.late.length} en retard` : ""}`, digestHtml(now.day, d, appUrl))
+        await sendGmail(acc.id, s.emailTo, `Ton planning du jour · ${d.dueToday.length ? `${d.dueToday.length} à rendre, ` : ""}${d.streams.length ? `${d.streams.length} stream${d.streams.length > 1 ? "s" : ""}, ` : ""}${d.evs.length} RDV, ${d.todays.length} tâches${d.late.length ? `, ${d.late.length} en retard` : ""}`, digestHtml(now.day, d, appUrl))
           .then(() => log.push("mail récap envoyé"))
           .catch((e) => log.push(`mail : ${e.message}`));
       } else log.push("mail : aucun compte Google avec l'autorisation Gmail");
     }
     if (s.pushEnabled && pushConfigured()) {
-      const parts = [`${d.evs.length} RDV`, `${d.todays.length} tâche${d.todays.length > 1 ? "s" : ""}`];
+      const parts = [...(d.streams.length ? [`🎮 ${d.streams.map((e) => (e.allDay ? "stream" : `stream ${time(e.start)}`)).join(", ")}`] : []), `${d.evs.length} RDV`, `${d.todays.length} tâche${d.todays.length > 1 ? "s" : ""}`];
       if (d.dueToday.length) parts.unshift(`${d.dueToday.length} à rendre aujourd'hui`);
       if (s.lateAlert && d.late.length) parts.push(`${d.late.length} en retard`);
       await sendPush({ title: "Ta journée", body: parts.join(" · "), url: "/planning", tag: `digest-${now.day}` });
