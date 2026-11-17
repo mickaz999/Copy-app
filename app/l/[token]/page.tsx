@@ -304,7 +304,7 @@ export default function Livraison({ params }: { params: { token: string } }) {
           </div>
         </div>
       )}
-      <div className={`liv-main ${d.feedback === "off" ? "solo" : ""}`}>
+      <div className={`liv-main ${d.feedback === "off" && !d.messages?.some((m) => m.fromMe) ? "solo" : ""}`}>
         <div className="liv-player">
           <div className="liv-toolbar">
             {gallery
