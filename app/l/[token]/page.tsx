@@ -7,7 +7,7 @@ import LivLoader, { MiniLoader } from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
 import VoiceButton from "@/components/VoiceButton";
 import VoicePlayer from "@/components/VoicePlayer";
-import DeliveryThread, { type Msg } from "@/components/DeliveryThread";
+import { type Msg } from "@/components/DeliveryThread";
 
 type Version = { qualities?: { key: string; label: string; url: string }[]; locked?: boolean; old?: boolean; v: number; name: string; mediaType: string; play: string; thumb: string; original: string; ready: boolean };
 type Comment = { audio?: string; fileId?: string; fileName?: string; id: string; version: number; author: string; text: string; time: number | null; resolved: boolean; createdAt: string };
@@ -629,15 +629,28 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
       await new Promise((ok) => setTimeout(ok, 1200));
     }
   }
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
-    if (!file) return;
+  const [voice, setVoice] = useState("");
+  const hasMine = !!d.messages?.some((m) => m.fromMe);
+  const vid = isVid(media?.mediaType);
+  // Avec un fichier ouvert et un moment (ou sans message de ma part) : retour sur le fichier ; sinon réponse à mon message
+  async function send(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (busy || (!text.trim() && !voice)) return;
+    const asComment = !!file && d.feedback !== "off" && ((vid && atTime) || !hasMine);
     setBusy(true);
-    const r = await fetch(base, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "comment", author, text, fileId: file.id, fileName: file.name, time: atTime && isVid(media?.mediaType) ? now : null }) });
+    const body = asComment
+      ? { action: "comment", author, text, audio: voice || undefined, fileId: file!.id, fileName: file!.name, time: atTime && vid ? now : null }
+      : { action: "reply", author, text, audio: voice || undefined };
+    const r = await fetch(base, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
-    if (r.ok) { setText(""); try { localStorage.setItem("liv-author", author); } catch {} reload(); }
+    if (r.ok) { setText(""); setVoice(""); try { localStorage.setItem("liv-author", author); } catch {} reload(); }
   }
   const cs = d.comments.filter((c) => c.fileId === file?.id).sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
+  const feed = [
+    ...cs.map((c) => ({ author: c.author, id: `c${c.id}`, mine: false, text: c.text, audio: c.audio ?? "", time: c.time, resolved: c.resolved, at: c.createdAt })),
+    ...(d.messages ?? []).map((m) => ({ author: m.author, id: `m${m.id}`, mine: m.fromMe, text: m.text, audio: m.audio, time: null as number | null, resolved: false, at: m.createdAt })),
+  ].sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
+  const seekTo = (t: number) => { if (fVideo.current) { fVideo.current.currentTime = t; fVideo.current.play().catch(() => {}); } };
 
   return (
     <div className="liv dark">
@@ -648,7 +661,6 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           <span className="eyebrow">{d.client ? `livraison · ${d.client}` : "livraison"}</span>
           <h1>{d.title}</h1>
           {d.message && <p className="liv-msg">{d.message}</p>}
-          <DeliveryThread token={token} messages={d.messages} onSent={() => reload()} />
           <div className="liv-chips">
             <span>Dossier</span>
             <span>Envoyé le {new Date(d.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
@@ -667,7 +679,7 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
         </div>
       </header>
 
-      <div className={`liv-main ${file && d.feedback !== "off" ? "" : "solo"}`}>
+      <div className={`liv-main ${(file && d.feedback !== "off") || d.messages?.some((m) => m.fromMe) ? "" : "solo"}`}>
         <div className="liv-player">
           <div className="liv-crumbs">
             {path.map((p, i, all) => (
@@ -739,29 +751,49 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
           )}
         </div>
 
-        {file && d.feedback !== "off" && <aside className="liv-side">
-          <h3><MessageSquare size={16} /> Retours{file ? ` · ${fname(file)}` : ""}</h3>
-          <div className="liv-comments">
-            {!file && <p className="muted small">Ouvre un fichier pour voir ou laisser des retours.</p>}
-            {file && cs.length === 0 && <p className="muted small">Aucun retour sur ce fichier.</p>}
-            {cs.map((c) => (
-              <div key={c.id} className={`liv-comment ${c.resolved ? "done" : ""}`}>
-                <div className="liv-c-head">{c.time !== null && <span className="liv-tc">{tc(c.time)}</span>}<b>{c.author}</b>{c.resolved && <span className="ok-pill small">corrigé</span>}</div>
-                <p>{c.text}</p>
-              </div>
-            ))}
+        {((file && d.feedback !== "off") || hasMine) && <aside className="liv-side imsg">
+          <h3><MessageCircle size={16} /> Échange{file ? ` · ${fname(file)}` : ""}</h3>
+          <div className="imsg-list">
+            {feed.length === 0 && <p className="muted small">{vid ? "Mets pause sur un moment précis et écris ton retour, ou envoie un vocal." : "Écris ton retour sur ce fichier, ou envoie un vocal."}</p>}
+            {feed.map((x, i) => {
+              const prev = feed[i - 1];
+              const showTime = !prev || Date.parse(x.at) - Date.parse(prev.at) > 30 * 60_000;
+              return (
+                <div key={x.id}>
+                  {showTime && <div className="imsg-time">{new Date(x.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>}
+                  <div className={`imsg-row ${x.mine ? "in" : "out"} ${x.resolved ? "done" : ""}`}>
+                    {x.mine && <img className="imsg-avatar" src="/icons/icon-192.png" alt="maderino production" />}
+                    <div className="imsg-bubble">
+                      {(x.time !== null || x.resolved) && <span className="imsg-meta">
+                        {x.time !== null && <button type="button" className="imsg-tc" onClick={() => seekTo(x.time!)}>{tc(x.time)}</button>}
+                        {x.resolved && <span>✓ corrigé</span>}
+                      </span>}
+                      {x.audio && <VoicePlayer src={x.audio} />}
+                      {x.text && !(x.audio && /^Message vocal$/.test(x.text)) && <p>{x.text}</p>}
+                    </div>
+                    {!x.mine && <span className="imsg-initial">{((x.author || author || d.client || "?").trim()[0] || "?").toUpperCase()}</span>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          {file && (
-            <form className="liv-form" onSubmit={send}>
-              <input placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />
-              <textarea required rows={3} placeholder="Ton retour…" value={text} onChange={(e) => setText(e.target.value)} />
-              <div className="row">
-                {isVid(media?.mediaType) && <button type="button" className={`liv-when ${atTime ? "on" : ""}`} onClick={() => setAtTime(!atTime)}><Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Retour général"}</button>}
-                <span style={{ flex: 1 }} />
-                <button className="primary" disabled={busy || !text.trim()}>Envoyer</button>
-              </div>
-            </form>
-          )}
+          <form className="imsg-form" onSubmit={send}>
+            {!author && <input className="imsg-name" placeholder="Ton prénom" value={author} onChange={(e) => setAuthor(e.target.value)} />}
+            {file && vid && d.feedback !== "off" && (
+              <button type="button" className={`liv-when ${atTime ? "on" : ""}`} onClick={() => setAtTime(!atTime)} title="Touche pour changer">
+                <Clock size={13} /> {atTime ? <>Au moment <b>{tc(now)}</b></> : "Message général"}
+              </button>
+            )}
+            <div className="imsg-bar">
+              {voice
+                ? <div className="imsg-voice"><VoicePlayer src={voice} /><button type="button" className="ghost" onClick={() => setVoice("")}>✕</button></div>
+                : <>
+                    <VoiceButton onDone={setVoice} />
+                    <textarea rows={1} placeholder={file && vid && atTime && d.feedback !== "off" ? `Ton retour à ${tc(now)}…` : "iMessage"} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
+                  </>}
+              <button className="imsg-send" disabled={busy || (!text.trim() && !voice)} aria-label="Envoyer"><ArrowUp size={16} /></button>
+            </div>
+          </form>
         </aside>}
       </div>
       <footer className="liv-foot"><a className="logo-link" href="https://maderinoprod.com" target="_blank" rel="noreferrer" aria-label="maderinoprod.com"><Logo /></a><span className="muted small">Merci pour ta confiance · maderino production</span></footer>
