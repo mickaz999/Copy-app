@@ -19,6 +19,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
   const [picking, setPicking] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showOld, setShowOld] = useState(false);
   const load = () => api<Drop[]>("drops").then(setList).catch(() => {});
   useEffect(() => { load(); }, []);
   const direct = (d: Drop) => dropUrl(d);
@@ -76,7 +77,8 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
         </div>
       )}
 
-      {list.map((d) => {
+      {(() => { const n = list.filter((d) => expiry(d).getTime() < Date.now()).length; return n > 0 && <div className="row"><button className="ghost small" onClick={() => setShowOld(!showOld)}>{showOld ? "Masquer les liens expirés" : `Voir les liens expirés (${n})`}</button></div>; })()}
+      {list.filter((d) => showOld || expiry(d).getTime() >= Date.now()).map((d) => {
         const total = d.files.reduce((n, f) => n + f.size, 0);
         return (
           <div key={d.id} className="liv-detail">

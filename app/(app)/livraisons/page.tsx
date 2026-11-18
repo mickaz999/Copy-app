@@ -69,6 +69,8 @@ export default function Livraisons() {
   const [draft, setDraft] = useState<{ title: string; client: string; message: string; networks: string[]; mode: string; kind: string; accountId: string; files: File[]; folderId?: string; folderName?: string } | null>(null);
   const [picking, setPicking] = useState<"new" | string | null>(null);
   const [open, setOpen] = useState("");
+  // Liens expirés masqués du menu (supprimés automatiquement 7 jours après)
+  const [showOld, setShowOld] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = () => api<Delivery[]>("livraisons").then(setList);
@@ -164,7 +166,8 @@ export default function Livraisons() {
         </section>
       )}
 
-      {list.map((d) => {
+      {(() => { const n = list.filter((d) => d.mode !== "frame" && expiry(d).getTime() < Date.now()).length; return n > 0 && <div className="row"><button className="ghost small" onClick={() => setShowOld(!showOld)}>{showOld ? "Masquer les liens expirés" : `Voir les liens expirés (${n})`}</button></div>; })()}
+      {list.filter((d) => showOld || d.mode === "frame" || expiry(d).getTime() >= Date.now()).map((d) => {
         const files = filesOf(d);
         const todo = d.comments.filter((c) => !c.resolved).length;
         return (
