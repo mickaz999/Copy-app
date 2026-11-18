@@ -45,7 +45,13 @@ export default function VoicePlayer({ src }: { src: string }) {
     return () => { off = true; };
   }, [src]);
 
-  const toggle = () => { const a = audio.current; if (!a) return; a.paused ? a.play().catch(() => {}) : a.pause(); };
+  // Lecture bloquée à 0:00 (format non lu par ce téléphone, ex. WebM sur iPhone) : message clair
+  const toggle = () => {
+    const a = audio.current; if (!a) return;
+    if (!a.paused) { a.pause(); return; }
+    a.play().catch(() => setBroken(true));
+    setTimeout(() => { if (audio.current && !audio.current.paused && audio.current.currentTime === 0) { audio.current.pause(); setBroken(true); } }, 3000);
+  };
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
     const a = audio.current; if (!a || !dur) return;
     const r = e.currentTarget.getBoundingClientRect();
@@ -55,7 +61,7 @@ export default function VoicePlayer({ src }: { src: string }) {
   const progress = dur ? t / dur : 0;
 
   // Format non lu par ce navigateur (ex. ancien vocal WebM sur iPhone) : lien pour l'ouvrir à part
-  if (broken) return <a className="vp-fallback" href={src} target="_blank" rel="noreferrer">▶ Écouter le message vocal</a>;
+  if (broken) return <span className="vp-fallback">Ce vocal ne se lit pas sur ce téléphone. <a href={src} target="_blank" rel="noreferrer">Essayer de l&apos;ouvrir</a></span>;
   return (
     <div className="vp">
       <audio ref={audio} src={src} preload="metadata" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setT(0); }} onError={() => setBroken(true)}
