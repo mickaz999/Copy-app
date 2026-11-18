@@ -1,5 +1,6 @@
 "use client";
 import { tokenOf } from "@/lib/site";
+import { fetchJson } from "@/lib/fetchJson";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, CloudUpload, FileVideo, X, AlertTriangle } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -45,7 +46,7 @@ export default function Drop({ params }: { params: { token: string } }) {
     setIos({ inApp });
   }, []);
 
-  const load = () => fetch(url).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setInfo(j); }).catch((e) => setError(e.message));
+  const load = () => fetchJson(url).then(({ ok, j }) => { if (!ok) throw new Error(j.error); setInfo(j); }).catch((e) => setError(e.message));
   useEffect(() => { load(); try { setAuthor(localStorage.getItem("drop-author") ?? ""); } catch {} }, []);
   // Prévenir avant de fermer la page pendant un envoi
   useEffect(() => {

@@ -6,6 +6,7 @@ import Logo from "@/components/Logo";
 import LivLoader, { MiniLoader } from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
 import VoiceButton from "@/components/VoiceButton";
+import { fetchJson } from "@/lib/fetchJson";
 import VoicePlayer from "@/components/VoicePlayer";
 import { type Msg } from "@/components/DeliveryThread";
 
@@ -76,10 +77,10 @@ export default function Livraison({ params }: { params: { token: string } }) {
   const [gate, setGate] = useState<{ title: string; client: string; expiresAt: string } | null>(null);
   const [mail, setMail] = useState("");
   const viewer = () => { try { return localStorage.getItem("liv-viewer") ?? ""; } catch { return ""; } };
-  const load = (who = viewer()) => fetch(url, { headers: { "x-viewer": who } }).then(async (r) => {
-    const j = await r.json();
-    if (r.status === 401 && j.needEmail) { setGate(j); return; }
-    if (!r.ok) throw new Error(j.error);
+  const load = (who = viewer()) => fetchJson(url, { headers: { "x-viewer": who } }).then(async ({ ok, status, j }) => {
+
+    if (status === 401 && j.needEmail) { setGate(j); return; }
+    if (!ok) throw new Error(j.error);
     setGate(null);
     // Vidéos et photos mélangées, dans un ordre fixe pour ce lien (même ordre à chaque visite)
     if (j.kind === "videos") {
@@ -609,11 +610,11 @@ function FolderDelivery({ d, token, reload }: { d: Data; token: string; reload: 
   useEffect(() => { try { setAuthor(localStorage.getItem("liv-author") ?? ""); } catch {} }, []);
   useEffect(() => {
     setData(null); setError("");
-    fetch(`${base}/folder?id=${loc.id}&sig=${loc.sig}${loc.stack ? "&stack=1" : ""}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setData(j); }).catch((e) => setError(e.message));
+    fetchJson(`${base}/folder?id=${loc.id}&sig=${loc.sig}${loc.stack ? "&stack=1" : ""}`).then(({ ok, j }) => { if (!ok) throw new Error(j.error); setData(j); }).catch((e) => setError(e.message));
   }, [loc.id]);
   useEffect(() => {
     setMedia(null); setNow(0);
-    if (file) fetch(`${base}/file?id=${file.id}&sig=${file.sig}`).then((r) => r.json()).then(setMedia).catch(() => {});
+    if (file) fetchJson(`${base}/file?id=${file.id}&sig=${file.sig}`).then(({ ok, j }) => ok && setMedia(j)).catch(() => {});
   }, [file?.id]);
 
   const files = data?.items.filter((x) => x.type !== "folder" && x.type !== "version_stack") ?? [];

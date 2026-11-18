@@ -28,7 +28,8 @@ export async function GET(req: Request, { params }: { params: { key: string } })
   const items = await pool(deliveries, 6, async (d) => {
     const files: { fileId: string }[] = JSON.parse(d.files || "[]");
     let thumb = "";
-    if (files.length) thumb = await fileMedia(d.accountId, files[files.length - 1].fileId).then((m) => m.thumb).catch(() => "");
+    // Vignette : 4 s max par livraison, pour que l'espace s'ouvre même si Frame.io est lent
+    if (files.length) thumb = await Promise.race([fileMedia(d.accountId, files[files.length - 1].fileId).then((m) => m.thumb), new Promise<string>((r) => setTimeout(() => r(""), 4000))]).catch(() => "");
     const approved = d.kind === "videos" ? (JSON.parse(d.approved || "[]") as number[]).length === files.length && files.length > 0 : !!d.approvedV;
     return { token: d.token, title: d.title, thumb, kind: d.kind, count: files.length, approved, validation: d.validation, expiresAt: expiryOf(d), createdAt: d.createdAt };
   });

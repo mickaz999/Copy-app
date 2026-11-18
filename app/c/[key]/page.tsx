@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, CloudUpload, Film, ChevronRight } from "lucide-react";
 import Logo from "@/components/Logo";
+import { fetchJson } from "@/lib/fetchJson";
 import { deliveryUrl, dropUrl } from "@/lib/site";
 import LivLoader from "@/components/LivLoader";
 import ContactBlock from "@/components/ContactBlock";
@@ -24,10 +25,9 @@ export default function Espace({ params }: { params: { key: string } }) {
   const [busy, setBusy] = useState(false);
   const viewer = () => { try { return localStorage.getItem("liv-viewer") ?? ""; } catch { return ""; } };
 
-  const load = (who = viewer()) => fetch(url, { headers: { "x-viewer": who } }).then(async (r) => {
-    const j = await r.json();
-    if (r.status === 401 && j.needEmail) { setGate(j.name); return; }
-    if (!r.ok) throw new Error(j.error);
+  const load = (who = viewer()) => fetchJson(url, { headers: { "x-viewer": who } }).then(async ({ ok, status, j }) => {
+    if (status === 401 && j.needEmail) { setGate(j.name); return; }
+    if (!ok) throw new Error(j.error);
     setGate(""); setD(j);
   }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
