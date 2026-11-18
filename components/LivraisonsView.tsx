@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Mic, Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
+import { ChevronDown, Mic, Check, ChevronLeft, Clapperboard, Copy, ExternalLink, Folder, Link2, MessageSquare, Plus, Trash2, Film, CheckCircle2, Layers, RefreshCw, Star, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker from "@/components/FramePicker";
 import DropLinks from "@/components/DropLinks";
@@ -178,8 +178,11 @@ export function LivraisonsView({ agency }: { agency: boolean }) {
                 <div className="muted small">{d.kind === "folder" ? "Dossier Frame (en direct)" : d.kind === "videos" ? `${files.length} vidéos` : `V${files.length}`} · {d.comments.length} retour{d.comments.length > 1 ? "s" : ""}{todo ? ` (${todo} à traiter)` : ""}{d.viewers?.length ? ` · vu par ${d.viewers.map((x) => x.email).join(", ")}` : ""}</div>
               </div>
               {d.mode !== "frame" && expiry(d).getTime() < Date.now() && <span className="late-pill">lien expiré</span>}
+              {d.mode !== "frame" && <button className="ghost liv-quick" title="Copier le lien" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: d.space ? `Lien de l'espace ${d.client} copié.` : "Lien copié." }); }}><Copy size={15} /></button>}
               {d.kind === "videos" && JSON.parse(d.approved || "[]").length ? <span className="ok-pill"><CheckCircle2 size={14} /> {JSON.parse(d.approved).length}/{files.length} validées</span> : d.approvedV ? <span className="ok-pill"><CheckCircle2 size={14} /> V{d.approvedV} validée</span> : todo ? <span className="late-pill"><MessageSquare size={12} /> {todo}</span> : null}
+              <ChevronDown size={18} className={`liv-chev ${open === d.id ? "on" : ""}`} />
             </div>
+            {open === d.id && <>
             {d.linked.map((t) => (
               <a key={t.id} className="liv-task" href="/planning">
                 <span className="liv-task-t"><ListChecks size={15} /> {t.title}</span>
@@ -240,6 +243,7 @@ export function LivraisonsView({ agency }: { agency: boolean }) {
               <ClientPick value={d.client} onChange={async (v) => { await api(`livraisons/${d.id}`, "PATCH", { client: v }); setMsg({ ok: true, text: v ? `Client « ${v} » ajouté : la livraison apparaît sur son espace.` : "Client retiré." }); load(); }} />
             )}
             {d.mode !== "frame" && <VoiceNote d={d} reload={load} onMsg={setMsg} />}
+            </>}
             {open === d.id && (
               <div className="liv-detail">
                 <label className="field-line">Titre<input defaultValue={d.title} onBlur={async (e) => { if (e.target.value !== d.title) { await api(`livraisons/${d.id}`, "PATCH", { title: e.target.value }); load(); } }} /></label>
