@@ -2148,3 +2148,8 @@ button.primary:hover { background: #f26500 !important; }
   .msg-back { display: inline-flex !important; }
   .msg-thread { position: static; max-height: none !important; }
 }
+/* Cartes de liens réduites : un clic sur l'en-tête déplie les réglages */
+.liv-row { cursor: pointer; align-items: center; }
+.liv-quick { padding: 6px !important; border-radius: 10px; flex: none; }
+.liv-chev { flex: none; color: var(--muted); transition: transform .15s; }
+.liv-chev.on { transform: rotate(180deg); }

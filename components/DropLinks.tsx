@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { CloudUpload, Copy, ExternalLink, Folder, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, CloudUpload, Copy, ExternalLink, Folder, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import FramePicker, { FrameProject } from "@/components/FramePicker";
 import { PUBLIC_URL, dropUrl } from "@/lib/site";
@@ -20,6 +20,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [showOld, setShowOld] = useState(false);
+  const [open, setOpen] = useState("");
   const load = () => api<Drop[]>("drops").then(setList).catch(() => {});
   useEffect(() => { load(); }, []);
   const direct = (d: Drop) => dropUrl(d);
@@ -82,13 +83,16 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
         const total = d.files.reduce((n, f) => n + f.size, 0);
         return (
           <div key={d.id} className="liv-detail">
-            <div className="liv-row">
+            <div className="liv-row" onClick={() => setOpen(open === d.id ? "" : d.id)}>
               <div>
                 <b>{d.title}</b>{d.client && <span className="muted"> · {d.client}</span>}
                 <div className="muted small drop-meta"><Folder size={12} /> {d.folderName} · {d.files.length} fichier{d.files.length > 1 ? "s" : ""} reçu{d.files.length > 1 ? "s" : ""}{total ? ` (${size(total)})` : ""}</div>
               </div>
               {!d.active ? <span className="late-pill">fermé</span> : expiry(d).getTime() < Date.now() && <span className="late-pill">expiré</span>}
+              <button className="ghost liv-quick" title="Copier le lien" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: "Lien copié." }); }}><Copy size={15} /></button>
+              <ChevronDown size={18} className={`liv-chev ${open === d.id ? "on" : ""}`} />
             </div>
+            {open === d.id && <>
             <div className="row">
               <button className="primary" onClick={() => { navigator.clipboard.writeText(link(d)); setMsg({ ok: true, text: d.space ? `Lien de l'espace ${d.client} copié : le dépôt y est, avec tout ce qu'il a en cours.` : "Lien copié." }); }}><Copy size={15} /> {d.space ? "Copier son espace" : "Copier le lien"}</button>
               {d.space && <button onClick={() => { navigator.clipboard.writeText(direct(d)); setMsg({ ok: true, text: "Lien direct du dépôt copié." }); }}>Lien direct</button>}
@@ -108,6 +112,7 @@ export default function DropLinks({ projects }: { projects: FrameProject[] }) {
               </div>
             ))}
             {d.files.slice(0, 5).map((f, i) => <div key={i} className="muted small">• {f.name} ({size(f.size)}){f.author ? ` · ${f.author}` : ""}</div>)}
+            </>}
           </div>
         );
       })}
