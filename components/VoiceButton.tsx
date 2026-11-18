@@ -13,7 +13,7 @@ export default function VoiceButton({ onDone }: { onDone: (dataUrl: string) => v
     setErr("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+      const type = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
       const r = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined);
       const parts: Blob[] = [];
       r.ondataavailable = (e) => parts.push(e.data);

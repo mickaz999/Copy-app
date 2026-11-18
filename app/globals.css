@@ -2126,3 +2126,4 @@ button.primary:hover { background: #f26500 !important; }
 .contact-icons { flex-wrap: wrap; gap: 10px; }
 .contact-icons a { width: auto; height: auto; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; }
 .contact-icons a.wa { background: var(--accent); color: #fff; border-color: transparent; }
+.vp-fallback { font-weight: 600; color: inherit; text-decoration: underline; }
