@@ -71,7 +71,7 @@ async function addViewer(d: { id: string; title: string; client: string }, email
 
 async function notify(title: string, body: string) {
   const s = await getSettings();
-  if (s.pushEnabled) await sendPush({ title, body, url: "/livraisons", tag: `liv-${Date.now()}` }).catch(() => {});
+  if (s.pushEnabled) await sendPush({ title, body, url: "/messages", tag: `liv-${Date.now()}` }).catch(() => {});
 }
 
 // { action: "comment", version, author, text, time } | { action: "approve", version, author }

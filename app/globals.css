@@ -2127,3 +2127,24 @@ button.primary:hover { background: #f26500 !important; }
 .contact-icons a { width: auto; height: auto; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; }
 .contact-icons a.wa { background: var(--accent); color: #fff; border-color: transparent; }
 .vp-fallback { font-size: 13px; } .vp-fallback a { color: inherit; font-weight: 600; text-decoration: underline; }
+
+/* Messagerie (app) */
+.msg-app { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 12px; }
+.msg-list { display: grid; gap: 4px; align-content: start; }
+.msg-conv { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px !important; border-radius: 14px !important; width: 100%; }
+.msg-conv.on { border-color: var(--accent) !important; }
+.msg-conv-txt { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.msg-conv-top { display: flex; justify-content: space-between; gap: 8px; }
+.msg-conv-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-dot { width: 10px; height: 10px; border-radius: 50%; background: #0a84ff; flex: none; }
+.msg-thread { max-height: calc(100vh - 160px) !important; position: sticky; top: 16px; }
+.msg-head { display: flex; align-items: center; gap: 10px; }
+.msg-head > div { flex: 1; min-width: 0; }
+.msg-back { display: none !important; }
+.msg-empty { display: grid; place-items: center; gap: 6px; padding: 40px; text-align: center; }
+@media (max-width: 800px) {
+  .msg-app { grid-template-columns: 1fr; }
+  .msg-app.has-sel .msg-list, .msg-empty { display: none; }
+  .msg-back { display: inline-flex !important; }
+  .msg-thread { position: static; max-height: none !important; }
+}

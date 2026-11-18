@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Inbox, House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X, Users } from "lucide-react";
+import { Inbox, House, ListChecks, Workflow, Calculator, CalendarClock, Clapperboard, Bell, CalendarDays, ChevronDown, ChevronRight, FileText, LogOut, Menu, Plus, Trash2, Wallet, X, Users, MessagesSquare } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -26,6 +26,15 @@ export default function Sidebar() {
     window.addEventListener("inbox-changed", get);
     return () => { clearInterval(t); window.removeEventListener("inbox-changed", get); };
   }, []);
+
+  // Conversations clients en attente de ma réponse
+  const [toAnswer, setToAnswer] = useState(0);
+  useEffect(() => {
+    const get = () => api<{ toAnswer: boolean }[]>("messages").then((l) => setToAnswer(l.filter((c) => c.toAnswer).length)).catch(() => {});
+    get();
+    const t = setInterval(get, 120_000);
+    return () => clearInterval(t);
+  }, [path]);
 
   const load = () => api<Page[]>("pages").then(setPages);
   useEffect(() => {
@@ -97,6 +106,7 @@ export default function Sidebar() {
       <Link href="/rendez-vous" className={`navitem ${path === "/rendez-vous" ? "active" : ""}`}><CalendarClock size={17} className="nav-ic" /> Rendez-vous</Link>
       <Link href="/livraisons" className={`navitem ${path === "/livraisons" ? "active" : ""}`}><Clapperboard size={17} className="nav-ic" /> Livraisons</Link>
       <Link href="/clients" className={`navitem ${path === "/clients" ? "active" : ""}`}><Users size={17} className="nav-ic" /> Clients</Link>
+      <Link href="/messages" className={`navitem ${path === "/messages" ? "active" : ""}`}><MessagesSquare size={17} className="nav-ic" /> Messages{toAnswer > 0 && <span className="nav-badge">{toAnswer}</span>}</Link>
       <Link href="/compta" className={`navitem ${path === "/compta" ? "active" : ""}`}><Wallet size={17} className="nav-ic" /> Compta EI</Link>
       <Link href="/reglages" className={`navitem ${path === "/reglages" ? "active" : ""}`}><Bell size={17} className="nav-ic" /> Réglages</Link>
       <Link href="/inspi" className={`navitem ${path.startsWith("/inspi") ? "active" : ""}`}><Workflow size={17} className="nav-ic" /> Espaces inspi</Link>
