@@ -1743,7 +1743,6 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
         <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={!list}>
           {list?.map((d) => <option key={d.id} value={d.id}>Nouvelle version de « {d.title} »{d.client ? ` · ${d.client}` : ""}{d.mode === "frame" ? " (suivi Frame)" : ""}</option>)}
           <option value="new-page">Nouvelle livraison « {base} » (lien maderino)</option>
-          <option value="new-frame">Nouveau suivi Frame « {base} » (agence)</option>
         </select>
       </label>
       {target === "new-page" && <>
