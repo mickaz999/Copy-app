@@ -13,6 +13,7 @@ export default function VoicePlayer({ src }: { src: string }) {
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(0);
+  const [broken, setBroken] = useState(false);
 
   useEffect(() => {
     if (cache.has(src)) return;
@@ -53,9 +54,11 @@ export default function VoicePlayer({ src }: { src: string }) {
   };
   const progress = dur ? t / dur : 0;
 
+  // Format non lu par ce navigateur (ex. ancien vocal WebM sur iPhone) : lien pour l'ouvrir à part
+  if (broken) return <a className="vp-fallback" href={src} target="_blank" rel="noreferrer">▶ Écouter le message vocal</a>;
   return (
     <div className="vp">
-      <audio ref={audio} src={src} preload="metadata" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setT(0); }}
+      <audio ref={audio} src={src} preload="metadata" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setT(0); }} onError={() => setBroken(true)}
         onTimeUpdate={(e) => setT(e.currentTarget.currentTime)} onLoadedMetadata={(e) => { if (Number.isFinite(e.currentTarget.duration)) setDur(e.currentTarget.duration); }} />
       <button type="button" className="vp-btn" onClick={toggle} aria-label={playing ? "Pause" : "Lecture"}>{playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}</button>
       <div className="vp-wave" onClick={seek}>
