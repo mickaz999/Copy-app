@@ -7,7 +7,7 @@ type Tx = {
   id: string; date: string; label: string; kind: string; amount: number;
   category: string; client: string; payment: string; reference: string;
 };
-type Settings = { rate: number; ceiling: number; activity: string };
+type Settings = { rate: number; ceiling: number; activity: string; declared?: string };
 
 const PAYMENTS = ["Virement", "Carte", "Espèces", "Chèque", "PayPal", "Autre"];
 const MONTHS = ["Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
@@ -36,8 +36,16 @@ export default function Compta() {
     const key = `${year}-${String(i + 1).padStart(2, "0")}`;
     const list = ofYear.filter((t) => t.date.startsWith(key));
     const r = sum(list, "recette");
-    return { m, r, d: sum(list, "depense"), c: (r * rate) / 100 };
+    return { key, m, r, d: sum(list, "depense"), c: (r * rate) / 100 };
   });
+  // Mois déclarés à l'URSSAF
+  const declared: string[] = (() => { try { return JSON.parse(settings?.declared || "[]"); } catch { return []; } })();
+  const toDeclare = byMonth.filter((x) => x.c && !declared.includes(x.key)).reduce((s, x) => s + x.c, 0);
+  async function toggleDeclared(key: string) {
+    const next = declared.includes(key) ? declared.filter((k) => k !== key) : [...declared, key];
+    setSettings((s) => s && { ...s, declared: JSON.stringify(next) });
+    await api("settings", "POST", { declared: next }).catch(() => {});
+  }
   const quarters = [0, 1, 2, 3].map((q) => byMonth.slice(q * 3, q * 3 + 3).reduce((s, x) => s + x.r, 0));
 
   const rows = ofYear.filter((t) => !kind || t.kind === kind);
@@ -92,7 +100,7 @@ export default function Compta() {
 
       <div className="stats">
         <div className="stat"><div className="muted">Chiffre d'affaires encaissé</div><div className="v pos">{eur(ca)}</div></div>
-        <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div></div>
+        <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div>{cotis > 0 && <div className={`small ${toDeclare ? "neg" : "pos"}`}>{toDeclare ? `dont ${eur(toDeclare)} à déclarer` : "tout est déclaré ✓"}</div>}</div>
         <div className="stat"><div className="muted">Dépenses</div><div className="v neg">{eur(depenses)}</div></div>
         <div className="stat"><div className="muted">Reste estimé</div><div className="v">{eur(ca - cotis - depenses)}</div></div>
         <div className="stat">
@@ -105,7 +113,7 @@ export default function Compta() {
       <h3>Par mois</h3>
       <div style={{ overflowX: "auto" }}>
         <table>
-          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th></tr></thead>
+          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th><th className="num">Déclaré URSSAF</th></tr></thead>
           <tbody>
             {byMonth.map((x, i) => (
               <tr key={x.m}>
@@ -113,6 +121,7 @@ export default function Compta() {
                 <td className="num pos">{x.r ? eur(x.r) : "—"}</td>
                 <td className="num neg">{x.d ? eur(x.d) : "—"}</td>
                 <td className="num">{x.c ? eur(x.c) : "—"}</td>
+                <td className="num">{x.c ? <label className={`decl ${declared.includes(x.key) ? "on" : ""}`}><input type="checkbox" checked={declared.includes(x.key)} onChange={() => toggleDeclared(x.key)} /> {declared.includes(x.key) ? "Déclaré" : "À déclarer"}</label> : "—"}</td>
               </tr>
             ))}
           </tbody>

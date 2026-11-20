@@ -2153,3 +2153,7 @@ button.primary:hover { background: #f26500 !important; }
 .liv-quick { padding: 6px !important; border-radius: 10px; flex: none; }
 .liv-chev { flex: none; color: var(--muted); transition: transform .15s; }
 .liv-chev.on { transform: rotate(180deg); }
+/* Compta : case « déclaré à l'URSSAF » */
+.decl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.decl input { width: auto; }
+.decl.on { color: #2fa36b; font-weight: 600; }
