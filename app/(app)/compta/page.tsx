@@ -49,11 +49,8 @@ export default function Compta() {
   const tagsOf = (t: { category?: string }) => (t.category ?? "").split(",").map((x) => x.trim()).filter(Boolean);
   const allTags = Array.from(new Set(txs.flatMap(tagsOf))).sort((a, b) => a.localeCompare(b, "fr"));
   const [tag, setTag] = useState("");
-  // Abonnements : dépenses avec un tag « abonnement » (Adobe, Frame.io…) ; moyenne par mois écoulé de l'année
+  // Abonnements : dépenses avec un tag « abonnement » (Adobe, Frame.io…), comptées mois par mois
   const subs = ofYear.filter((t) => t.kind === "depense" && tagsOf(t).some((x) => /abonnement/i.test(x)));
-  const subsTotal = subs.reduce((s, t) => s + t.amount, 0);
-  const monthsElapsed = year < new Date().getFullYear() ? 12 : new Date().getMonth() + 1;
-  const subsMonthly = subsTotal / monthsElapsed;
   const thisMonth = year === new Date().getFullYear() ? new Date().getMonth() : 11;
   const rows = ofYear.filter((t) => (!kind || t.kind === kind) && (!tag || tagsOf(t).includes(tag)));
   const years = Array.from(new Set([new Date().getFullYear(), ...txs.map((t) => Number(t.date.slice(0, 4)))])).sort((a, b) => b - a);
@@ -109,7 +106,7 @@ export default function Compta() {
         <div className="stat"><div className="muted">Chiffre d'affaires encaissé</div><div className="v pos">{eur(ca)}</div></div>
         <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div></div>
         <div className="stat"><div className="muted">Dépenses</div><div className="v neg">{eur(depenses)}</div></div>
-        <div className="stat" title="Dépenses avec le tag « Abonnement »"><div className="muted">Abonnements · {MONTHS[thisMonth]}</div><div className="v neg">{eur(byMonth[thisMonth].a)}</div><div className="small muted">{subsTotal ? `moyenne ${eur(subsMonthly)} /mois · ${eur(subsTotal)} sur l'année` : "Tague tes dépenses « Abonnement »"}</div></div>
+        <div className="stat" title="Dépenses avec le tag « Abonnement »"><div className="muted">Abonnements · {MONTHS[thisMonth]}</div><div className="v neg">{eur(byMonth[thisMonth].a)}</div>{!subs.length && <div className="small muted">Tague tes dépenses « Abonnement »</div>}</div>
         <div className="stat"><div className="muted">Reste estimé</div><div className="v">{eur(ca - cotis - depenses)}</div></div>
         <div className="stat">
           <div className="muted">Plafond micro ({eur(ceiling)})</div>
