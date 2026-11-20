@@ -19,6 +19,7 @@ export default function Compta() {
   const [kind, setKind] = useState("");
   const [edit, setEdit] = useState<Partial<Tx> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [newTag, setNewTag] = useState("");
 
   const load = () => api<Tx[]>("transactions").then(setTxs);
   useEffect(() => { load(); api<Settings>("settings").then(setSettings); }, []);
@@ -42,7 +43,16 @@ export default function Compta() {
   });
   const quarters = [0, 1, 2, 3].map((q) => byMonth.slice(q * 3, q * 3 + 3).reduce((s, x) => s + x.r, 0));
 
-  const rows = ofYear.filter((t) => !kind || t.kind === kind);
+  // Tags (créés librement, plusieurs par ligne, séparés par des virgules dans « category »)
+  const tagsOf = (t: { category?: string }) => (t.category ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  const allTags = Array.from(new Set(txs.flatMap(tagsOf))).sort((a, b) => a.localeCompare(b, "fr"));
+  const [tag, setTag] = useState("");
+  // Abonnements : dépenses avec un tag « abonnement » (Adobe, Frame.io…) ; moyenne par mois écoulé de l'année
+  const subs = ofYear.filter((t) => t.kind === "depense" && tagsOf(t).some((x) => /abonnement/i.test(x)));
+  const subsTotal = subs.reduce((s, t) => s + t.amount, 0);
+  const monthsElapsed = year < new Date().getFullYear() ? 12 : new Date().getMonth() + 1;
+  const subsMonthly = subsTotal / monthsElapsed;
+  const rows = ofYear.filter((t) => (!kind || t.kind === kind) && (!tag || tagsOf(t).includes(tag)));
   const years = Array.from(new Set([new Date().getFullYear(), ...txs.map((t) => Number(t.date.slice(0, 4)))])).sort((a, b) => b - a);
 
   async function saveEdit() {
@@ -96,6 +106,7 @@ export default function Compta() {
         <div className="stat"><div className="muted">Chiffre d'affaires encaissé</div><div className="v pos">{eur(ca)}</div></div>
         <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div></div>
         <div className="stat"><div className="muted">Dépenses</div><div className="v neg">{eur(depenses)}</div></div>
+        <div className="stat" title="Dépenses avec le tag « Abonnement »"><div className="muted">Abonnements</div><div className="v neg">{eur(subsMonthly)}<span className="small muted"> /mois</span></div><div className="small muted">{subsTotal ? `${eur(subsTotal)} cette année · ~${eur(subsMonthly * 12)} /an` : "Tague tes dépenses « Abonnement »"}</div></div>
         <div className="stat"><div className="muted">Reste estimé</div><div className="v">{eur(ca - cotis - depenses)}</div></div>
         <div className="stat">
           <div className="muted">Plafond micro ({eur(ceiling)})</div>
@@ -128,6 +139,10 @@ export default function Compta() {
           <option value="recette">Livre des recettes</option>
           <option value="depense">Registre des achats</option>
         </select>
+        {allTags.length > 0 && <select value={tag} onChange={(e) => setTag(e.target.value)}>
+          <option value="">Tous les tags</option>
+          {allTags.map((x) => <option key={x}>{x}</option>)}
+        </select>}
         <span style={{ flex: 1 }} />
         <button onClick={exportCsv}><Download size={16} /> Export CSV</button>
       </div>
@@ -138,7 +153,7 @@ export default function Compta() {
             {rows.map((t) => (
               <tr key={t.id} onClick={() => setEdit({ ...t, date: t.date.slice(0, 10) })} style={{ cursor: "pointer" }}>
                 <td>{new Date(t.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
-                <td>{t.label}{t.category && <span className="tag" style={{ marginLeft: 6 }}>{t.category}</span>}{t.noCotis && <span className="tag" style={{ marginLeft: 6 }}>hors cotisations</span>}</td>
+                <td>{t.label}{tagsOf(t).map((x) => <span key={x} className="tag" style={{ marginLeft: 6 }}>{x}</span>)}{t.noCotis && <span className="tag" style={{ marginLeft: 6 }}>hors cotisations</span>}</td>
                 <td>{t.client}</td>
                 <td>{t.reference}</td>
                 <td>{t.payment}</td>
@@ -167,12 +182,24 @@ export default function Compta() {
               <label>N° facture<input value={edit.reference ?? ""} onChange={(e) => setEdit({ ...edit, reference: e.target.value })} /></label>
             </div>
             <div className="row">
-              <label>Catégorie<input value={edit.category ?? ""} placeholder="ex : Logo, Matériel…" onChange={(e) => setEdit({ ...edit, category: e.target.value })} /></label>
+
               <label>Paiement
                 <select value={edit.payment} onChange={(e) => setEdit({ ...edit, payment: e.target.value })}>
                   {PAYMENTS.map((p) => <option key={p}>{p}</option>)}
                 </select>
               </label>
+            </div>
+            <div className="tag-pick">
+              <span className="muted small">Tags</span>
+              <div className="tag-list">
+                {Array.from(new Set([...allTags, ...tagsOf(edit)])).map((x) => {
+                  const on = tagsOf(edit).includes(x);
+                  return <button type="button" key={x} className={`tag-chip ${on ? "on" : ""}`} onClick={() => setEdit({ ...edit, category: (on ? tagsOf(edit).filter((y) => y !== x) : [...tagsOf(edit), x]).join(", ") })}>{x}</button>;
+                })}
+                <input className="tag-new" placeholder="+ Nouveau tag" value={newTag} onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const n = newTag.trim().replace(/,/g, ""); if (n) { setEdit({ ...edit, category: Array.from(new Set([...tagsOf(edit), n])).join(", ") }); setNewTag(""); } } }}
+                  onBlur={() => { const n = newTag.trim().replace(/,/g, ""); if (n) { setEdit({ ...edit, category: Array.from(new Set([...tagsOf(edit), n])).join(", ") }); setNewTag(""); } }} />
+              </div>
             </div>
             {edit.kind === "recette" && <label className="check"><input type="checkbox" checked={!!edit.noCotis} onChange={(e) => setEdit({ ...edit, noCotis: e.target.checked })} /> Ne pas compter dans les cotisations URSSAF</label>}
             <div className="row">
