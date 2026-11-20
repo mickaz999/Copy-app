@@ -216,7 +216,7 @@ export default function Compta() {
               <div className="tag-list">
                 {Array.from(new Set([...allTags, ...tagsOf(edit)])).map((x) => {
                   const on = tagsOf(edit).includes(x);
-                  return <button type="button" key={x} className={`tag-chip ${on ? "on" : ""}`} onClick={() => setEdit({ ...edit, category: (on ? tagsOf(edit).filter((y) => y !== x) : [...tagsOf(edit), x]).join(", ") })}>{x}</button>;
+                  return <button type="button" key={x} className={`tag-chip ${on ? "on" : ""}`} onClick={() => setEdit({ ...edit, category: (on ? tagsOf(edit).filter((y) => y !== x) : [...tagsOf(edit), x]).join(", ") })}>{on ? "✓ " : ""}{x}</button>;
                 })}
                 <input className="tag-new" placeholder="+ Nouveau tag" value={newTag} onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const n = newTag.trim().replace(/,/g, ""); if (n) { setEdit({ ...edit, category: Array.from(new Set([...tagsOf(edit), n])).join(", ") }); setNewTag(""); } } }}
