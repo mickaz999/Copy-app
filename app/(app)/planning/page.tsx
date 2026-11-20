@@ -668,7 +668,7 @@ export default function Planning() {
       {/* Barre d'outils : vues en segment façon Apple, filtres, actions */}
       <div className="pl-bar">
         <div className="pl-seg">
-          {([["today", "Aujourd'hui"], ["month", "Mois"], ["days5", `${dayCount} jours`], ["board", "Tableau"], ["list", "Liste"]] as [View, string][]).map(([v, label]) => (
+          {([["today", "Aujourd'hui"], ["days5", `${dayCount} jours`], ["month", "Mois"], ["board", "Tableau"], ["list", "Liste"]] as [View, string][]).map(([v, label]) => (
             <button key={v} className={`ghost ${view === v ? "on" : ""}`} onClick={() => { setView(v); if (v === "days5") setCursor(new Date()); }}>{label}</button>
           ))}
         </div>
