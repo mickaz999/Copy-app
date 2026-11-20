@@ -1,4 +1,16 @@
 {
-  "regions": ["fra1"],
-  "crons": [{ "path": "/api/cron", "schedule": "0 6 * * *" }]
+  "regions": [
+    "fra1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 6 * * *"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/*": false
+    }
+  }
 }
