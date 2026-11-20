@@ -2164,3 +2164,5 @@ button.primary:hover { background: #f26500 !important; }
 .tag-chip.on { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
 .tag-new { width: 140px !important; font-size: 12px; padding: 4px 10px !important; border-radius: 999px; }
 .tag-manage { display: grid; gap: 6px; } .tag-manage input { flex: 1; font-size: 13px; }
+/* Tag sélectionné bien visible (prioritaire sur les styles de bouton génériques, survol compris) */
+.tag-list button.tag-chip.on:not(.primary), .tag-list button.tag-chip.on:not(.primary):hover { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
