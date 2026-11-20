@@ -2166,3 +2166,10 @@ button.primary:hover { background: #f26500 !important; }
 .tag-manage { display: grid; gap: 6px; } .tag-manage input { flex: 1; font-size: 13px; }
 /* Tag sélectionné bien visible (prioritaire sur les styles de bouton génériques, survol compris) */
 .tag-list button.tag-chip.on:not(.primary), .tag-list button.tag-chip.on:not(.primary):hover { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+/* Compta : tableau par mois épuré */
+.month-table td, .month-table th { padding: 10px 12px; }
+.month-table th { font-size: 12px; font-weight: 600; color: var(--muted); }
+.month-empty { color: var(--muted); opacity: .4; }
+.month-now td:first-child { font-weight: 700; color: var(--accent); }
+.month-q td { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-top: 4px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.month-total td { font-weight: 700; border-top: 2px solid var(--border); }

@@ -21,6 +21,7 @@ export default function Compta() {
   const [showSettings, setShowSettings] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [manage, setManage] = useState(false);
+  const [allMonths, setAllMonths] = useState(false);
 
   const load = () => api<Tx[]>("transactions").then(setTxs);
   useEffect(() => { load(); api<Settings>("settings").then(setSettings); }, []);
@@ -127,20 +128,46 @@ export default function Compta() {
         </div>
       </div>
 
-      <h3>Par mois</h3>
+      <div className="row" style={{ margin: "28px 0 8px" }}>
+        <h3 style={{ margin: 0 }}>Par mois</h3>
+        <span style={{ flex: 1 }} />
+        <button className="ghost small" onClick={() => setAllMonths(!allMonths)}>{allMonths ? "Mois avec activité" : "Tous les mois"}</button>
+      </div>
       <div style={{ overflowX: "auto" }}>
-        <table>
-          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th><th className="num">Abonnements</th></tr></thead>
+        <table className="month-table">
+          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">dont abonnements</th><th className="num">URSSAF estimée</th><th className="num">Net</th></tr></thead>
           <tbody>
-            {byMonth.map((x, i) => (
-              <tr key={x.m}>
-                <td>{x.m}{i % 3 === 2 && <span className="muted"> · T{(i + 1) / 3} : {eur(quarters[(i - 2) / 3])}</span>}</td>
-                <td className="num pos">{x.r ? eur(x.r) : "—"}</td>
-                <td className="num neg">{x.d ? eur(x.d) : "—"}</td>
-                <td className="num">{x.c ? eur(x.c) : "—"}</td>
-                <td className="num neg">{x.a ? eur(x.a) : "—"}</td>
-              </tr>
-            ))}
+            {[0, 1, 2, 3].map((q) => {
+              const months = byMonth.slice(q * 3, q * 3 + 3).map((x, j) => ({ ...x, i: q * 3 + j }));
+              const shown = months.filter((x) => allMonths || x.r || x.d || x.i === thisMonth);
+              if (!shown.length) return null;
+              const qr = months.reduce((s, x) => s + x.r, 0);
+              return [
+                ...shown.map((x) => {
+                  const net = x.r - x.d - x.c;
+                  const v = (n: number, cls = "") => (n ? <span className={cls}>{eur(n)}</span> : <span className="month-empty">·</span>);
+                  return (
+                    <tr key={x.m} className={x.i === thisMonth ? "month-now" : ""}>
+                      <td>{x.m}</td>
+                      <td className="num">{v(x.r, "pos")}</td>
+                      <td className="num">{v(x.d)}</td>
+                      <td className="num muted">{v(x.a)}</td>
+                      <td className="num muted">{v(x.c)}</td>
+                      <td className="num"><b className={net >= 0 ? "" : "neg"}>{x.r || x.d ? eur(net) : <span className="month-empty">·</span>}</b></td>
+                    </tr>
+                  );
+                }),
+                <tr key={`q${q}`} className="month-q"><td colSpan={6}>Trimestre {q + 1} · CA {eur(qr)}</td></tr>,
+              ];
+            })}
+            <tr className="month-total">
+              <td>Total {year}</td>
+              <td className="num pos">{eur(ca)}</td>
+              <td className="num">{eur(depenses)}</td>
+              <td className="num muted">{eur(byMonth.reduce((s, x) => s + x.a, 0))}</td>
+              <td className="num muted">{eur(cotis)}</td>
+              <td className="num"><b>{eur(ca - depenses - cotis)}</b></td>
+            </tr>
           </tbody>
         </table>
       </div>
