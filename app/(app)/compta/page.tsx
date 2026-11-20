@@ -35,11 +35,12 @@ export default function Compta() {
   const ceiling = settings?.ceiling ?? 0;
   const pct = ceiling ? Math.min(100, (ca / ceiling) * 100) : 0;
 
+  const isSub = (t: Tx) => t.kind === "depense" && (t.category ?? "").split(",").some((x) => /abonnement/i.test(x));
   const byMonth = MONTHS.map((m, i) => {
     const key = `${year}-${String(i + 1).padStart(2, "0")}`;
     const list = ofYear.filter((t) => t.date.startsWith(key));
     const r = sum(list, "recette");
-    return { key, m, r, d: sum(list, "depense"), c: (base(list) * rate) / 100 };
+    return { key, m, r, d: sum(list, "depense"), c: (base(list) * rate) / 100, a: list.filter(isSub).reduce((s, t) => s + t.amount, 0) };
   });
   const quarters = [0, 1, 2, 3].map((q) => byMonth.slice(q * 3, q * 3 + 3).reduce((s, x) => s + x.r, 0));
 
@@ -52,6 +53,7 @@ export default function Compta() {
   const subsTotal = subs.reduce((s, t) => s + t.amount, 0);
   const monthsElapsed = year < new Date().getFullYear() ? 12 : new Date().getMonth() + 1;
   const subsMonthly = subsTotal / monthsElapsed;
+  const thisMonth = year === new Date().getFullYear() ? new Date().getMonth() : 11;
   const rows = ofYear.filter((t) => (!kind || t.kind === kind) && (!tag || tagsOf(t).includes(tag)));
   const years = Array.from(new Set([new Date().getFullYear(), ...txs.map((t) => Number(t.date.slice(0, 4)))])).sort((a, b) => b - a);
 
@@ -106,7 +108,7 @@ export default function Compta() {
         <div className="stat"><div className="muted">Chiffre d'affaires encaissé</div><div className="v pos">{eur(ca)}</div></div>
         <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div></div>
         <div className="stat"><div className="muted">Dépenses</div><div className="v neg">{eur(depenses)}</div></div>
-        <div className="stat" title="Dépenses avec le tag « Abonnement »"><div className="muted">Abonnements</div><div className="v neg">{eur(subsMonthly)}<span className="small muted"> /mois</span></div><div className="small muted">{subsTotal ? `${eur(subsTotal)} cette année · ~${eur(subsMonthly * 12)} /an` : "Tague tes dépenses « Abonnement »"}</div></div>
+        <div className="stat" title="Dépenses avec le tag « Abonnement »"><div className="muted">Abonnements · {MONTHS[thisMonth]}</div><div className="v neg">{eur(byMonth[thisMonth].a)}</div><div className="small muted">{subsTotal ? `moyenne ${eur(subsMonthly)} /mois · ${eur(subsTotal)} sur l'année` : "Tague tes dépenses « Abonnement »"}</div></div>
         <div className="stat"><div className="muted">Reste estimé</div><div className="v">{eur(ca - cotis - depenses)}</div></div>
         <div className="stat">
           <div className="muted">Plafond micro ({eur(ceiling)})</div>
@@ -118,7 +120,7 @@ export default function Compta() {
       <h3>Par mois</h3>
       <div style={{ overflowX: "auto" }}>
         <table>
-          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th></tr></thead>
+          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th><th className="num">Abonnements</th></tr></thead>
           <tbody>
             {byMonth.map((x, i) => (
               <tr key={x.m}>
@@ -126,6 +128,7 @@ export default function Compta() {
                 <td className="num pos">{x.r ? eur(x.r) : "—"}</td>
                 <td className="num neg">{x.d ? eur(x.d) : "—"}</td>
                 <td className="num">{x.c ? eur(x.c) : "—"}</td>
+                <td className="num neg">{x.a ? eur(x.a) : "—"}</td>
               </tr>
             ))}
           </tbody>
