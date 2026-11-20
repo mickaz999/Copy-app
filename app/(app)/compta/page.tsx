@@ -62,8 +62,15 @@ export default function Compta() {
 
   async function saveEdit() {
     if (!edit?.label?.trim() || !edit.date) return;
-    if (edit.id) await api(`transactions/${edit.id}`, "PATCH", edit);
-    else await api("transactions", "POST", edit);
+    // Nouvelle dépense d'un abonnement déjà connu (même fournisseur ou libellé) : tag « Abonnement » ajouté tout seul
+    let row = edit;
+    if (!edit.id && edit.kind === "depense" && !tagsOf(edit).some((x) => /abonnement/i.test(x))) {
+      const k = (edit.client || edit.label || "").trim().toLowerCase();
+      const known = txs.find((t) => isSub(t) && (t.client || t.label).trim().toLowerCase() === k);
+      if (known) row = { ...edit, category: [...tagsOf(edit), tagsOf(known).find((x) => /abonnement/i.test(x))!].join(", ") };
+    }
+    if (row.id) await api(`transactions/${row.id}`, "PATCH", row);
+    else await api("transactions", "POST", row);
     setEdit(null);
     load();
   }
