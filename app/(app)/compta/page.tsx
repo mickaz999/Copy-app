@@ -57,10 +57,6 @@ export default function Compta() {
   const lastBy = new Map<string, Tx>();
   for (const t of recent) { const k = (t.client || t.label).trim().toLowerCase(); if (!lastBy.has(k)) lastBy.set(k, t); }
   const subsEstimate = Array.from(lastBy.values()).reduce((s, t) => s + t.amount, 0);
-  // Ce mois-ci : sur ce qui est rentré, ce que je garde (URSSAF + abonnements) et ce que je peux sortir
-  const cur = byMonth[thisMonth];
-  const keep = cur.c + subsEstimate;
-  const out = cur.r - keep;
   const rows = ofYear.filter((t) => (!kind || t.kind === kind) && (!tag || tagsOf(t).includes(tag)));
   const years = Array.from(new Set([new Date().getFullYear(), ...txs.map((t) => Number(t.date.slice(0, 4)))])).sort((a, b) => b - a);
 
@@ -131,14 +127,6 @@ export default function Compta() {
         </div>
       </div>
 
-      <section className="settings-card keep-card">
-        <div className="muted small">Ce mois-ci ({MONTHS[thisMonth]})</div>
-        <div className="keep-row">
-          <div><div className="muted small">Encaissé</div><b className="pos">{eur(cur.r)}</b></div>
-          <div><div className="muted small">À garder</div><b>{eur(keep)}</b><div className="muted small">URSSAF {eur(cur.c)} · abonnements {eur(subsEstimate)}</div></div>
-          <div><div className="muted small">Tu peux sortir</div><b className={out >= 0 ? "pos" : "neg"}>{eur(Math.max(0, out))}</b>{out < 0 && <div className="neg small">il manque {eur(-out)} pour couvrir le mois</div>}</div>
-        </div>
-      </section>
       <h3>Par mois</h3>
       <div style={{ overflowX: "auto" }}>
         <table>

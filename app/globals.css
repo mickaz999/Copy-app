@@ -2164,7 +2164,3 @@ button.primary:hover { background: #f26500 !important; }
 .tag-chip.on { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
 .tag-new { width: 140px !important; font-size: 12px; padding: 4px 10px !important; border-radius: 999px; }
 .tag-manage { display: grid; gap: 6px; } .tag-manage input { flex: 1; font-size: 13px; }
-.keep-card { display: grid; gap: 10px; margin: 16px 0; }
-.keep-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.keep-row b { font-size: 22px; letter-spacing: -0.02em; }
-@media (max-width: 600px) { .keep-row { grid-template-columns: 1fr; } }
