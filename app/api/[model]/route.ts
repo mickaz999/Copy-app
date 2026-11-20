@@ -15,6 +15,11 @@ export async function GET(_: Request, { params }: { params: { model: string } })
 
 export async function POST(req: Request, { params }: { params: { model: string } }) {
   const body = await req.json();
+  if (params.model === "settings" && Array.isArray(body.declared)) {
+    // Mois déclarés à l'URSSAF (case à cocher dans Compta)
+    const declared = JSON.stringify(body.declared.map(String).filter((m: string) => /^\d{4}-\d{2}$/.test(m)));
+    return NextResponse.json(await db.settings.upsert({ where: { id: 1 }, create: { declared }, update: { declared } }));
+  }
   if (params.model === "settings") {
     const data = {
       rate: Number(body.rate) || 0,

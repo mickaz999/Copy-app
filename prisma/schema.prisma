@@ -62,6 +62,7 @@ model Settings {
   rate     Float  @default(24.6) // taux de cotisations URSSAF (%)
   ceiling  Float  @default(77700) // plafond de CA micro
   activity String @default("BNC - prestations de services")
+  declared String @default("[]") // mois déclarés à l'URSSAF (JSON ["2026-03", …])
 }
 
 // Agenda externe (Google, Apple, Outlook…) lu via son adresse iCal
