@@ -23,7 +23,11 @@ export async function GET() {
       })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime());
     const last = feed[feed.length - 1];
-    return { id: d.id, title: d.title, client: d.client, token: d.token, feed, lastAt: last?.at ?? d.createdAt, toAnswer: !!last && !last.mine, open: d.comments.filter((c) => !c.resolved).length };
+    // À répondre : le client a écrit depuis mon dernier message, et ce n'est pas déjà un retour marqué « corrigé »
+    let lastMine = -1;
+    feed.forEach((x, i) => { if (x.mine) lastMine = i; });
+    const toAnswer = feed.slice(lastMine + 1).some((x) => !x.mine && !(x.commentId && x.resolved));
+    return { id: d.id, title: d.title, client: d.client, token: d.token, feed, lastAt: last?.at ?? d.createdAt, toAnswer, open: d.comments.filter((c) => !c.resolved).length };
   });
   convs.sort((a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime());
   return NextResponse.json(convs);
