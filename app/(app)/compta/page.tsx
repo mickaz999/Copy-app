@@ -5,9 +5,9 @@ import { api, eur, isoDay } from "@/lib/api";
 
 type Tx = {
   id: string; date: string; label: string; kind: string; amount: number;
-  category: string; client: string; payment: string; reference: string;
+  category: string; client: string; payment: string; reference: string; noCotis?: boolean;
 };
-type Settings = { rate: number; ceiling: number; activity: string; declared?: string };
+type Settings = { rate: number; ceiling: number; activity: string };
 
 const PAYMENTS = ["Virement", "Carte", "Espèces", "Chèque", "PayPal", "Autre"];
 const MONTHS = ["Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
@@ -28,7 +28,9 @@ export default function Compta() {
   const ca = sum(ofYear, "recette");
   const depenses = sum(ofYear, "depense");
   const rate = settings?.rate ?? 0;
-  const cotis = (ca * rate) / 100;
+  // Base des cotisations : recettes, sauf celles cochées « ne pas compter dans les cotisations »
+  const base = (list: Tx[]) => list.filter((t) => t.kind === "recette" && !t.noCotis).reduce((s, t) => s + t.amount, 0);
+  const cotis = (base(ofYear) * rate) / 100;
   const ceiling = settings?.ceiling ?? 0;
   const pct = ceiling ? Math.min(100, (ca / ceiling) * 100) : 0;
 
@@ -36,16 +38,8 @@ export default function Compta() {
     const key = `${year}-${String(i + 1).padStart(2, "0")}`;
     const list = ofYear.filter((t) => t.date.startsWith(key));
     const r = sum(list, "recette");
-    return { key, m, r, d: sum(list, "depense"), c: (r * rate) / 100 };
+    return { key, m, r, d: sum(list, "depense"), c: (base(list) * rate) / 100 };
   });
-  // Mois déclarés à l'URSSAF
-  const declared: string[] = (() => { try { return JSON.parse(settings?.declared || "[]"); } catch { return []; } })();
-  const toDeclare = byMonth.filter((x) => x.c && !declared.includes(x.key)).reduce((s, x) => s + x.c, 0);
-  async function toggleDeclared(key: string) {
-    const next = declared.includes(key) ? declared.filter((k) => k !== key) : [...declared, key];
-    setSettings((s) => s && { ...s, declared: JSON.stringify(next) });
-    await api("settings", "POST", { declared: next }).catch(() => {});
-  }
   const quarters = [0, 1, 2, 3].map((q) => byMonth.slice(q * 3, q * 3 + 3).reduce((s, x) => s + x.r, 0));
 
   const rows = ofYear.filter((t) => !kind || t.kind === kind);
@@ -100,7 +94,7 @@ export default function Compta() {
 
       <div className="stats">
         <div className="stat"><div className="muted">Chiffre d'affaires encaissé</div><div className="v pos">{eur(ca)}</div></div>
-        <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div>{cotis > 0 && <div className={`small ${toDeclare ? "neg" : "pos"}`}>{toDeclare ? `dont ${eur(toDeclare)} à déclarer` : "tout est déclaré ✓"}</div>}</div>
+        <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div></div>
         <div className="stat"><div className="muted">Dépenses</div><div className="v neg">{eur(depenses)}</div></div>
         <div className="stat"><div className="muted">Reste estimé</div><div className="v">{eur(ca - cotis - depenses)}</div></div>
         <div className="stat">
@@ -113,7 +107,7 @@ export default function Compta() {
       <h3>Par mois</h3>
       <div style={{ overflowX: "auto" }}>
         <table>
-          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th><th className="num">Déclaré URSSAF</th></tr></thead>
+          <thead><tr><th>Mois</th><th className="num">Recettes</th><th className="num">Dépenses</th><th className="num">Cotis. estimées</th></tr></thead>
           <tbody>
             {byMonth.map((x, i) => (
               <tr key={x.m}>
@@ -121,7 +115,6 @@ export default function Compta() {
                 <td className="num pos">{x.r ? eur(x.r) : "—"}</td>
                 <td className="num neg">{x.d ? eur(x.d) : "—"}</td>
                 <td className="num">{x.c ? eur(x.c) : "—"}</td>
-                <td className="num">{x.c ? <label className={`decl ${declared.includes(x.key) ? "on" : ""}`}><input type="checkbox" checked={declared.includes(x.key)} onChange={() => toggleDeclared(x.key)} /> {declared.includes(x.key) ? "Déclaré" : "À déclarer"}</label> : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -145,7 +138,7 @@ export default function Compta() {
             {rows.map((t) => (
               <tr key={t.id} onClick={() => setEdit({ ...t, date: t.date.slice(0, 10) })} style={{ cursor: "pointer" }}>
                 <td>{new Date(t.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
-                <td>{t.label}{t.category && <span className="tag" style={{ marginLeft: 6 }}>{t.category}</span>}</td>
+                <td>{t.label}{t.category && <span className="tag" style={{ marginLeft: 6 }}>{t.category}</span>}{t.noCotis && <span className="tag" style={{ marginLeft: 6 }}>hors cotisations</span>}</td>
                 <td>{t.client}</td>
                 <td>{t.reference}</td>
                 <td>{t.payment}</td>
@@ -181,6 +174,7 @@ export default function Compta() {
                 </select>
               </label>
             </div>
+            {edit.kind === "recette" && <label className="check"><input type="checkbox" checked={!!edit.noCotis} onChange={(e) => setEdit({ ...edit, noCotis: e.target.checked })} /> Ne pas compter dans les cotisations URSSAF</label>}
             <div className="row">
               {edit.id && <button className="neg" onClick={remove}>Supprimer</button>}
               <span style={{ flex: 1 }} />

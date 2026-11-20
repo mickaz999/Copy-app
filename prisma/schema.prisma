@@ -53,6 +53,7 @@ model Transaction {
   client    String   @default("")
   payment   String   @default("Virement")
   reference String   @default("") // n° de facture
+  noCotis   Boolean  @default(false) // recette exclue des cotisations URSSAF
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
