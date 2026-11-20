@@ -7,7 +7,7 @@ const fields = {
   properties: ["name", "type", "options", "order"],
   boards: ["name", "data"],
   calendars: ["name", "url", "color"],
-  transactions: ["date", "label", "kind", "amount", "category", "client", "payment", "reference"],
+  transactions: ["date", "label", "kind", "amount", "category", "client", "payment", "reference", "noCotis"],
 } as const;
 
 export type ModelName = keyof typeof fields;
@@ -24,6 +24,7 @@ export function clean(name: ModelName, body: Record<string, unknown>) {
     let v = body[f];
     if (f === "date" || f === "endDate" || f === "repeatUntil") v = v ? new Date(v as string) : null;
     if (f === "amount") v = Number(v) || 0;
+    if (f === "noCotis") v = !!v;
     if (f === "order") v = Number(v) || 0;
     if ((f === "props" || f === "options" || f === "data") && typeof v !== "string") v = JSON.stringify(v ?? {});
     if (f === "subtasks" && typeof v !== "string") v = JSON.stringify(Array.isArray(v) ? v : []);
