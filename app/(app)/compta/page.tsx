@@ -50,8 +50,13 @@ export default function Compta() {
   const allTags = Array.from(new Set(txs.flatMap(tagsOf))).sort((a, b) => a.localeCompare(b, "fr"));
   const [tag, setTag] = useState("");
   // Abonnements : dépenses avec un tag « abonnement » (Adobe, Frame.io…), comptées mois par mois
-  const subs = ofYear.filter((t) => t.kind === "depense" && tagsOf(t).some((x) => /abonnement/i.test(x)));
   const thisMonth = year === new Date().getFullYear() ? new Date().getMonth() : 11;
+  // Estimation des abonnements par mois : chaque abonnement (même fournisseur ou libellé) vu ces 2 derniers mois,
+  // compté une fois à son dernier montant → ce que je vais payer chaque mois
+  const recent = txs.filter(isSub).filter((t) => Date.now() - Date.parse(t.date) < 62 * 864e5).sort((a, b) => b.date.localeCompare(a.date));
+  const lastBy = new Map<string, Tx>();
+  for (const t of recent) { const k = (t.client || t.label).trim().toLowerCase(); if (!lastBy.has(k)) lastBy.set(k, t); }
+  const subsEstimate = Array.from(lastBy.values()).reduce((s, t) => s + t.amount, 0);
   const rows = ofYear.filter((t) => (!kind || t.kind === kind) && (!tag || tagsOf(t).includes(tag)));
   const years = Array.from(new Set([new Date().getFullYear(), ...txs.map((t) => Number(t.date.slice(0, 4)))])).sort((a, b) => b - a);
 
@@ -106,7 +111,7 @@ export default function Compta() {
         <div className="stat"><div className="muted">Chiffre d'affaires encaissé</div><div className="v pos">{eur(ca)}</div></div>
         <div className="stat"><div className="muted">Cotisations URSSAF estimées</div><div className="v">{eur(cotis)}</div></div>
         <div className="stat"><div className="muted">Dépenses</div><div className="v neg">{eur(depenses)}</div></div>
-        <div className="stat" title="Dépenses avec le tag « Abonnement »"><div className="muted">Abonnements · {MONTHS[thisMonth]}</div><div className="v neg">{eur(byMonth[thisMonth].a)}</div>{!subs.length && <div className="small muted">Tague tes dépenses « Abonnement »</div>}</div>
+        <div className="stat" title={Array.from(lastBy.values()).map((t) => `${t.client || t.label} : ${eur(t.amount)}`).join("\n")}><div className="muted">Abonnements estimés</div><div className="v neg">{eur(subsEstimate)}<span className="small muted"> /mois</span></div><div className="small muted">{lastBy.size ? `${lastBy.size} abonnement${lastBy.size > 1 ? "s" : ""} en cours` : "Tague tes dépenses « Abonnement »"}</div></div>
         <div className="stat"><div className="muted">Reste estimé</div><div className="v">{eur(ca - cotis - depenses)}</div></div>
         <div className="stat">
           <div className="muted">Plafond micro ({eur(ceiling)})</div>
