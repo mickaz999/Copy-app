@@ -20,6 +20,7 @@ export default function Compta() {
   const [edit, setEdit] = useState<Partial<Tx> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [newTag, setNewTag] = useState("");
+  const [manage, setManage] = useState(false);
 
   const load = () => api<Tx[]>("transactions").then(setTxs);
   useEffect(() => { load(); api<Settings>("settings").then(setSettings); }, []);
@@ -193,7 +194,16 @@ export default function Compta() {
               </label>
             </div>
             <div className="tag-pick">
-              <span className="muted small">Tags</span>
+              <span className="muted small">Tags <button type="button" className="ghost small" onClick={() => setManage(!manage)}>{manage ? "Terminé" : "Gérer"}</button></span>
+              {manage && <div className="tag-manage">
+                {allTags.length === 0 && <span className="muted small">Aucun tag.</span>}
+                {allTags.map((x) => (
+                  <div key={x} className="row">
+                    <input defaultValue={x} onBlur={async (e) => { const v = e.target.value.trim(); if (v && v !== x) { await api("tags", "POST", { from: x, to: v }); if (tagsOf(edit).includes(x)) setEdit({ ...edit, category: tagsOf(edit).map((y) => (y === x ? v : y)).join(", ") }); load(); } }} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+                    <button type="button" className="ghost neg" title="Supprimer ce tag partout" onClick={async () => { if (confirm(`Supprimer le tag « ${x} » de toutes les lignes ?`)) { await api("tags", "POST", { from: x }); setEdit({ ...edit, category: tagsOf(edit).filter((y) => y !== x).join(", ") }); load(); } }}>Supprimer</button>
+                  </div>
+                ))}
+              </div>}
               <div className="tag-list">
                 {Array.from(new Set([...allTags, ...tagsOf(edit)])).map((x) => {
                   const on = tagsOf(edit).includes(x);
