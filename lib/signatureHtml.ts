@@ -11,6 +11,12 @@ export function parseSignature(raw: string | null | undefined): Signature {
 
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// Numéro pour un lien WhatsApp (wa.me) : chiffres seuls, 06… → 336…
+const waNumber = (t: string) => {
+  const d = t.replace(/\D/g, "");
+  return t.trim().startsWith("+") || d.startsWith("00") ? d.replace(/^00/, "") : d.replace(/^0/, "33");
+};
+
 // Bloc HTML de signature (tableau : compatible Gmail, Outlook, Apple Mail)
 export function signatureHtml(s: Signature) {
   if (!s.name.trim()) return "";
@@ -23,7 +29,7 @@ export function signatureHtml(s: Signature) {
     <td style="border-left:3px solid #ff6a00;padding-left:14px;vertical-align:middle;font-size:13px;line-height:1.5">
       <div style="font-size:15px;font-weight:bold">${esc(s.name.trim())}</div>
       ${s.title.trim() ? `<div style="color:#ff6a00;font-weight:bold">${esc(s.title.trim())}</div>` : ""}
-      ${tel ? `<div><a href="tel:${esc(tel.replace(/[^+\d]/g, ""))}" style="color:#5c544c;text-decoration:none">${esc(tel)}</a></div>` : ""}
+      ${tel ? `<div><a href="https://wa.me/${waNumber(tel)}" style="color:#5c544c;text-decoration:none">${esc(tel)}</a></div>` : ""}
       ${href ? `<div><a href="${esc(href)}" style="color:#5c544c;text-decoration:none">${esc(site.replace(/^https?:\/\//, ""))}</a></div>` : ""}
     </td>
   </tr>
