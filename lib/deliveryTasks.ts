@@ -4,7 +4,6 @@ import { expiryOf, fio } from "@/lib/frameio";
 import { sendGmail } from "@/lib/google";
 import { emailsOf, mailHtml, nameKey, spaceUrl } from "@/lib/clients";
 import { deliveryUrl } from "@/lib/site";
-import { signed } from "@/lib/signature";
 import { getSettings, mailAccount, parisNow, sendPush } from "@/lib/notify";
 
 type Sub = { id: string; title: string; done: boolean };
@@ -206,7 +205,7 @@ export async function remindExpiringDeliveries(_appUrl?: string) {
       const html = mailHtml(stage === 1 ? "Ton lien expire demain" : "Ton lien expire dans 7 jours",
         [`La livraison <b>${escHtml(d.title)}</b> ne sera plus accessible après le <b>${end}</b> (heure de Paris).`, "Pense à télécharger tes fichiers avant cette date."],
         "Télécharger mes fichiers", link);
-      await sendGmail(acc.id, email, subject, await signed(html, "client")).then(() => sent++).catch(() => db.sentReminder.delete({ where: { key } }).catch(() => {}));
+      await sendGmail(acc.id, email, subject, html).then(() => sent++).catch(() => db.sentReminder.delete({ where: { key } }).catch(() => {}));
     }
   }
   return sent;

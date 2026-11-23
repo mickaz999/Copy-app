@@ -209,13 +209,12 @@ function SignatureCard({ raw, onSave }: { raw: string; onSave: (s: Signature) =>
   return (
     <section className="settings-card">
       <div className="sc-head"><Mail size={18} /> <h3>Signature des mails</h3></div>
-      <p className="muted">Ajoutée en bas des mails de prospection{sig.clients ? " et des mails envoyés aux clients" : ""}. Laisse le nom vide pour ne pas mettre de signature.</p>
+      <p className="muted">Ajoutée en bas de tous les mails envoyés par l&apos;app. Laisse le nom vide pour ne pas mettre de signature.</p>
       {field("name", "Nom", "Ton prénom")}
       {field("title", "Titre", "Maderino Production · Montage vidéo")}
       {field("phone", "Téléphone", "06 12 34 56 78")}
       {field("site", "Site", "maderinoprod.com")}
       {field("logo", "Logo (lien d'une image)", "https://…/logo.png")}
-      <label className="check-line"><input type="checkbox" checked={sig.clients} onChange={(e) => set({ clients: e.target.checked }, true)} /> Aussi sur les mails aux clients (livraisons, rappels, RDV)</label>
       {sig.name.trim() && <div style={{ background: "#fff", borderRadius: 12, padding: "4px 14px 14px", marginTop: 8 }} dangerouslySetInnerHTML={{ __html: signatureHtml(sig) }} />}
     </section>
   );
