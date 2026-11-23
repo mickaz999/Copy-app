@@ -30,7 +30,7 @@ export default function Devis() {
   const [msg, setMsg] = useState("");
   const [drag, setDrag] = useState<string | null>(null);
 
-  const load = () => api<Quote[]>("quotes").then(setList);
+  const load = () => api<Quote[]>("quotes").then(setList).catch((e) => setMsg(`Liste des devis indisponible : ${(e as Error).message.slice(0, 200)}`));
   const [saved, setSaved] = useState<Buyer[]>([]);
   const lines = linesOf(edit);
   const total = sum(lines);
@@ -207,6 +207,7 @@ export default function Devis() {
 
       {/* ── Mes devis ── */}
       <div className="eyebrow" style={{ marginTop: 28 }}>mes devis</div>
+      {!list.length && msg.startsWith("Liste") && <p className="neg small">{msg}</p>}
       {!list.length && <p className="muted">Aucun devis pour l&apos;instant.</p>}
       {list.map((q) => {
         const b = parse<Buyer>(q.buyer, EMPTY_BUYER);
