@@ -1,12 +1,13 @@
 import { PUBLIC_URL } from "@/lib/site";
 
-export type Signature = { name: string; title: string; phone: string; site: string; logo: string; clients: boolean };
+export type Signature = { name: string; title: string; phone: string; site: string; logo: string; clients: boolean; wordmark: boolean };
 export const DEFAULT_LOGO = `${PUBLIC_URL}/icons/icon-192.png`;
+export const WORDMARK = `${PUBLIC_URL}/icons/logo-mail.png`; // logo « maderino production. » avec le texte
 
 export function parseSignature(raw: string | null | undefined): Signature {
   let s: Partial<Signature> = {};
   try { s = JSON.parse(raw || "{}"); } catch {}
-  return { name: s.name ?? "", title: s.title ?? "", phone: s.phone ?? "", site: s.site ?? "", logo: s.logo ?? DEFAULT_LOGO, clients: s.clients ?? true };
+  return { name: s.name ?? "", title: s.title ?? "", phone: s.phone ?? "", site: s.site ?? "", logo: s.logo ?? DEFAULT_LOGO, clients: s.clients ?? true, wordmark: s.wordmark ?? true };
 }
 
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -33,6 +34,7 @@ export function signatureHtml(s: Signature) {
       ${href ? `<div><a href="${esc(href)}" style="color:#5c544c;text-decoration:none">${esc(site.replace(/^https?:\/\//, ""))}</a></div>` : ""}
     </td>
   </tr>
+  ${s.wordmark ? `<tr><td colspan="2" style="padding-top:12px">${href ? `<a href="${esc(href)}">` : ""}<img src="${WORDMARK}" width="220" height="41" alt="maderino production." style="display:block;border:0">${href ? "</a>" : ""}</td></tr>` : ""}
 </table>`;
 }
 
