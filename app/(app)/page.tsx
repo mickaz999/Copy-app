@@ -18,6 +18,8 @@ export default function Home() {
   const [events, setEvents] = useState<Ev[]>([]);
   const [appts, setAppts] = useState<Appt[]>([]);
   const [deliv, setDeliv] = useState<Delivery[]>([]);
+  // Devis : statut et montant de chaque devis
+  const [quotes, setQuotes] = useState<{ status: string; lines: string; acceptedAt: string | null }[]>([]);
   const today = isoDay(new Date());
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export default function Home() {
     api<{ events: Ev[] }>(`events?from=${from.toISOString()}&to=${to.toISOString()}`).then((r) => setEvents(r.events ?? [])).catch(() => {});
     api<Appt[]>("rdv").then(setAppts).catch(() => {});
     api<Delivery[]>("livraisons").then(setDeliv).catch(() => {});
+    api<typeof quotes>("quotes").then(setQuotes).catch(() => {});
   }, []);
 
   const day = (t: Task) => t.date?.slice(0, 10) ?? "";
@@ -36,6 +39,13 @@ export default function Home() {
   const late = open.filter((t) => end(t) < today && t.status !== "waiting");
   const nextAppts = appts.filter((a) => a.status === "confirmed" && Date.parse(a.start) > Date.now() - 36e5).slice(0, 3);
   const todayEvents = events.filter((e) => !e.allDay && Date.parse(e.end) > Date.now()).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
+  const qTotal = (q: (typeof quotes)[number]) => { try { return (JSON.parse(q.lines) as { qty: number; unitPrice: number }[]).reduce((s, l) => s + l.qty * l.unitPrice, 0); } catch { return 0; } };
+  const money = (n: number) => Math.round(n).toLocaleString("fr-FR") + " €";
+  const qPending = quotes.filter((q) => q.status === "sent");
+  const qDraft = quotes.filter((q) => q.status === "draft");
+  const qMonth = quotes.filter((q) => q.status === "accepted" && q.acceptedAt?.slice(0, 7) === today.slice(0, 7));
+  const qDone = quotes.filter((q) => q.status === "accepted" || q.status === "refused");
+  const qRate = qDone.length ? Math.round((100 * qDone.filter((q) => q.status === "accepted").length) / qDone.length) : null;
   const feedback = deliv.reduce((n, d) => n + d.comments.filter((c) => !c.resolved).length, 0);
   const waiting = deliv.filter((d) => (d.kind === "videos" ? JSON.parse(d.approved || "[]").length === 0 : !d.approvedV) && d.kind !== "folder").length;
 
@@ -64,6 +74,12 @@ export default function Home() {
         <Link href="/planning" className={`home-stat ${late.length ? "warn" : ""}`}><b>{tasks ? late.length : "–"}</b><span>en retard</span></Link>
         <Link href="/livraisons" className={`home-stat ${feedback ? "hot" : ""}`}><b>{feedback}</b><span>retour{feedback > 1 ? "s" : ""} client</span></Link>
         <Link href="/rendez-vous" className="home-stat"><b>{nextAppts.length}</b><span>RDV à venir</span></Link>
+      </div>
+      <div className="home-stats" style={{ marginTop: -8 }}>
+        <Link href="/devis" className={`home-stat ${qPending.length ? "hot" : ""}`}><b>{qPending.length}</b><span>devis en attente{qPending.length ? ` · ${money(qPending.reduce((s, q) => s + qTotal(q), 0))}` : ""}</span></Link>
+        <Link href="/devis" className="home-stat"><b>{qDraft.length}</b><span>devis à envoyer</span></Link>
+        <Link href="/devis" className="home-stat"><b>{qMonth.length}</b><span>validé{qMonth.length > 1 ? "s" : ""} ce mois{qMonth.length ? ` · ${money(qMonth.reduce((s, q) => s + qTotal(q), 0))}` : ""}</span></Link>
+        <Link href="/devis" className="home-stat"><b>{qRate === null ? "–" : `${qRate} %`}</b><span>devis acceptés</span></Link>
       </div>
 
       <div className="home-grid">
