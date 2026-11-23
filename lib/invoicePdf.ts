@@ -27,7 +27,7 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     page.drawImage(img, { x: 545 - img.width * k, y: 800 - img.height * k, width: img.width * k, height: img.height * k });
     top = Math.min(780, 800 - img.height * k - 18);
   }
-  t("FACTURE", 50, 780, { size: 22, b: true });
+  t(inv.kind === "deposit" ? "FACTURE D'ACOMPTE" : inv.kind === "final" ? "FACTURE DE SOLDE" : "FACTURE", 50, 780, { size: inv.kind && inv.kind !== "standard" ? 18 : 22, b: true });
   t(`N° ${inv.number}`, 50, 758, { size: 11 });
   t(`Date : ${fr(inv.date)}`, 545, top, { right: true });
   t(`Échéance : ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
@@ -49,7 +49,7 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     t(l.label.slice(0, 60), 56, y); t(String(l.qty), 370, y, { right: true }); t(eur(l.unitPrice), 460, y, { right: true }); t(eur(l.qty * l.unitPrice), 540, y, { right: true });
     y -= 18;
   }
-  const { gross, remise, ht, tva, ttc } = totals(inv);
+  const { gross, remise, ht, tva, ttc, prepaid, due } = totals(inv);
   y -= 10;
   if (remise > 0) {
     const d = inv.discount!;
@@ -58,7 +58,15 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
   }
   t("Total HT", 460, y, { right: true }); t(eur(ht), 540, y, { right: true }); y -= 15;
   t(`TVA (${inv.vatRate} %)`, 460, y, { right: true }); t(eur(tva), 540, y, { right: true }); y -= 18;
-  t("Total TTC", 460, y, { right: true, b: true, size: 12 }); t(eur(ttc), 540, y, { right: true, b: true, size: 12 });
+  if (prepaid > 0) {
+    // Facture de solde : acomptes déjà facturés, puis le reste à payer
+    t("Total TTC", 460, y, { right: true }); t(eur(ttc), 540, y, { right: true }); y -= 15;
+    for (const p of inv.prepaid ?? []) { t(`Acompte ${p.number} du ${fr(p.date)}`, 460, y, { right: true, color: grey }); t(`- ${eur(p.amount)}`, 540, y, { right: true, color: grey }); y -= 15; }
+    y -= 3;
+    t("Reste à payer", 460, y, { right: true, b: true, size: 12 }); t(eur(due), 540, y, { right: true, b: true, size: 12 });
+  } else {
+    t(inv.kind === "deposit" ? "Acompte à payer" : "Total TTC", 460, y, { right: true, b: true, size: 12 }); t(eur(ttc), 540, y, { right: true, b: true, size: 12 });
+  }
   y -= 30;
   if (inv.vatRate === 0) { t(inv.vatNote, 50, y, { color: grey }); y -= 15; }
   if (inv.note) { t(inv.note.slice(0, 100), 50, y); y -= 15; }

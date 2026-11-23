@@ -8,6 +8,8 @@ export function clean(b: Record<string, any>) {
   if ("buyer" in b) out.buyer = typeof b.buyer === "string" ? b.buyer : JSON.stringify(b.buyer ?? {});
   if ("lines" in b)
     out.lines = JSON.stringify((Array.isArray(b.lines) ? b.lines : []).map((l: any) => ({ label: String(l.label ?? ""), qty: Number(l.qty) || 0, unitPrice: Number(l.unitPrice) || 0 })));
+  if ("kind" in b) out.kind = ["deposit", "final"].includes(b.kind) ? b.kind : "standard";
+  if ("deposits" in b) out.deposits = JSON.stringify((Array.isArray(b.deposits) ? b.deposits : []).map(String));
   if ("discount" in b) {
     const d = b.discount;
     const value = Number(d?.value) || 0;
