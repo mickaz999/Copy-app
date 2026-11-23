@@ -3,6 +3,7 @@ export function cleanQuote(b: Record<string, any>) {
   const out: Record<string, unknown> = {};
   if ("date" in b && b.date) out.date = new Date(b.date);
   if ("validUntil" in b && b.validUntil) out.validUntil = new Date(b.validUntil);
+  if ("depositPct" in b) out.depositPct = Math.max(0, Math.min(100, Math.round(Number(b.depositPct) || 0)));
   if ("note" in b) out.note = String(b.note ?? "");
   if ("buyer" in b) out.buyer = typeof b.buyer === "string" ? b.buyer : JSON.stringify(b.buyer ?? {});
   if ("lines" in b)

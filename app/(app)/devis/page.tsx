@@ -9,15 +9,15 @@ type Buyer = { name: string; siren: string; address: string; zip: string; city: 
 type Line = { label: string; qty: number; unitPrice: number };
 type Quote = {
   id: string; number: string; date: string; validUntil: string; buyer: string; lines: string; note: string; discount: string;
-  status: "draft" | "sent" | "accepted" | "refused"; signedName: string; invoiceId: string; error: string; sentAt: string | null;
+  depositPct: number; status: "draft" | "sent" | "accepted" | "refused"; signedName: string; invoiceId: string; error: string; sentAt: string | null;
 };
-type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; extra: Line[]; note: string };
+type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; extra: Line[]; note: string; depositPct: number };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "", phone: "" };
 const STATUS = { draft: "Brouillon", sent: "Envoyé", accepted: "Validé", refused: "Refusé" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const in30 = () => isoDay(new Date(Date.now() + 30 * 864e5));
-const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, extra: [], note: "" });
+const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, extra: [], note: "", depositPct: 50 });
 const linesOf = (e: Edit): Line[] => e.extra.filter((l) => l.label.trim());
 const sum = (lines: Line[]) => lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
 
@@ -40,7 +40,7 @@ export default function Devis() {
   // Reprend un devis existant dans le formulaire (prestations de la grille reconnues par leur nom)
   function open(q: Quote) {
     const extra = parse<Line[]>(q.lines, []);
-    setEdit({ id: q.id, number: q.number, validUntil: q.validUntil.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(q.buyer, {}) }, extra, note: q.note });
+    setEdit({ id: q.id, number: q.number, validUntil: q.validUntil.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(q.buyer, {}) }, extra, note: q.note, depositPct: q.depositPct ?? 50 });
     setMsg("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -48,7 +48,7 @@ export default function Devis() {
   async function save(): Promise<string | null> {
     if (!lines.length) { setMsg("Ajoute au moins une prestation."); return null; }
     if (!edit.buyer.name.trim()) { setMsg("Indique le nom du client."); return null; }
-    const body = { validUntil: edit.validUntil, buyer: edit.buyer, lines, note: edit.note };
+    const body = { validUntil: edit.validUntil, buyer: edit.buyer, lines, note: edit.note, depositPct: edit.depositPct };
     if (edit.id) { await api(`quotes/${edit.id}`, "PATCH", body); return edit.id; }
     const q = await api<Quote>("quotes", "POST", body);
     setEdit((e) => ({ ...e, id: q.id, number: q.number }));
@@ -186,6 +186,10 @@ export default function Devis() {
             </div>
           ))}
           <button type="button" className="ghost small" onClick={() => setEdit({ ...edit, extra: [...edit.extra, { label: "", qty: 1, unitPrice: 0 }] })}><Plus size={14} /> Ligne libre</button>
+          <div className="row" style={{ marginTop: 10 }}>
+            <label className="check"><input type="checkbox" checked={edit.depositPct > 0} onChange={(e) => setEdit({ ...edit, depositPct: e.target.checked ? 50 : 0 })} /> Acompte à la validation</label>
+            {edit.depositPct > 0 && <label className="muted small row"><input type="number" min={1} max={100} style={{ width: 70 }} value={edit.depositPct} onChange={(e) => setEdit({ ...edit, depositPct: Math.max(1, Math.min(100, Number(e.target.value) || 0)) })} /> % soit {eur((total * edit.depositPct) / 100)}</label>}
+          </div>
           <textarea style={{ width: "100%", marginTop: 8 }} rows={2} placeholder="Note sur le devis (facultatif)" value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} />
         </div>
       </fieldset>

@@ -80,7 +80,11 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     t("Bon pour accord", 328, 126, { b: true });
     t("Date, signature et mention « Bon pour accord »", 328, 112, { size: 8, color: grey });
     t(`Devis valable jusqu'au ${fr(inv.dueDate)}.`, 50, fy, { size: 9, color: grey }); fy -= 13;
-    t("Une facture sera émise après acceptation du devis.", 50, fy, { size: 9, color: grey });
+    const pct = inv.depositPct ?? 0;
+    if (pct > 0) {
+      t(`Devis validé à réception de l'acompte de ${pct} % (${eur((totals(inv).ttc * pct) / 100)}), solde à la livraison.`, 50, fy, { size: 9, b: true }); fy -= 13;
+      t("Une facture d'acompte puis une facture de solde seront émises.", 50, fy, { size: 9, color: grey });
+    } else t("Une facture sera émise après acceptation du devis.", 50, fy, { size: 9, color: grey });
     return doc.save();
   }
   if (inv.kind === "credit") {
