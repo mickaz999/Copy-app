@@ -66,6 +66,15 @@ export default function Factures() {
   const depositsOf = (fin: Inv) => list.filter((x) => parse<string[]>(fin.deposits, []).includes(x.id)).sort((a, b) => a.number.localeCompare(b.number));
   const linkTo = (x: Inv) => <a key={x.id} href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); open(x); }}>{x.number}</a>;
   const creditsOf = (orig: Inv) => list.filter((x) => x.kind === "credit" && x.refId === orig.id);
+  const dueOf = (i: Inv) => totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due;
+  // Facture annulée : ses avoirs émis couvrent tout son montant
+  const cancelled = (i: Inv) => {
+    if (i.kind === "credit" || i.status === "draft") return false;
+    const cr = creditsOf(i).filter((x) => x.status !== "draft");
+    return cr.length > 0 && cr.reduce((n, x) => n + dueOf(x), 0) >= dueOf(i) - 0.005;
+  };
+  // Ordre d'affichage : chaque avoir juste sous la facture qu'il annule
+  const rows = list.filter((i) => !(i.kind === "credit" && list.some((o) => o.id === i.refId))).flatMap((i) => [i, ...creditsOf(i)]);
   const links = (i: Inv) => {
     if (i.kind === "credit") {
       const o = list.find((x) => x.id === i.refId);
@@ -202,20 +211,20 @@ export default function Factures() {
         <table>
           <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Statut</th><th className="num">Total TTC</th><th /></tr></thead>
           <tbody>
-            {list.map((i) => (
-              <tr key={i.id} onClick={() => open(i)} style={{ cursor: "pointer" }}>
+            {rows.map((i) => (
+              <tr key={i.id} onClick={() => open(i)} className={`${cancelled(i) ? "inv-cancelled" : ""} ${i.kind === "credit" && i.refId ? "inv-credit" : ""}`} style={{ cursor: "pointer" }}>
                 <td>{i.number}</td>
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}{links(i) && <div>{links(i)}</div>}</td>
-                <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
-                <td className="num">{eur((i.kind === "credit" ? -1 : 1) * totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
+                <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}{cancelled(i) ? <span className="tag neg">Annulée</span> : <span className="tag">{STATUS[i.status]}</span>}{i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
+                <td className="num">{eur((i.kind === "credit" && dueOf(i) ? -1 : 1) * dueOf(i))}</td>
                 <td onClick={(e) => e.stopPropagation()}><div className="inv-actions">
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).email && <button className="ghost small" title="Renvoyer le mail au client" onClick={() => resend(i)}><Send size={14} /> Renvoyer</button>}
-                  {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}><CircleCheck size={14} /> {i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
-                  {i.status !== "draft" && i.kind !== "credit" && <button className="ghost small" onClick={() => makeCredit(i)}><Undo2 size={14} /> Faire un avoir</button>}
+                  {i.status === "sent" && !cancelled(i) && <button className="ghost small" onClick={() => markPaid(i)}><CircleCheck size={14} /> {i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
+                  {i.status !== "draft" && i.kind !== "credit" && !cancelled(i) && <button className="ghost small" onClick={() => makeCredit(i)}><Undo2 size={14} /> Faire un avoir</button>}
                   {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}><FilePlus2 size={14} /> Faire le solde</button>}
                 </div></td>
               </tr>
