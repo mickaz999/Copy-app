@@ -3,6 +3,7 @@ import type { Appointment } from "@prisma/client";
 import { db } from "@/lib/db";
 import { freeSlots, getBooking, parisTime } from "@/lib/booking";
 import { gapi, sendGmail, TZ } from "@/lib/google";
+import { signed } from "@/lib/signature";
 import { getSettings, mailAccount, sendPush } from "@/lib/notify";
 
 type Booking = Awaited<ReturnType<typeof getBooking>>;
@@ -54,7 +55,7 @@ async function mailClient(a: Appointment, kind: "confirm" | "move" | "cancel", a
            : `<p>Appel WhatsApp au <b>${esc(a.phone)}</b>.</p>`}
          <p><a href="${manage}" style="color:#ff6b00">Déplacer ou annuler ce RDV</a></p>`}
   </div>`;
-  await sendGmail(acc.id, a.email, subject, html).catch(() => {});
+  await sendGmail(acc.id, a.email, subject, await signed(html, "client")).catch(() => {});
 }
 
 async function notifyMe(title: string, a: Appointment) {

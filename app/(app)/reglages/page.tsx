@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Lock, Radio, Bell, BellOff, CheckCircle2, Mail, Send, Smartphone, Share, SquarePlus } from "lucide-react";
+import { parseSignature, signatureHtml, type Signature } from "@/lib/signatureHtml";
 import { api } from "@/lib/api";
 import BookingSettings from "@/components/BookingSettings";
 import { MiniLoader } from "@/components/LivLoader";
 
-type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string; mailAccount: string; sendAs: string };
+type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string; mailAccount: string; sendAs: string; signature: string };
 type Info = { settings: Settings; vapidPublicKey: string; pushReady: boolean; cronReady: boolean; mailFrom: string; googleConnected: boolean; mailAccounts: { id: string; email: string }[]; devices: number; calendars: { id: string; name: string }[]; writableCalendars: { id: string; name: string }[] };
 
 // Clé VAPID (base64url) vers le format attendu par le navigateur
@@ -151,6 +152,7 @@ export default function Reglages() {
         </label>
         <div className="row"><button disabled={busy === "email" || !info.mailFrom} onClick={() => test("email")}><Send size={16} /> Envoyer un mail d&apos;essai</button></div>
       </section>
+      <SignatureCard raw={s.signature} onSave={(sig) => save({ ...s, signature: JSON.stringify(sig) })} />
 
       <section className="settings-card">
         <div className="sc-head"><Lock size={18} /> <h3>Bloquer les créneaux des tâches</h3></div>
@@ -192,5 +194,29 @@ export default function Reglages() {
         </section>
       )}
     </div>
+  );
+}
+
+// Signature ajoutée aux mails envoyés (prospection, et clients si coché), avec aperçu
+function SignatureCard({ raw, onSave }: { raw: string; onSave: (s: Signature) => void }) {
+  const [sig, setSig] = useState<Signature>(() => parseSignature(raw));
+  const set = (patch: Partial<Signature>, now = false) => { const n = { ...sig, ...patch }; setSig(n); if (now) onSave(n); };
+  const field = (k: "name" | "title" | "phone" | "site" | "logo", label: string, ph: string) => (
+    <label className="field-line">{label}
+      <input placeholder={ph} value={sig[k]} onChange={(e) => set({ [k]: e.target.value })} onBlur={() => onSave(sig)} />
+    </label>
+  );
+  return (
+    <section className="settings-card">
+      <div className="sc-head"><Mail size={18} /> <h3>Signature des mails</h3></div>
+      <p className="muted">Ajoutée en bas des mails de prospection{sig.clients ? " et des mails envoyés aux clients" : ""}. Laisse le nom vide pour ne pas mettre de signature.</p>
+      {field("name", "Nom", "Ton prénom")}
+      {field("title", "Titre", "Maderino Production · Montage vidéo")}
+      {field("phone", "Téléphone", "06 12 34 56 78")}
+      {field("site", "Site", "maderinoprod.com")}
+      {field("logo", "Logo (lien d'une image)", "https://…/logo.png")}
+      <label className="check-line"><input type="checkbox" checked={sig.clients} onChange={(e) => set({ clients: e.target.checked }, true)} /> Aussi sur les mails aux clients (livraisons, rappels, RDV)</label>
+      {sig.name.trim() && <div style={{ background: "#fff", borderRadius: 12, padding: "4px 14px 14px", marginTop: 8 }} dangerouslySetInnerHTML={{ __html: signatureHtml(sig) }} />}
+    </section>
   );
 }

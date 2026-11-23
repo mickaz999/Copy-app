@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sendGmail } from "@/lib/google";
+import { signed } from "@/lib/signature";
 import { mailAccount } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   if (!acc) return NextResponse.json({ error: "Aucun compte Google avec l'envoi de mails : connecte-le dans Réglages." }, { status: 400 });
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${esc(String(body)).replace(/\n/g, "<br>")}</div>`;
   try {
-    await sendGmail(acc.id, dest, String(subject), html);
+    await sendGmail(acc.id, dest, String(subject), await signed(html, "prospect"));
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Envoi impossible" }, { status: 502 });
   }

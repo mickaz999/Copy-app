@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { parseSignature } from "@/lib/signature";
 import { getSettings, mailAccount, pushConfigured } from "@/lib/notify";
 import { GMAIL_SCOPE } from "@/lib/google";
 
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
     blockCalendar: String(b.blockCalendar ?? ""),
     mailAccount: String(b.mailAccount ?? ""),
     sendAs: String(b.sendAs ?? "").trim(),
+    signature: JSON.stringify(parseSignature(typeof b.signature === "string" ? b.signature : JSON.stringify(b.signature ?? {}))),
   };
   return NextResponse.json(await db.notifSettings.upsert({ where: { id: 1 }, create: data, update: data }));
 }
