@@ -11,16 +11,16 @@ type Quote = {
   id: string; number: string; date: string; validUntil: string; buyer: string; lines: string; note: string; discount: string;
   status: "draft" | "sent" | "accepted" | "refused"; signedName: string; invoiceId: string; error: string; sentAt: string | null;
 };
-type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; qty: Record<string, number>; extra: Line[]; note: string };
+type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; qty: Record<string, number>; price: Record<string, number>; extra: Line[]; note: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "", phone: "" };
 const STATUS = { draft: "Brouillon", sent: "Envoyé", accepted: "Validé", refused: "Refusé" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const ITEMS = CATALOGUE.flatMap((s) => s.items);
 const in30 = () => isoDay(new Date(Date.now() + 30 * 864e5));
-const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, qty: {}, extra: [], note: "" });
+const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, qty: {}, price: {}, extra: [], note: "" });
 const linesOf = (e: Edit): Line[] => [
-  ...ITEMS.filter((i) => (e.qty[i.id] ?? 0) > 0).map((i) => ({ label: i.name, qty: e.qty[i.id], unitPrice: i.prix })),
+  ...ITEMS.filter((i) => (e.qty[i.id] ?? 0) > 0).map((i) => ({ label: i.name, qty: e.qty[i.id], unitPrice: e.price[i.id] ?? i.prix })),
   ...e.extra.filter((l) => l.label.trim()),
 ];
 const sum = (lines: Line[]) => lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
@@ -72,12 +72,13 @@ export default function Devis() {
   // Reprend un devis existant dans le formulaire (prestations de la grille reconnues par leur nom)
   function open(q: Quote) {
     const qty: Record<string, number> = {};
+    const price: Record<string, number> = {};
     const extra: Line[] = [];
     for (const l of parse<Line[]>(q.lines, [])) {
-      const it = ITEMS.find((i) => i.name === l.label && i.prix === l.unitPrice);
-      if (it) qty[it.id] = (qty[it.id] ?? 0) + l.qty; else extra.push(l);
+      const it = ITEMS.find((i) => i.name === l.label && !qty[i.id]);
+      if (it) { qty[it.id] = l.qty; if (l.unitPrice !== it.prix) price[it.id] = l.unitPrice; } else extra.push(l);
     }
-    setEdit({ id: q.id, number: q.number, validUntil: q.validUntil.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(q.buyer, {}) }, qty, extra, note: q.note });
+    setEdit({ id: q.id, number: q.number, validUntil: q.validUntil.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(q.buyer, {}) }, qty, price, extra, note: q.note });
     setMsg("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -212,6 +213,7 @@ export default function Devis() {
         {CATALOGUE.map((s) => (
           <div key={s.section} style={{ marginTop: 14 }}>
             <div className="eyebrow">{s.section}</div>
+            {s.note && <div className="muted small" style={{ marginBottom: 4 }}>{s.note}</div>}
             <div className="card" style={{ cursor: "default", padding: 0 }}>
               {s.items.map((i) => {
                 const n = edit.qty[i.id] ?? 0;
@@ -226,8 +228,10 @@ export default function Devis() {
                         <button type="button" className="ghost small" onClick={() => setQty(i.id, n + 1)}><Plus size={12} /></button>
                       </span>
                     )}
-                    <span className="muted small" style={{ minWidth: 80, textAlign: "right" }}>{i.duree}</span>
-                    <b style={{ minWidth: 70, textAlign: "right", color: "var(--accent)" }}>{eur(i.prix * (n || 1))}</b>
+                    <span className="muted small" style={{ minWidth: 60, textAlign: "right" }}>{i.duree}</span>
+                    {n > 0
+                      ? <input type="number" min={0} step="any" title="Prix unitaire HT" style={{ width: 90 }} onClick={(e) => e.stopPropagation()} value={edit.price[i.id] ?? i.prix} onChange={(e) => setEdit({ ...edit, price: { ...edit.price, [i.id]: Number(e.target.value) } })} />
+                      : <b style={{ minWidth: 70, textAlign: "right", color: "var(--accent)" }}>{i.prix ? `${i.from ? "dès " : ""}${eur(i.prix)}` : "sur devis"}</b>}
                   </div>
                 );
               })}
