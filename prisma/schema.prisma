@@ -136,6 +136,7 @@ model NotifSettings {
   liveCategory   String  @default("Gaming")
   blockCalendar  String  @default("")  // agenda Google où bloquer les tâches avec horaire
   mailAccount    String  @default("")  // compte Google (GoogleAccount.id) qui envoie les mails ; vide = le premier connecté
+  signature      String  @default("{}") // signature des mails : JSON { name, title, phone, site, logo, clients }
   sendAs         String  @default("")  // adresse d'expéditeur pour tous les mails (alias « Envoyer en tant que » de Gmail) ; vide = adresse du compte
 }
 
