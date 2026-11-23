@@ -1,7 +1,6 @@
 import { dropExpiry, expiryOf } from "@/lib/frameio";
 import { sendGmail } from "@/lib/google";
 import { mailAccount } from "@/lib/notify";
-import { signed } from "@/lib/signature";
 import { PUBLIC_URL, slugify } from "@/lib/site";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
@@ -69,8 +68,7 @@ export async function notifyClient(kind: "delivery" | "drop", id: string) {
   const [subject, html] = kind === "delivery"
     ? [`Nouvelle livraison · ${item.title}`, mailHtml("Ta livraison est en ligne", [`<b>${t}</b> t'attend sur ton espace.`, "Tu peux la regarder, laisser tes retours et la valider."], "Voir ma livraison", spaceUrl(c))]
     : [`Envoie-moi tes fichiers · ${item.title}`, mailHtml("Tu peux déposer tes fichiers", [`Un espace de dépôt <b>${t}</b> est ouvert pour toi.`, "Dépose tes rushs directement depuis ton espace, ils m'arrivent tout de suite."], "Déposer mes fichiers", spaceUrl(c))];
-  const body = await signed(html, "client");
-  for (const e of to) await sendGmail(acc.id, e, subject, body);
+  for (const e of to) await sendGmail(acc.id, e, subject, html);
   return to.length;
 }
 
