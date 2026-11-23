@@ -215,6 +215,7 @@ function SignatureCard({ raw, onSave }: { raw: string; onSave: (s: Signature) =>
       {field("phone", "Téléphone", "06 12 34 56 78")}
       {field("site", "Site", "maderinoprod.com")}
       {field("logo", "Logo (lien d'une image)", "https://…/logo.png")}
+      <label className="check-line"><input type="checkbox" checked={sig.wordmark} onChange={(e) => set({ wordmark: e.target.checked }, true)} /> Ajouter le logo « maderino production. » en dessous</label>
       {sig.name.trim() && <div style={{ background: "#fff", borderRadius: 12, padding: "4px 14px 14px", marginTop: 8 }} dangerouslySetInnerHTML={{ __html: signatureHtml(sig) }} />}
     </section>
   );
