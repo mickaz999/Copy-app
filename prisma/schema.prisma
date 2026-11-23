@@ -275,6 +275,7 @@ model Client {
   emails    String   @default("[]") // JSON
   key       String   @unique // clé ajoutée aux liens (?c=…) pour reconnaître le client sur un nouvel appareil
   note      String   @default("")
+  billing   String   @default("{}") // coordonnées de facturation JSON { siren, address, zip, city, vat, email, phone }, reprises dans devis et factures
   createdAt DateTime @default(now())
 }
 

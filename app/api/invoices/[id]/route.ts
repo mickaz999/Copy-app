@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { invoiceData } from "@/lib/invoices";
 import { totals } from "@/lib/cii";
 import { clean } from "../clean";
+import { rememberBuyer } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json(await db.invoice.update({ where: { id: inv.id }, data: { deposited: body.deposited } }));
   // Une facture émise ne se modifie plus (obligation légale) : il faudrait un avoir
   if (inv.status !== "draft") return NextResponse.json({ error: "Facture déjà émise : elle ne peut plus être modifiée." }, { status: 400 });
+  if (body.buyer) await rememberBuyer(body.buyer);
   return NextResponse.json(await db.invoice.update({ where: { id: inv.id }, data: clean(body) }));
 }
 

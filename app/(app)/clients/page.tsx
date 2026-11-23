@@ -4,7 +4,8 @@ import { Copy, ExternalLink, Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 
 type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
-type C = { space: string; id: string; name: string; emails: string[]; note: string; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
+type Billing = { siren: string; address: string; zip: string; city: string; vat: string; email: string; phone: string };
+type C = { space: string; id: string; name: string; emails: string[]; note: string; billing: Billing; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
 
 export default function Clients() {
   const [list, setList] = useState<C[]>([]);
@@ -14,7 +15,7 @@ export default function Clients() {
   const load = () => api<C[]>("clients").then(setList).catch(() => {});
   useEffect(() => { load(); }, []);
 
-  const save = async (c: C, patch: Partial<C>) => { const n = { ...c, ...patch }; setList((l) => l.map((x) => (x.id === c.id ? n : x))); await api("clients", "POST", { id: c.id, emails: n.emails, note: n.note }); };
+  const save = async (c: C, patch: Partial<C>) => { const n = { ...c, ...patch }; setList((l) => l.map((x) => (x.id === c.id ? n : x))); await api("clients", "POST", { id: c.id, emails: n.emails, note: n.note, billing: n.billing }); };
 
   return (
     <div className="content narrow">
@@ -47,6 +48,12 @@ export default function Clients() {
                 <input type="email" placeholder="ajouter un mail" value={mail} onChange={(e) => setMail(e.target.value)} />
                 <button className="ghost"><Plus size={15} /></button>
               </form>
+              <div className="muted small"><b>Coordonnées de facturation</b> (reprises dans les devis et factures)</div>
+              <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                {([["address", "Adresse", 3], ["zip", "Code postal", 1], ["city", "Ville", 2], ["siren", "SIREN (vide si particulier)", 2], ["vat", "N° TVA", 2], ["email", "Mail de facturation", 2], ["phone", "Téléphone", 2]] as const).map(([k, label, flex]) => (
+                  <input key={k} style={{ flex }} placeholder={label} defaultValue={c.billing?.[k] ?? ""} onBlur={(e) => e.target.value !== (c.billing?.[k] ?? "") && save(c, { billing: { ...c.billing, [k]: e.target.value } })} />
+                ))}
+              </div>
               <textarea placeholder="Note (contact, habitudes, tarifs…)" defaultValue={c.note} onBlur={(e) => e.target.value !== c.note && save(c, { note: e.target.value })} />
               {c.drops.length > 0 && <div className="muted small"><b>Dépôts de rushs</b>{c.drops.map((d) => <div key={d.id}>· {d.title} — {d.files} fichier{d.files > 1 ? "s" : ""} reçu{d.files > 1 ? "s" : ""}{d.active ? "" : " (fermé)"}</div>)}</div>}
               {c.deliveries.length > 0 && <div className="muted small"><b>Livraisons</b>{c.deliveries.map((d) => <div key={d.id}>· {d.title} — {new Date(d.createdAt).toLocaleDateString("fr-FR")}{d.approvedAt ? " ✓ validée" : ""}</div>)}</div>}

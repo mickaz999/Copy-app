@@ -10,6 +10,7 @@ export type Party = {
   country?: string; // code ISO, FR par défaut
   email?: string;
   vat?: string; // n° de TVA intracommunautaire (facultatif)
+  phone?: string;
 };
 
 export type Line = { label: string; qty: number; unitPrice: number };

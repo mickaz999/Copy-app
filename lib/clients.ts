@@ -8,6 +8,32 @@ import { db } from "@/lib/db";
 export const nameKey = (n: string) => n.trim().toLowerCase();
 export const emailsOf = (c: { emails: string }) => { try { return JSON.parse(c.emails || "[]") as string[]; } catch { return []; } };
 
+export type Billing = { siren: string; address: string; zip: string; city: string; vat: string; email: string; phone: string };
+const BILLING_KEYS = ["siren", "address", "zip", "city", "vat", "email", "phone"] as const;
+export const billingOf = (c: { billing: string }): Billing => {
+  let b: Partial<Billing> = {};
+  try { b = JSON.parse(c.billing || "{}"); } catch {}
+  return { siren: "", address: "", zip: "", city: "", vat: "", email: "", phone: "", ...b };
+};
+export const cleanBilling = (b: any): Billing => Object.fromEntries(BILLING_KEYS.map((k) => [k, String(b?.[k] ?? "").trim().slice(0, 300)])) as Billing;
+
+// Garde les coordonnées du client d'un devis ou d'une facture dans sa fiche (les champs remplis remplacent les anciens)
+export async function rememberBuyer(buyer: unknown) {
+  try {
+    const b = typeof buyer === "string" ? JSON.parse(buyer) : buyer;
+    if (!b?.name || !String(b.name).trim()) return;
+    const c = await clientFor(String(b.name));
+    if (!c) return;
+    const next = cleanBilling(b);
+    const old = billingOf(c);
+    const merged = Object.fromEntries(BILLING_KEYS.map((k) => [k, next[k] || old[k]]));
+    const mail = next.email.toLowerCase();
+    const emails = emailsOf(c);
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
+    await db.client.update({ where: { id: c.id }, data: { billing: JSON.stringify(merged), ...(valid && !emails.includes(mail) ? { emails: JSON.stringify([...emails, mail]) } : {}) } });
+  } catch {}
+}
+
 // Fiche client (créée au besoin) pour un nom de client de livraison
 export async function clientFor(name: string) {
   const k = nameKey(name);

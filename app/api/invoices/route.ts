@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoiceSettings, nextNumber } from "@/lib/invoices";
 import { clean } from "./clean";
+import { rememberBuyer } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,6 @@ export async function POST(req: Request) {
   const inv = await db.invoice.create({
     data: { dueDate: new Date(date.getTime() + s.dueDays * 864e5), ...data, date, number: await nextNumber(date, data.kind === "credit" ? "A" : "F") },
   });
+  if (body.buyer) await rememberBuyer(body.buyer);
   return NextResponse.json(inv);
 }
