@@ -411,6 +411,28 @@ model Invoice {
   updatedAt  DateTime @updatedAt
 }
 
+// Devis : envoyé au client, puis validé (devis signé glissé dans l'app) → facture brouillon
+model Quote {
+  id         String    @id @default(cuid())
+  number     String    @unique // D-2026-001
+  date       DateTime
+  validUntil DateTime
+  buyer      String    @default("{}") // JSON { name, siren, address, zip, city, email, vat }
+  lines      String    @default("[]") // JSON [{ label, qty, unitPrice }]
+  note       String    @default("")
+  discount   String    @default("")
+  status     String    @default("draft") // draft | sent | accepted | refused
+  signed     Bytes? // devis signé renvoyé par le client
+  signedName String    @default("")
+  signedType String    @default("")
+  invoiceId  String    @default("") // facture créée à la validation
+  error      String    @default("")
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
 // Mes infos d'émetteur, reprises sur chaque facture
 model InvoiceSettings {
   id       Int    @id @default(1)
