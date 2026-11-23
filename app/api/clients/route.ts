@@ -31,7 +31,7 @@ export async function GET() {
   };
   const who = (x: { buyer: string; client?: string }) => nameKey(parse<{ name?: string }>(x.buyer, {}).name || x.client || "");
   for (const n of Array.from(new Set([...invoices, ...quotes].map((x) => parse<{ name?: string }>(x.buyer, {}).name?.trim() ?? "").filter(Boolean)))) await clientFor(n).catch(() => {});
-  const clients = await db.client.findMany({ orderBy: { name: "asc" } });
+  const clients = await db.client.findMany({ where: { hidden: false }, orderBy: { name: "asc" } });
   return NextResponse.json(clients.map((c) => ({ ...c, space: spaceUrl(c), emails: emailsOf(c), billing: billingOf(c),
     quotes: quotes.filter((q) => who(q) === c.nameKey).map((q) => ({ id: q.id, number: q.number, date: q.date, status: q.status, total: ttc(q), invoiceId: q.invoiceId, signed: !!q.signedName })),
     invoices: invoices.filter((i) => who(i) === c.nameKey).map((i) => ({ id: i.id, number: i.number, date: i.date, status: i.status, kind: i.kind, total: due(i) })), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
@@ -45,12 +45,13 @@ export async function POST(req: Request) {
     try { return NextResponse.json({ sent: await notifyClient(b.kind === "drop" ? "drop" : "delivery", String(b.id)) }); }
     catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 400 }); }
   }
-  if (b.id && b.delete) { await db.client.delete({ where: { id: String(b.id) } }); return NextResponse.json({ ok: true }); }
+  if (b.id && b.delete) { await db.client.update({ where: { id: String(b.id) }, data: { hidden: true } }); return NextResponse.json({ ok: true }); }
   if (b.id) {
     const emails = Array.from(new Set((Array.isArray(b.emails) ? b.emails : []).map((e: unknown) => String(e).trim().toLowerCase()).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))));
     return NextResponse.json(await db.client.update({ where: { id: String(b.id) }, data: { emails: JSON.stringify(emails), note: String(b.note ?? "").slice(0, 2000), ...(b.billing ? { billing: JSON.stringify(cleanBilling(b.billing)) } : {}) } }));
   }
   const c = await clientFor(String(b.name ?? "").slice(0, 200));
+  if (c?.hidden) return NextResponse.json(await db.client.update({ where: { id: c.id }, data: { hidden: false } }));
   if (!c) return NextResponse.json({ error: "Nom du client manquant." }, { status: 400 });
   return NextResponse.json(c);
 }
