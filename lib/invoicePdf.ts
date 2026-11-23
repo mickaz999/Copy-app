@@ -19,10 +19,18 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     page.drawText(txt, { x: o.right ? x - f.widthOfTextAtSize(txt, size) : x, y, size, font: f, color: o.color ?? rgb(0, 0, 0) });
   };
 
+  // Logo en haut à droite (PNG ou JPG) ; s'il ne se charge pas, la facture part quand même
+  let top = 780;
+  const img = inv.logo ? await loadImage(doc, inv.logo) : null;
+  if (img) {
+    const k = Math.min(180 / img.width, 45 / img.height);
+    page.drawImage(img, { x: 545 - img.width * k, y: 800 - img.height * k, width: img.width * k, height: img.height * k });
+    top = Math.min(780, 800 - img.height * k - 18);
+  }
   t("FACTURE", 50, 780, { size: 22, b: true });
   t(`N° ${inv.number}`, 50, 758, { size: 11 });
-  t(`Date : ${fr(inv.date)}`, 545, 780, { right: true });
-  t(`Échéance : ${fr(inv.dueDate)}`, 545, 765, { right: true });
+  t(`Date : ${fr(inv.date)}`, 545, top, { right: true });
+  t(`Échéance : ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
 
   const block = (title: string, p: InvoiceData["seller"], x: number) => {
     let y = 710;
@@ -58,4 +66,15 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
   ]) { t(l, 50, fy, { size: 8, color: grey }); fy -= 12; }
 
   return doc.save();
+}
+
+async function loadImage(doc: PDFDocument, url: string) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const b = new Uint8Array(await res.arrayBuffer());
+    if (b[0] === 0x89 && b[1] === 0x50) return await doc.embedPng(b);
+    if (b[0] === 0xff && b[1] === 0xd8) return await doc.embedJpg(b);
+  } catch {}
+  return null;
 }

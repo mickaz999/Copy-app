@@ -420,4 +420,5 @@ model InvoiceSettings {
   vatRate  Float  @default(0) // 0 = franchise en base de TVA
   vatNote  String @default("TVA non applicable, art. 293 B du CGI")
   dueDays  Int    @default(30)
+  logo     String @default("https://client.maderinoprod.com/icons/logo-mail.png") // PNG ou JPG en haut de la facture ; vide = pas de logo
 }

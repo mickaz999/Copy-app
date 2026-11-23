@@ -9,7 +9,7 @@ type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
   note: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
-type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number };
+type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string };
 type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; status?: Inv["status"]; error?: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
@@ -186,6 +186,8 @@ export default function Factures() {
               <label>TVA (%)<input type="number" step="0.1" value={seller.vatRate} onChange={(e) => setSeller({ ...seller, vatRate: Number(e.target.value) })} /></label>
               <label>Délai de paiement (jours)<input type="number" value={seller.dueDays} onChange={(e) => setSeller({ ...seller, dueDays: Number(e.target.value) })} /></label>
             </div>
+            <label>Logo (lien d&apos;une image PNG ou JPG, vide = pas de logo)<input value={seller.logo} onChange={(e) => setSeller({ ...seller, logo: e.target.value })} /></label>
+            {seller.logo && <img src={seller.logo} alt="" style={{ maxHeight: 40, maxWidth: 200, alignSelf: "flex-start" }} />}
             {seller.vatRate === 0 && <label>Mention TVA<input value={seller.vatNote} onChange={(e) => setSeller({ ...seller, vatNote: e.target.value })} /></label>}
             <div className="row"><span style={{ flex: 1 }} /><button className="primary" onClick={saveSettings}>Enregistrer</button></div>
           </div>

@@ -31,6 +31,7 @@ export async function invoiceData(id: string): Promise<InvoiceData> {
     vatNote: s.vatNote,
     iban: s.iban,
     note: inv.note,
+    logo: s.logo,
   };
 }
 

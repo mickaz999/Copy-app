@@ -25,6 +25,7 @@ export type InvoiceData = {
   vatNote: string; // mention d'exonération, ex. « TVA non applicable, art. 293 B du CGI »
   iban?: string;
   note?: string;
+  logo?: string; // URL d'image, utilisée seulement sur le PDF
 };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
