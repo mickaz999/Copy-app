@@ -422,6 +422,7 @@ model Quote {
   lines      String    @default("[]") // JSON [{ label, qty, unitPrice }]
   note       String    @default("")
   discount   String    @default("")
+  depositPct Int       @default(50) // acompte demandé à la validation (%), 0 = pas d'acompte
   status     String    @default("draft") // draft | sent | accepted | refused
   signed     Bytes? // devis signé renvoyé par le client
   signedName String    @default("")

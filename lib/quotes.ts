@@ -4,6 +4,7 @@ import { invoicePdf } from "@/lib/invoicePdf";
 import { sendGmail } from "@/lib/google";
 import { mailAccount } from "@/lib/notify";
 import { invoiceSettings, nextNumber } from "@/lib/invoices";
+import { docMailHtml } from "@/lib/mailTemplate";
 
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -19,6 +20,7 @@ export async function quoteData(id: string): Promise<InvoiceData> {
   const [q, s] = await Promise.all([db.quote.findUniqueOrThrow({ where: { id } }), invoiceSettings()]);
   return {
     quote: true,
+    depositPct: q.depositPct,
     number: q.number,
     date: day(q.date),
     dueDate: day(q.validUntil),
@@ -49,8 +51,38 @@ export async function sendQuote(id: string, opts: { email: boolean }) {
   if (opts.email && d.buyer.email) {
     const acc = await mailAccount();
     if (!acc) throw new Error("Aucun compte Gmail connecté pour envoyer le devis.");
-    const amount = totals(d).ttc.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-    const html = `<p>Bonjour,</p><p>Tu trouveras ci-joint le devis <b>${d.number}</b> d'un montant de <b>${amount}</b>, valable jusqu'au ${d.dueDate.split("-").reverse().join("/")}.</p><p>Pour le valider, renvoie-le-moi signé avec la mention « Bon pour accord ».</p><p>${d.seller.name}</p>`;
+    const ttc = totals(d).ttc;
+    const pct = d.depositPct ?? 0;
+    const dep = (ttc * pct) / 100;
+    const money = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+    const until = d.dueDate.split("-").reverse().join("/");
+    const first = (d.buyer.name ?? "").trim();
+    const html = docMailHtml({
+      logo: d.logo,
+      eyebrow: `Devis ${d.number}`,
+      title: "Ton projet vidéo est prêt à démarrer 🎬",
+      intro: [
+        `Bonjour${first ? ` ${first.replace(/[<>&]/g, "")}` : ""},`,
+        "Merci pour ta confiance et pour notre échange ! Comme promis, voici le devis pour ton projet. On a hâte de s'y mettre avec toi.",
+      ],
+      amountLabel: "Montant du devis",
+      amount: money(ttc),
+      rows: [
+        ...(pct > 0 ? ([[`Acompte à la validation (${pct} %)`, money(dep)], ["Solde à la livraison", money(ttc - dep)]] as [string, string][]) : []),
+        ["Valable jusqu'au", until],
+        ...(d.vatRate === 0 ? ([["TVA", "non applicable"]] as [string, string][]) : []),
+      ],
+      steps: {
+        title: "Pour lancer le projet",
+        items: [
+          "Signe le devis avec la mention <b>« Bon pour accord »</b>",
+          "Renvoie-le-nous en réponse à ce mail",
+          ...(pct > 0 ? [`Règle l'acompte de <b>${pct} % (${money(dep)})</b> : le devis est validé à réception, et on bloque ta date`] : ["On cale ensemble la date et on lance le projet"]),
+        ],
+      },
+      outro: ["Une question, une envie de modifier quelque chose ? Réponds simplement à ce mail, on ajuste ensemble."],
+      signature: "Coralie & Mickaël · Maderino Production",
+    });
     await sendGmail(acc.id, d.buyer.email, `Devis ${d.number}`, html, false, "", [{ name: `Devis ${d.number}.pdf`, type: "application/pdf", data: await invoicePdf(d) }]);
     mailed = true;
   }

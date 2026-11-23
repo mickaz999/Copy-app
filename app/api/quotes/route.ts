@@ -6,7 +6,7 @@ import { rememberBuyer } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
-const LIST = { id: true, number: true, date: true, validUntil: true, buyer: true, lines: true, note: true, discount: true, status: true, signedName: true, invoiceId: true, error: true, sentAt: true, acceptedAt: true };
+const LIST = { id: true, number: true, date: true, validUntil: true, buyer: true, lines: true, note: true, discount: true, depositPct: true, status: true, signedName: true, invoiceId: true, error: true, sentAt: true, acceptedAt: true };
 
 export async function GET() {
   return NextResponse.json(await db.quote.findMany({ orderBy: { number: "desc" }, select: LIST }));
