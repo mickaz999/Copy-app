@@ -84,6 +84,14 @@ export default function Factures() {
     return null;
   };
   // « Faire le solde » depuis un acompte : nouvelle facture de solde, même client, tous ses acomptes non soldés cochés
+  async function resend(i: Inv) {
+    const to = parse<Buyer>(i.buyer, EMPTY_BUYER).email;
+    if (!confirm(`Renvoyer ${KIND[i.kind || "standard"].toLowerCase()} ${i.number} à ${to} ?`)) return;
+    const res = await fetch(`/api/invoices/${i.id}/resend`, { method: "POST" });
+    const b = await res.json().catch(() => ({}));
+    alert(res.ok ? `Mail renvoyé à ${b.to}.` : b.error || "Envoi impossible.");
+    load();
+  }
   function makeCredit(orig: Inv) {
     if (!confirm(`Créer un avoir pour annuler la facture ${orig.number} ? Tu pourras ajuster le montant avant de le générer (avoir partiel).`)) return;
     const d = isoDay(new Date());
@@ -205,6 +213,7 @@ export default function Factures() {
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
+                  {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).email && <button className="ghost small" title="Renvoyer le mail au client" onClick={() => resend(i)}><Send size={14} /> Renvoyer</button>}
                   {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>{i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
                   {i.status !== "draft" && i.kind !== "credit" && <button className="ghost small" onClick={() => makeCredit(i)}>Faire un avoir</button>}
                   {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}>Faire le solde</button>}
