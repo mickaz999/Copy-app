@@ -2213,3 +2213,4 @@ tr.inv-cancelled td:not(:last-child) { opacity: .5; }
 tr.inv-cancelled td:first-child { text-decoration: line-through; }
 tr.inv-credit td:first-child { padding-left: 26px; position: relative; }
 tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left: 10px; color: var(--muted); }
+.modal-msg { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13px; }
