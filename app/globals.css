@@ -2208,3 +2208,8 @@ button.primary:hover { background: #f26500 !important; }
 .client-doc { display: grid; grid-template-columns: 1.4fr 1fr auto auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 10px; text-decoration: none; color: var(--text); font-size: 13px; }
 .client-doc:hover { background: var(--accent-soft); }
 .client-doc b { text-align: right; min-width: 80px; }
+/* Facture annulée par un avoir : grisée, et l'avoir rangé juste dessous */
+tr.inv-cancelled td:not(:last-child) { opacity: .5; }
+tr.inv-cancelled td:first-child { text-decoration: line-through; }
+tr.inv-credit td:first-child { padding-left: 26px; position: relative; }
+tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left: 10px; color: var(--muted); }
