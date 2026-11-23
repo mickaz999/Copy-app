@@ -26,16 +26,23 @@ export type InvoiceData = {
   iban?: string;
   note?: string;
   logo?: string; // URL d'image, utilisée seulement sur le PDF
+  discount?: Discount; // remise sur le total
 };
+
+export type Discount = { type: "eur" | "pct"; value: number; label: string };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const d8 = (iso: string) => iso.slice(0, 10).replace(/-/g, "");
 const m = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
 
-export function totals(inv: Pick<InvoiceData, "lines" | "vatRate">) {
-  const ht = inv.lines.reduce((s, l) => s + Math.round(l.qty * l.unitPrice * 100) / 100, 0);
+// gross = total des lignes, remise = montant de la remise, ht = base après remise
+export function totals(inv: Pick<InvoiceData, "lines" | "vatRate" | "discount">) {
+  const gross = inv.lines.reduce((s, l) => s + Math.round(l.qty * l.unitPrice * 100) / 100, 0);
+  const d = inv.discount;
+  const remise = !d || !(d.value > 0) ? 0 : Math.min(gross, d.type === "pct" ? Math.round(gross * d.value) / 100 : Math.round(d.value * 100) / 100);
+  const ht = Math.round((gross - remise) * 100) / 100;
   const tva = Math.round(ht * inv.vatRate) / 100;
-  return { ht, tva, ttc: ht + tva };
+  return { gross, remise, ht, tva, ttc: ht + tva };
 }
 
 function party(tag: string, p: Party, fiscal: boolean) {
@@ -55,7 +62,7 @@ function party(tag: string, p: Party, fiscal: boolean) {
 }
 
 export function buildCii(inv: InvoiceData): string {
-  const { ht, tva, ttc } = totals(inv);
+  const { gross, remise, ht, tva, ttc } = totals(inv);
   const cat = inv.vatRate > 0 ? "S" : "E"; // E = exonéré (franchise en base)
   const exempt = cat === "E" ? `
       <ram:ExemptionReason>${esc(inv.vatNote)}</ram:ExemptionReason>` : "";
@@ -111,9 +118,18 @@ export function buildCii(inv: InvoiceData): string {
       <ram:CategoryCode>${cat}</ram:CategoryCode>${exemptCode}
       <ram:RateApplicablePercent>${m(inv.vatRate)}</ram:RateApplicablePercent>
     </ram:ApplicableTradeTax>
-    <ram:SpecifiedTradePaymentTerms><ram:DueDateDateTime><udt:DateTimeString format="102">${d8(inv.dueDate)}</udt:DateTimeString></ram:DueDateDateTime></ram:SpecifiedTradePaymentTerms>
+${remise > 0 ? `    <ram:SpecifiedTradeAllowanceCharge>
+      <ram:ChargeIndicator><udt:Indicator>false</udt:Indicator></ram:ChargeIndicator>${inv.discount!.type === "pct" ? `
+      <ram:CalculationPercent>${m(inv.discount!.value)}</ram:CalculationPercent>
+      <ram:BasisAmount>${m(gross)}</ram:BasisAmount>` : ""}
+      <ram:ActualAmount>${m(remise)}</ram:ActualAmount>
+      <ram:Reason>${esc(inv.discount!.label || "Remise")}</ram:Reason>
+      <ram:CategoryTradeTax><ram:TypeCode>VAT</ram:TypeCode><ram:CategoryCode>${cat}</ram:CategoryCode><ram:RateApplicablePercent>${m(inv.vatRate)}</ram:RateApplicablePercent></ram:CategoryTradeTax>
+    </ram:SpecifiedTradeAllowanceCharge>
+` : ""}    <ram:SpecifiedTradePaymentTerms><ram:DueDateDateTime><udt:DateTimeString format="102">${d8(inv.dueDate)}</udt:DateTimeString></ram:DueDateDateTime></ram:SpecifiedTradePaymentTerms>
     <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-      <ram:LineTotalAmount>${m(ht)}</ram:LineTotalAmount>
+      <ram:LineTotalAmount>${m(gross)}</ram:LineTotalAmount>${remise > 0 ? `
+      <ram:AllowanceTotalAmount>${m(remise)}</ram:AllowanceTotalAmount>` : ""}
       <ram:TaxBasisTotalAmount>${m(ht)}</ram:TaxBasisTotalAmount>
       <ram:TaxTotalAmount currencyID="EUR">${m(tva)}</ram:TaxTotalAmount>
       <ram:GrandTotalAmount>${m(ttc)}</ram:GrandTotalAmount>

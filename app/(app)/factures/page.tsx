@@ -1,21 +1,24 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ExternalLink, FileCode, FileDown, Plus, Send, Settings2, Trash2 } from "lucide-react";
+import { ExternalLink, FileCode, FileDown, Package, Plus, Send, Settings2, Trash2 } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
+import { totals, type Discount } from "@/lib/cii";
 
 type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string };
 type Line = { label: string; qty: number; unitPrice: number };
 type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
-  note: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
+  note: string; discount: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
+type Product = { id: string; name: string; unitPrice: number };
 type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string; einvoice: boolean };
-type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; status?: Inv["status"]; error?: string };
+type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; status?: Inv["status"]; error?: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
 const STATUS = { draft: "Brouillon", sent: "Émise", paid: "Payée" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
-const totalOf = (lines: Line[], rate: number) => { const ht = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0); return { ht, ttc: ht * (1 + rate / 100) }; };
+const NO_DISCOUNT: Discount = { type: "eur", value: 0, label: "Remise" };
+const totalOf = (lines: Line[], rate: number, discount?: Discount) => totals({ lines, vatRate: rate, discount });
 
 export default function Factures() {
   const [list, setList] = useState<Inv[]>([]);
@@ -24,16 +27,32 @@ export default function Factures() {
   const [showSettings, setShowSettings] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [showProducts, setShowProducts] = useState(false);
+  const [newProduct, setNewProduct] = useState({ name: "", unitPrice: 0 });
 
   const load = () => api<{ invoices: Inv[]; settings: Seller }>("invoices").then((r) => { setList(r.invoices); setSeller(r.settings); });
-  useEffect(() => { load(); }, []);
+  const loadProducts = () => api<Product[]>("products").then(setProducts);
+  useEffect(() => { load(); loadProducts(); }, []);
 
   const rate = seller?.vatRate ?? 0;
-  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, status: i.status, error: i.error });
+  const discountOf = (i: Inv): Discount | undefined => (i.discount ? parse<Discount>(i.discount, NO_DISCOUNT) : undefined);
+  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, status: i.status, error: i.error });
   const fresh = () => {
     const d = new Date();
-    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "" });
+    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT } });
   };
+  // Produit du catalogue choisi dans une ligne : le prix se remplit tout seul
+  const pickLabel = (i: number, label: string) => {
+    const p = products.find((x) => x.name.toLowerCase() === label.trim().toLowerCase());
+    setLine(i, p ? { label: p.name, unitPrice: p.unitPrice } : { label });
+  };
+  async function addProduct() {
+    if (!newProduct.name.trim()) return;
+    await api("products", "POST", newProduct);
+    setNewProduct({ name: "", unitPrice: 0 });
+    loadProducts();
+  }
   // Client déjà facturé : on reprend ses infos (adresse, SIREN, mail)
   const known = Array.from(new Map(list.map((i) => parse<Buyer>(i.buyer, EMPTY_BUYER)).filter((b) => b.name).map((b) => [b.name.toLowerCase(), b])).values());
   const setBuyer = (b: Partial<Buyer>) => edit && setEdit({ ...edit, buyer: { ...edit.buyer, ...b } });
@@ -41,7 +60,7 @@ export default function Factures() {
 
   async function save(): Promise<string | undefined> {
     if (!edit) return;
-    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note };
+    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount };
     const r = edit.id ? await api<Inv>(`invoices/${edit.id}`, "PATCH", body) : await api<Inv>("invoices", "POST", body);
     await load();
     return r.id;
@@ -83,7 +102,7 @@ export default function Factures() {
     setShowSettings(false);
   }
 
-  const t = edit ? totalOf(edit.lines, rate) : { ht: 0, ttc: 0 };
+  const t = totalOf(edit?.lines ?? [], rate, edit?.discount);
   const ro = !!edit && !!edit.status && edit.status !== "draft";
   const sellerOk = seller && seller.name && /^\d{9}$/.test(seller.siren);
 
@@ -94,6 +113,7 @@ export default function Factures() {
       <div className="row">
         {seller?.einvoice && <a className="ghost" href="https://www.superpdp.tech" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Mon espace Super PDP</a>}
         <button className="ghost" onClick={() => setShowSettings(true)}><Settings2 size={16} /> Mes infos</button>
+        <button className="ghost" onClick={() => setShowProducts(true)}><Package size={16} /> Produits</button>
         <span style={{ flex: 1 }} />
         <button className="primary" onClick={fresh}><Plus size={16} /> Nouvelle facture</button>
       </div>
@@ -110,7 +130,7 @@ export default function Factures() {
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}</td>
                 <td><span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
-                <td className="num">{eur(totalOf(parse(i.lines, []), rate).ttc)}</td>
+                <td className="num">{eur(totalOf(parse(i.lines, []), rate, discountOf(i)).ttc)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
                   {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
@@ -152,16 +172,26 @@ export default function Factures() {
               <h4 style={{ margin: "8px 0 0" }}>Lignes</h4>
               {edit.lines.map((l, i) => (
                 <div className="row" key={i}>
-                  <input style={{ flex: 3 }} placeholder="Désignation (ex. Montage vidéo)" value={l.label} onChange={(e) => setLine(i, { label: e.target.value })} />
+                  <input style={{ flex: 3 }} list="products-list" placeholder="Produit ou désignation (ex. Montage vidéo)" value={l.label} onChange={(e) => pickLabel(i, e.target.value)} />
                   <input style={{ width: 70 }} type="number" step="0.5" title="Quantité" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} />
                   <input style={{ width: 110 }} type="number" step="0.01" title="Prix unitaire HT" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: Number(e.target.value) })} />
                   {!ro && <button className="ghost" title="Retirer" onClick={() => setEdit({ ...edit, lines: edit.lines.filter((_, j) => j !== i) })}><Trash2 size={14} /></button>}
                 </div>
               ))}
+              <datalist id="products-list">{products.map((p) => <option key={p.id} value={p.name}>{eur(p.unitPrice)}</option>)}</datalist>
               {!ro && <button className="ghost small" onClick={() => setEdit({ ...edit, lines: [...edit.lines, { label: "", qty: 1, unitPrice: 0 }] })}><Plus size={14} /> Ligne</button>}
+              <h4 style={{ margin: "8px 0 0" }}>Remise / promo</h4>
+              <div className="row">
+                <input style={{ flex: 2 }} placeholder="Libellé (ex. Promo de lancement)" value={edit.discount.label} onChange={(e) => setEdit({ ...edit, discount: { ...edit.discount, label: e.target.value } })} />
+                <input style={{ width: 110 }} type="number" step="0.01" min="0" title="Montant de la remise" value={edit.discount.value} onChange={(e) => setEdit({ ...edit, discount: { ...edit.discount, value: Number(e.target.value) } })} />
+                <select value={edit.discount.type} onChange={(e) => setEdit({ ...edit, discount: { ...edit.discount, type: e.target.value as Discount["type"] } })}>
+                  <option value="eur">€</option>
+                  <option value="pct">%</option>
+                </select>
+              </div>
               <label>Note (facultatif)<input value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
             </fieldset>
-            <div className="muted">Total HT {eur(t.ht)} · TVA {rate} % · <b>Total TTC {eur(t.ttc)}</b>{rate === 0 && ` · ${seller?.vatNote}`}</div>
+            <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · <b>Total TTC {eur(t.ttc)}</b>{rate === 0 && ` · ${seller?.vatNote}`}</div>
             <div className="row">
               {edit.id && !ro && <button className="neg" onClick={remove}>Supprimer</button>}
               {edit.id && <a className="ghost" href={`/api/invoices/${edit.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={16} /> Aperçu PDF</a>}
@@ -170,6 +200,29 @@ export default function Factures() {
               {!ro && <button onClick={async () => { const id = await save(); if (id && !edit.id) setEdit({ ...edit, id }); setMsg("Brouillon enregistré"); }}>Enregistrer le brouillon</button>}
               {!ro && <button className="primary" disabled={busy} onClick={emit}><Send size={16} /> {busy ? "Génération…" : "Générer et envoyer"}</button>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showProducts && (
+        <div className="overlay" onClick={() => setShowProducts(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: 0 }}>Mes produits et prestations</h3>
+            <span className="muted small">Tape leur nom dans une ligne de facture : le prix se remplit tout seul.</span>
+            {products.map((p) => (
+              <div className="row" key={p.id}>
+                <input style={{ flex: 3 }} defaultValue={p.name} onBlur={async (e) => { if (e.target.value.trim() && e.target.value !== p.name) { await api(`products/${p.id}`, "PATCH", { name: e.target.value }); loadProducts(); } }} />
+                <input style={{ width: 110 }} type="number" step="0.01" title="Prix unitaire HT" defaultValue={p.unitPrice} onBlur={async (e) => { if (Number(e.target.value) !== p.unitPrice) { await api(`products/${p.id}`, "PATCH", { unitPrice: Number(e.target.value) }); loadProducts(); } }} />
+                <button className="ghost" title="Supprimer" onClick={async () => { if (confirm(`Supprimer « ${p.name} » ?`)) { await api(`products/${p.id}`, "DELETE"); loadProducts(); } }}><Trash2 size={14} /></button>
+              </div>
+            ))}
+            {!products.length && <span className="muted">Aucun produit pour l&apos;instant.</span>}
+            <div className="row">
+              <input style={{ flex: 3 }} placeholder="Nouveau produit (ex. Montage court)" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") addProduct(); }} />
+              <input style={{ width: 110 }} type="number" step="0.01" title="Prix unitaire HT" value={newProduct.unitPrice} onChange={(e) => setNewProduct({ ...newProduct, unitPrice: Number(e.target.value) })} />
+              <button className="primary" onClick={addProduct}><Plus size={14} /> Ajouter</button>
+            </div>
+            <div className="row"><span style={{ flex: 1 }} /><button onClick={() => setShowProducts(false)}>Fermer</button></div>
           </div>
         </div>
       )}

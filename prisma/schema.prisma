@@ -398,6 +398,7 @@ model Invoice {
   buyer      String   @default("{}") // JSON { name, siren, address, zip, city, email, vat }
   lines      String   @default("[]") // JSON [{ label, qty, unitPrice }]
   note       String   @default("")
+  discount   String   @default("") // remise JSON { type: "eur" | "pct", value, label } ; vide = pas de remise
   status     String   @default("draft") // draft | sent | paid
   deposited  Boolean  @default(false) // fichier officiel déposé sur l'espace Super PDP
   error      String   @default("") // dernière erreur (validation, envoi)
@@ -422,4 +423,12 @@ model InvoiceSettings {
   dueDays  Int    @default(30)
   einvoice Boolean @default(false) // facturation électronique (fichier officiel + dépôt Super PDP) ; off = PDF par mail seulement
   logo     String @default("https://client.maderinoprod.com/icons/logo-facture.png") // PNG ou JPG en haut de la facture ; vide = pas de logo
+}
+
+// Catalogue de produits / prestations réutilisables dans les lignes de facture
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  unitPrice Float    @default(0)
+  createdAt DateTime @default(now())
 }

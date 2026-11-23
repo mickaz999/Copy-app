@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { InvoiceData, Line, Party, buildCii, totals } from "@/lib/cii";
+import { Discount, InvoiceData, Line, Party, buildCii, totals } from "@/lib/cii";
 import { invoicePdf } from "@/lib/invoicePdf";
 import { validateInvoice } from "@/lib/superpdp";
 import { sendGmail } from "@/lib/google";
@@ -31,6 +31,7 @@ export async function invoiceData(id: string): Promise<InvoiceData> {
     vatNote: s.vatNote,
     iban: s.iban,
     note: inv.note,
+    discount: inv.discount ? parse<Discount | undefined>(inv.discount, undefined) : undefined,
     logo: s.logo,
   };
 }

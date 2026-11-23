@@ -49,8 +49,13 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     t(l.label.slice(0, 60), 56, y); t(String(l.qty), 370, y, { right: true }); t(eur(l.unitPrice), 460, y, { right: true }); t(eur(l.qty * l.unitPrice), 540, y, { right: true });
     y -= 18;
   }
-  const { ht, tva, ttc } = totals(inv);
+  const { gross, remise, ht, tva, ttc } = totals(inv);
   y -= 10;
+  if (remise > 0) {
+    const d = inv.discount!;
+    t("Sous-total HT", 460, y, { right: true }); t(eur(gross), 540, y, { right: true }); y -= 15;
+    t(`${d.label || "Remise"}${d.type === "pct" ? ` (${String(d.value).replace(".", ",")} %)` : ""}`, 460, y, { right: true, color: rgb(0.85, 0.35, 0.05) }); t(`- ${eur(remise)}`, 540, y, { right: true, color: rgb(0.85, 0.35, 0.05) }); y -= 15;
+  }
   t("Total HT", 460, y, { right: true }); t(eur(ht), 540, y, { right: true }); y -= 15;
   t(`TVA (${inv.vatRate} %)`, 460, y, { right: true }); t(eur(tva), 540, y, { right: true }); y -= 18;
   t("Total TTC", 460, y, { right: true, b: true, size: 12 }); t(eur(ttc), 540, y, { right: true, b: true, size: 12 });
