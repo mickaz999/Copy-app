@@ -5,7 +5,7 @@ import { Check, FileDown, Minus, Paperclip, Plus, Save, Send, Trash2, Upload, X 
 import { api, eur, isoDay } from "@/lib/api";
 import { CATALOGUE } from "@/lib/pricing";
 
-type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string };
+type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; phone: string };
 type Line = { label: string; qty: number; unitPrice: number };
 type Quote = {
   id: string; number: string; date: string; validUntil: string; buyer: string; lines: string; note: string; discount: string;
@@ -13,7 +13,7 @@ type Quote = {
 };
 type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; qty: Record<string, number>; extra: Line[]; note: string };
 
-const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
+const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "", phone: "" };
 const STATUS = { draft: "Brouillon", sent: "Envoyé", accepted: "Validé", refused: "Refusé" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const ITEMS = CATALOGUE.flatMap((s) => s.items);
@@ -35,7 +35,8 @@ export default function Devis() {
   const [drag, setDrag] = useState<string | null>(null);
 
   const load = () => api<Quote[]>("quotes").then(setList);
-  useEffect(() => { load(); }, []);
+  const [saved, setSaved] = useState<Buyer[]>([]);
+  useEffect(() => { load(); api<Buyer[]>("clients/billing").then(setSaved).catch(() => {}); }, []);
 
   const lines = linesOf(edit);
   const total = sum(lines);
@@ -169,8 +170,10 @@ export default function Devis() {
       <fieldset disabled={locked || busy} style={{ border: 0, padding: 0, margin: 0 }}>
         <div className="card" style={{ cursor: "default" }}>
           <div className="row">
-            <input style={{ flex: 2 }} placeholder="Client (nom ou société)" value={edit.buyer.name} onChange={(e) => setBuyer({ name: e.target.value })} />
+            <input style={{ flex: 2 }} list="saved-clients" placeholder="Client (nom ou société)" value={edit.buyer.name} onChange={(e) => { const k = saved.find((b) => b.name.toLowerCase() === e.target.value.toLowerCase()); setBuyer(k ? { ...EMPTY_BUYER, ...k } : { name: e.target.value }); }} />
+            <datalist id="saved-clients">{saved.map((b) => <option key={b.name} value={b.name} />)}</datalist>
             <input style={{ flex: 2 }} placeholder="Mail du client" type="email" value={edit.buyer.email} onChange={(e) => setBuyer({ email: e.target.value })} />
+            <input style={{ flex: 1 }} type="tel" placeholder="Téléphone" value={edit.buyer.phone ?? ""} onChange={(e) => setBuyer({ phone: e.target.value })} />
             <input style={{ flex: 1 }} placeholder="SIREN (entreprise)" value={edit.buyer.siren} onChange={(e) => setBuyer({ siren: e.target.value })} />
           </div>
           <div className="row" style={{ marginTop: 8 }}>

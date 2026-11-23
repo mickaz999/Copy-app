@@ -38,7 +38,7 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     let y = 710;
     t(title, x, y, { size: 8, color: grey }); y -= 15;
     t(p.name, x, y, { b: true }); y -= 13;
-    for (const l of [p.address, `${p.zip} ${p.city}`, `SIREN ${p.siren}`, p.vat ? `TVA ${p.vat}` : "", p.email ?? ""].filter(Boolean)) { t(l, x, y); y -= 13; }
+    for (const l of [p.address, `${p.zip} ${p.city}`, `SIREN ${p.siren}`, p.vat ? `TVA ${p.vat}` : "", p.email ?? "", p.phone ? `Tél. ${p.phone}` : ""].filter(Boolean)) { t(l, x, y); y -= 13; }
   };
   block("ÉMETTEUR", inv.seller, 50);
   block("CLIENT", inv.buyer, 320);

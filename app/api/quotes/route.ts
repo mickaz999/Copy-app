@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { nextQuoteNumber } from "@/lib/quotes";
 import { cleanQuote } from "./clean";
+import { rememberBuyer } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,6 @@ export async function POST(req: Request) {
     data: { validUntil: new Date(date.getTime() + 30 * 864e5), ...cleanQuote(body), date, number: await nextQuoteNumber(date) },
     select: LIST,
   });
+  if (body.buyer) await rememberBuyer(body.buyer);
   return NextResponse.json(q);
 }

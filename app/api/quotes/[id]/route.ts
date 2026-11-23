@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { cleanQuote } from "../clean";
+import { rememberBuyer } from "@/lib/clients";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     await db.quote.update({ where: { id: q.id }, data: { status: body.status } });
     return NextResponse.json({ ok: true });
   }
+  if (body.buyer) await rememberBuyer(body.buyer);
   await db.quote.update({ where: { id: q.id }, data: cleanQuote(body) });
   return NextResponse.json({ ok: true });
 }

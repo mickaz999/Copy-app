@@ -5,7 +5,7 @@ import { api, eur, isoDay } from "@/lib/api";
 import { totals, type Discount, type InvoiceKind, type Prepaid } from "@/lib/cii";
 import { einvoiceMandatory } from "@/lib/einvoice";
 
-type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string };
+type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; phone: string };
 type Line = { label: string; qty: number; unitPrice: number };
 type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
@@ -15,7 +15,7 @@ type Product = { id: string; name: string; unitPrice: number };
 type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string };
 type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; kind: InvoiceKind; deposits: string[]; refId?: string; einvoice: boolean; status?: Inv["status"]; error?: string };
 
-const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
+const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "", phone: "" };
 const STATUS = { draft: "Brouillon", sent: "Émise", paid: "Payée" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const NO_DISCOUNT: Discount = { type: "eur", value: 0, label: "Remise" };
@@ -42,7 +42,8 @@ export default function Factures() {
     if (i) { open(i); window.history.replaceState(null, "", "/factures"); }
   });
   const loadProducts = () => api<Product[]>("products").then(setProducts);
-  useEffect(() => { load(); loadProducts(); }, []);
+  const [saved, setSaved] = useState<Buyer[]>([]);
+  useEffect(() => { load(); loadProducts(); api<Buyer[]>("clients/billing").then(setSaved).catch(() => {}); }, []);
 
   const rate = seller?.vatRate ?? 0;
   const discountOf = (i: Inv): Discount | undefined => (i.discount ? parse<Discount>(i.discount, NO_DISCOUNT) : undefined);
@@ -119,7 +120,7 @@ export default function Factures() {
     loadProducts();
   }
   // Client déjà facturé : on reprend ses infos (adresse, SIREN, mail)
-  const known = Array.from(new Map(list.map((i) => parse<Buyer>(i.buyer, EMPTY_BUYER)).filter((b) => b.name).map((b) => [b.name.toLowerCase(), b])).values());
+  const known = Array.from(new Map([...list.map((i) => parse<Buyer>(i.buyer, EMPTY_BUYER)).reverse(), ...saved].filter((b) => b.name).map((b) => [b.name.toLowerCase(), { ...EMPTY_BUYER, ...b }])).values());
   const setBuyer = (b: Partial<Buyer>) => edit && setEdit({ ...edit, buyer: { ...edit.buyer, ...b } });
   const setLine = (i: number, l: Partial<Line>) => edit && setEdit({ ...edit, lines: edit.lines.map((x, j) => (j === i ? { ...x, ...l } : x)) });
 
@@ -246,6 +247,7 @@ export default function Factures() {
               <div className="row">
                 <label>Mail (envoi du PDF)<input type="email" value={edit.buyer.email} onChange={(e) => setBuyer({ email: e.target.value })} /></label>
                 <label>N° TVA (facultatif)<input value={edit.buyer.vat} onChange={(e) => setBuyer({ vat: e.target.value })} /></label>
+                <label>Téléphone<input type="tel" value={edit.buyer.phone ?? ""} onChange={(e) => setBuyer({ phone: e.target.value })} /></label>
               </div>
               {edit.kind === "deposit" && !ro && (
                 <div className="row" style={{ alignItems: "flex-end" }}>
