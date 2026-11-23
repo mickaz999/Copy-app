@@ -5,7 +5,14 @@ import { api } from "@/lib/api";
 
 type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
 type Billing = { siren: string; address: string; zip: string; city: string; vat: string; email: string; phone: string };
-type C = { space: string; id: string; name: string; emails: string[]; note: string; billing: Billing; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
+type Q = { id: string; number: string; date: string; status: string; total: number; invoiceId: string };
+type I = { id: string; number: string; date: string; status: string; kind: string; total: number };
+const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+const fr = (d: string) => new Date(d).toLocaleDateString("fr-FR", { timeZone: "UTC" });
+const QS: Record<string, string> = { draft: "brouillon", sent: "en attente", accepted: "validé", refused: "refusé" };
+const IS: Record<string, string> = { draft: "brouillon", sent: "à payer", paid: "payée" };
+const IK: Record<string, string> = { standard: "Facture", deposit: "Acompte", final: "Solde", credit: "Avoir" };
+type C = { quotes: Q[]; invoices: I[]; space: string; id: string; name: string; emails: string[]; note: string; billing: Billing; deliveries: D[]; drops: { id: string; title: string; active: boolean; createdAt: string; files: number }[] };
 
 export default function Clients() {
   const [list, setList] = useState<C[]>([]);
@@ -32,7 +39,20 @@ export default function Clients() {
           <div className="liv-row" onClick={() => { setOpen(open === c.id ? "" : c.id); setMail(""); }}>
             <div>
               <b>{c.name}</b>
-              <div className="muted small">{c.deliveries.length} livraison{c.deliveries.length > 1 ? "s" : ""} · {c.drops.length} dépôt{c.drops.length > 1 ? "s" : ""} de rushs · {c.emails.length ? c.emails.join(", ") : "aucun mail"}</div>
+              {(() => {
+                const em = c.invoices.filter((i) => i.status !== "draft");
+                const paid = em.filter((i) => i.status === "paid").reduce((n, i) => n + i.total, 0);
+                const unpaid = em.filter((i) => i.status === "sent").reduce((n, i) => n + i.total, 0);
+                const pending = c.quotes.filter((q) => q.status === "sent").reduce((n, q) => n + q.total, 0);
+                return (em.length > 0 || pending > 0) && (
+                  <div className="client-money">
+                    {paid !== 0 && <span className="ok">{eur(paid)} encaissé</span>}
+                    {unpaid !== 0 && <span className="warn">{eur(unpaid)} à encaisser</span>}
+                    {pending > 0 && <span>{eur(pending)} en devis</span>}
+                  </div>
+                );
+              })()}
+              <div className="muted small">{c.quotes.length} devis · {c.invoices.length} facture{c.invoices.length > 1 ? "s" : ""} · {c.deliveries.length} livraison{c.deliveries.length > 1 ? "s" : ""} · {c.drops.length} dépôt{c.drops.length > 1 ? "s" : ""} de rushs · {c.emails.length ? c.emails.join(", ") : "aucun mail"}</div>
             </div>
           </div>
           {open === c.id && (
@@ -55,6 +75,19 @@ export default function Clients() {
                 ))}
               </div>
               <textarea placeholder="Note (contact, habitudes, tarifs…)" defaultValue={c.note} onBlur={(e) => e.target.value !== c.note && save(c, { note: e.target.value })} />
+              {(c.quotes.length > 0 || c.invoices.length > 0) && (
+                <div className="client-docs">
+                  {c.quotes.length > 0 && <div><b className="small">Devis</b>{c.quotes.map((q) => (
+                    <a key={q.id} className="client-doc" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><span>{q.number}</span><span className="muted">{fr(q.date)}</span><span className={`tag ${q.status}`}>{QS[q.status] ?? q.status}</span><b>{eur(q.total)}</b></a>
+                  ))}</div>}
+                  {c.invoices.length > 0 && <div><b className="small">Factures</b>{c.invoices.map((i) => (
+                    <a key={i.id} className="client-doc" href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span><span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span><b>{eur(i.total)}</b></a>
+                  ))}</div>}
+                </div>
+              )}
+              <div className="row" style={{ gap: 6 }}>
+                <a className="gbutton" href="/devis"><Plus size={14} /> Nouveau devis</a>
+              </div>
               {c.drops.length > 0 && <div className="muted small"><b>Dépôts de rushs</b>{c.drops.map((d) => <div key={d.id}>· {d.title} — {d.files} fichier{d.files > 1 ? "s" : ""} reçu{d.files > 1 ? "s" : ""}{d.active ? "" : " (fermé)"}</div>)}</div>}
               {c.deliveries.length > 0 && <div className="muted small"><b>Livraisons</b>{c.deliveries.map((d) => <div key={d.id}>· {d.title} — {new Date(d.createdAt).toLocaleDateString("fr-FR")}{d.approvedAt ? " ✓ validée" : ""}</div>)}</div>}
               <div><button className="ghost" onClick={async () => { if (confirm(`Supprimer la fiche « ${c.name} » ? (les livraisons restent)`)) { await api("clients", "POST", { id: c.id, delete: true }); load(); } }}><Trash2 size={15} /> Supprimer la fiche</button></div>
