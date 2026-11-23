@@ -27,11 +27,12 @@ export type InvoiceData = {
   note?: string;
   logo?: string; // URL d'image, utilisée seulement sur le PDF
   discount?: Discount; // remise sur le total
-  kind?: InvoiceKind; // facture normale, d'acompte ou de solde
+  kind?: InvoiceKind; // facture normale, d'acompte, de solde, ou avoir
+  credited?: { number: string; date: string }; // avoir : facture d'origine annulée ou corrigée
   prepaid?: Prepaid[]; // facture de solde : acomptes déjà facturés, déduits du reste à payer
 };
 
-export type InvoiceKind = "standard" | "deposit" | "final";
+export type InvoiceKind = "standard" | "deposit" | "final" | "credit";
 export type Prepaid = { number: string; date: string; amount: number };
 
 export type Discount = { type: "eur" | "pct"; value: number; label: string };
@@ -70,7 +71,7 @@ function party(tag: string, p: Party, fiscal: boolean) {
 
 export function buildCii(inv: InvoiceData): string {
   const { gross, remise, ht, tva, ttc, prepaid, due } = totals(inv);
-  const refs = inv.kind === "final" ? (inv.prepaid ?? []) : [];
+  const refs = inv.kind === "final" ? (inv.prepaid ?? []) : inv.kind === "credit" && inv.credited ? [inv.credited] : [];
   const cat = inv.vatRate > 0 ? "S" : "E"; // E = exonéré (franchise en base)
   const exempt = cat === "E" ? `
       <ram:ExemptionReason>${esc(inv.vatNote)}</ram:ExemptionReason>` : "";
@@ -98,7 +99,7 @@ export function buildCii(inv: InvoiceData): string {
 </rsm:ExchangedDocumentContext>
 <rsm:ExchangedDocument>
   <ram:ID>${esc(inv.number)}</ram:ID>
-  <ram:TypeCode>${inv.kind === "deposit" ? 386 : 380}</ram:TypeCode>
+  <ram:TypeCode>${inv.kind === "deposit" ? 386 : inv.kind === "credit" ? 381 : 380}</ram:TypeCode>
   <ram:IssueDateTime><udt:DateTimeString format="102">${d8(inv.date)}</udt:DateTimeString></ram:IssueDateTime>${inv.note ? `
   <ram:IncludedNote><ram:Content>${esc(inv.note)}</ram:Content></ram:IncludedNote>` : ""}
   <ram:IncludedNote><ram:Content>Pénalités de retard : 3 fois le taux d'intérêt légal. Indemnité forfaitaire pour frais de recouvrement : 40 €.</ram:Content><ram:SubjectCode>PMT</ram:SubjectCode></ram:IncludedNote>

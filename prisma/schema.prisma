@@ -399,7 +399,8 @@ model Invoice {
   lines      String   @default("[]") // JSON [{ label, qty, unitPrice }]
   note       String   @default("")
   discount   String   @default("") // remise JSON { type: "eur" | "pct", value, label } ; vide = pas de remise
-  kind       String   @default("standard") // standard | deposit (facture d'acompte) | final (facture de solde)
+  kind       String   @default("standard") // standard | deposit (facture d'acompte) | final (facture de solde) | credit (avoir)
+  refId      String   @default("") // avoir : id de la facture d'origine
   deposits   String   @default("[]") // facture de solde : ids des factures d'acompte déduites (JSON)
   status     String   @default("draft") // draft | sent | paid
   deposited  Boolean  @default(false) // fichier officiel déposé sur l'espace Super PDP

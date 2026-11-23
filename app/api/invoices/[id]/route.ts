@@ -13,7 +13,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // Facture émise → payée : on l'ajoute au livre des recettes (Compta)
   if (body.status === "paid" && inv.status === "sent") {
     const d = await invoiceData(inv.id);
-    await db.transaction.create({ data: { date: body.paidAt ? new Date(body.paidAt) : new Date(), label: `Facture ${inv.number}`, kind: "recette", amount: totals(d).due, client: d.buyer.name || inv.client, payment: "Virement", reference: inv.number } });
+    await db.transaction.create({ data: { date: body.paidAt ? new Date(body.paidAt) : new Date(), label: `${inv.kind === "credit" ? "Avoir" : "Facture"} ${inv.number}`, kind: "recette", amount: (inv.kind === "credit" ? -1 : 1) * totals(d).due, client: d.buyer.name || inv.client, payment: "Virement", reference: inv.number } });
     return NextResponse.json(await db.invoice.update({ where: { id: inv.id }, data: { status: "paid" } }));
   }
   // Fichier officiel déposé (ou pas) sur l'espace Super PDP
