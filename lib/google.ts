@@ -131,7 +131,9 @@ export function toGoogleEvent(b: { title: string; allDay: boolean; start: string
 // Envoie un mail depuis le compte Gmail connecté
 export type MailAttachment = { name: string; type: string; data: Uint8Array };
 
-export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false, from = "", attachments: MailAttachment[] = []): Promise<void> {
+export type ThreadOpts = { threadId?: string; msgId?: string; inReplyTo?: string };
+
+export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false, from = "", attachments: MailAttachment[] = [], thread: ThreadOpts = {}): Promise<{ id: string; threadId: string }> {
   const token = await accessToken(accountId);
   // Adresse d'expéditeur et signature réglées dans Réglages, pour tous les mails de l'app
   const ns = retried ? null : await db.notifSettings.findUnique({ where: { id: 1 } });
@@ -143,23 +145,28 @@ export async function sendGmail(accountId: string, to: string, subject: string, 
     ...(from ? [`From: ${from}`] : []),
     `To: ${to}`,
     `Subject: =?UTF-8?B?${b64(subject)}?=`,
+    // Fil de conversation : les relances répondent au premier mail
+    ...(thread.msgId ? [`Message-ID: ${thread.msgId}`] : []),
+    ...(thread.inReplyTo ? [`In-Reply-To: ${thread.inReplyTo}`, `References: ${thread.inReplyTo}`] : []),
     "MIME-Version: 1.0",
     ...(attachments.length ? mixedBody(html, attachments) : ['Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", b64(html)]),
   ].join("\r\n");
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ raw: Buffer.from(mime).toString("base64url") }),
+    body: JSON.stringify({ raw: Buffer.from(mime).toString("base64url"), ...(thread.threadId ? { threadId: thread.threadId } : {}) }),
   });
   if (res.status === 401 && !retried) {
     tokenCache.delete(accountId);
     await db.googleAccount.update({ where: { id: accountId }, data: { accessToken: "", expiresAt: new Date(0) } });
-    return sendGmail(accountId, to, subject, html, true, from, attachments);
+    return sendGmail(accountId, to, subject, html, true, from, attachments, thread);
   }
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
     throw new Error(e?.error?.message ?? `Gmail : erreur ${res.status}`);
   }
+  const r = await res.json().catch(() => ({}));
+  return { id: r?.id ?? "", threadId: r?.threadId ?? "" };
 }
 
 // Corps multipart : le HTML puis les pièces jointes (ex. PDF d'une facture)
