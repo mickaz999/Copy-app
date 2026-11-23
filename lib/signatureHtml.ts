@@ -26,7 +26,6 @@ export function signatureHtml(s: Signature) {
   const tel = s.phone.trim();
   return `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;font-family:Arial,Helvetica,sans-serif;color:#1c1814">
   <tr>
-    ${s.logo.trim() ? `<td style="padding-right:14px;vertical-align:middle"><img src="${esc(s.logo.trim())}" width="56" height="56" alt="" style="display:block;border-radius:12px"></td>` : ""}
     <td style="border-left:3px solid #ff6a00;padding-left:14px;vertical-align:middle;font-size:13px;line-height:1.5">
       <div style="font-size:15px;font-weight:bold">${esc(s.name.trim())}</div>
       ${s.title.trim() ? `<div style="color:#ff6a00;font-weight:bold">${esc(s.title.trim())}</div>` : ""}
@@ -34,7 +33,7 @@ export function signatureHtml(s: Signature) {
       ${href ? `<div><a href="${esc(href)}" style="color:#5c544c;text-decoration:none">${esc(site.replace(/^https?:\/\//, ""))}</a></div>` : ""}
     </td>
   </tr>
-  ${s.wordmark ? `<tr><td colspan="2" style="padding-top:12px">${href ? `<a href="${esc(href)}">` : ""}<img src="${WORDMARK}" width="220" height="41" alt="maderino production." style="display:block;border:0">${href ? "</a>" : ""}</td></tr>` : ""}
+  ${s.wordmark ? `<tr><td style="padding-top:12px">${href ? `<a href="${esc(href)}">` : ""}<img src="${WORDMARK}" width="220" height="41" alt="maderino production." style="display:block;border:0">${href ? "</a>" : ""}</td></tr>` : ""}
 </table>`;
 }
 

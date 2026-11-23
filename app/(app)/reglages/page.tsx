@@ -201,7 +201,7 @@ export default function Reglages() {
 function SignatureCard({ raw, onSave }: { raw: string; onSave: (s: Signature) => void }) {
   const [sig, setSig] = useState<Signature>(() => parseSignature(raw));
   const set = (patch: Partial<Signature>, now = false) => { const n = { ...sig, ...patch }; setSig(n); if (now) onSave(n); };
-  const field = (k: "name" | "title" | "phone" | "site" | "logo", label: string, ph: string) => (
+  const field = (k: "name" | "title" | "phone" | "site", label: string, ph: string) => (
     <label className="field-line">{label}
       <input placeholder={ph} value={sig[k]} onChange={(e) => set({ [k]: e.target.value })} onBlur={() => onSave(sig)} />
     </label>
@@ -214,7 +214,6 @@ function SignatureCard({ raw, onSave }: { raw: string; onSave: (s: Signature) =>
       {field("title", "Titre", "Maderino Production · Montage vidéo")}
       {field("phone", "Téléphone", "06 12 34 56 78")}
       {field("site", "Site", "maderinoprod.com")}
-      {field("logo", "Logo (lien d'une image)", "https://…/logo.png")}
       <label className="check-line"><input type="checkbox" checked={sig.wordmark} onChange={(e) => set({ wordmark: e.target.checked }, true)} /> Ajouter le logo « maderino production. » en dessous</label>
       {sig.name.trim() && <div style={{ background: "#fff", borderRadius: 12, padding: "4px 14px 14px", marginTop: 8 }} dangerouslySetInnerHTML={{ __html: signatureHtml(sig) }} />}
     </section>
