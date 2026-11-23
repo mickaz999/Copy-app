@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Car, Plus } from "lucide-react";
+import Wheel, { range } from "@/components/Wheel";
 
 // Calculateur de prix (repris de l'outil Pricing de maderinoprod.com) : chaque bloc ajoute une ligne au devis.
 type Line = { label: string; qty: number; unitPrice: number };
@@ -34,12 +35,15 @@ const DEFAULTS = {
 };
 type S = typeof DEFAULTS;
 const KEY = "copy-pricing-v1";
+const TABS = [["offres", "Offres tournage"], ["montage", "Reels"], ["podcast", "Podcast"], ["mariage", "Mariage"], ["youtube", "YouTube"], ["tournage", "Tournage à la carte"], ["deplacement", "Déplacement"]] as const;
+type Tab = (typeof TABS)[number][0];
 
 export default function PricingCalc({ onAdd, destination }: { onAdd: (l: Line) => void; destination: string }) {
   const [s, setS] = useState<S>(DEFAULTS);
   const [dTo, setDTo] = useState("");
   const [dInfo, setDInfo] = useState("");
   const [dBusy, setDBusy] = useState(false);
+  const [tab, setTab] = useState<Tab>("offres");
   useEffect(() => { try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v) setS({ ...DEFAULTS, ...v }); } catch {} }, []);
   const set = (p: Partial<S>) => setS((x) => { const n = { ...x, ...p }; try { localStorage.setItem(KEY, JSON.stringify(n)); } catch {} return n; });
   const t = s.taux;
@@ -75,11 +79,8 @@ export default function PricingCalc({ onAdd, destination }: { onAdd: (l: Line) =
 
   const card = { cursor: "default" } as const;
   const stat = (label: string, v: string, low = false) => <div className="muted small">{label}<br /><b style={{ color: low ? "var(--red, #d33)" : undefined }}>{v}</b></div>;
-  const Range = ({ k, min, max, step, out }: { k: keyof S; min: number; max: number; step: number; out: string }) => (
-    <label className="muted small" style={{ display: "grid", gap: 2 }}>
-      <span className="row" style={{ justifyContent: "space-between" }}><span>{({ pMin: "Durée de l'épisode", mRush: "Rushes", mFilm: "Durée du film", yRush: "Rushes", yDur: "Durée finale" } as Record<string, string>)[k]}</span><b>{out}</b></span>
-      <input type="range" min={min} max={max} step={step} value={s[k] as number} onChange={(e) => set({ [k]: Number(e.target.value) } as Partial<S>)} style={{ padding: 0, accentColor: "var(--accent)" }} />
-    </label>
+  const Range = ({ k, min, max, step, out, label }: { k: keyof S; min: number; max: number; step: number; out: (v: number) => string; label: string }) => (
+    <Wheel key={k} label={label} values={range(min, max, step)} value={s[k] as number} format={out} onChange={(v) => set({ [k]: v } as Partial<S>)} />
   );
   const Check = ({ k, label }: { k: keyof S; label: string }) => (
     <label className="check small"><input type="checkbox" checked={!!s[k]} onChange={(e) => set({ [k]: e.target.checked } as Partial<S>)} /> {label}</label>
@@ -98,7 +99,11 @@ export default function PricingCalc({ onAdd, destination }: { onAdd: (l: Line) =
         {Num({ k: "taux", label: "Mon taux horaire (€/h)" })}
       </div>
 
-      <div className="eyebrow" style={{ marginTop: 10 }}>offres tournage + montage</div>
+      <div className="calc-tabs">
+        {TABS.map(([k, l]) => <button key={k} type="button" className={tab === k ? "primary small" : "ghost small"} onClick={() => setTab(k)}>{l}</button>)}
+      </div>
+
+      {tab === "offres" && <>
       <div className="calc-grid">
         {OFFRES.map((o) => {
           const h = hoursOf(o), reel = o.prix / h;
@@ -115,8 +120,9 @@ export default function PricingCalc({ onAdd, destination }: { onAdd: (l: Line) =
       </div>
       <button type="button" className="ghost small" onClick={() => onAdd({ label: "Déduction vidéo découverte déjà réalisée", qty: 1, unitPrice: -199 })}>− Déduire la vidéo découverte (199 €)</button>
 
-      <div className="eyebrow" style={{ marginTop: 14 }}>montage seul</div>
-      <div className="calc-grid">
+      </>}
+
+      {tab === "montage" && <div className="calc-grid">
         {MONTAGES.map((m) => {
           const reel = m.prix / m.h;
           return (
@@ -128,59 +134,54 @@ export default function PricingCalc({ onAdd, destination }: { onAdd: (l: Line) =
             </div>
           );
         })}
-      </div>
+      </div>}
 
-      <div className="calc-grid" style={{ marginTop: 14 }}>
-        <div className="card" style={card}>
-          <div className="eyebrow">podcast</div>
-          {Range({ k: "pMin", min: 15, max: 180, step: 5, out: fmtMin(s.pMin) })}
+      <div className="calc-grid">
+        {tab === "podcast" && <div className="card calc-one" style={card}>
+          <div className="wheels">{Range({ k: "pMin", min: 15, max: 180, step: 5, out: fmtMin, label: "Durée de l'épisode" })}</div>
           {Check({ k: "pSub", label: "Sous-titres" })}
           <div className="row" style={{ justifyContent: "space-between", marginTop: 6 }}>{stat("Temps", fmtH(pH))}{stat("Par minute", (pPrix / s.pMin).toFixed(2).replace(".", ",") + " €")}<b style={{ fontSize: 20 }}>{eur(pPrix)}</b></div>
           <div style={{ marginTop: 8 }}>{Add({ onClick: () => onAdd({ label: `Montage podcast : ${fmtMin(s.pMin)}${s.pSub ? " + sous-titres" : ""}`, qty: 1, unitPrice: pPrix }) })}</div>
-        </div>
+        </div>}
 
-        <div className="card" style={card}>
-          <div className="eyebrow">mariage</div>
-          {Range({ k: "mRush", min: 1, max: 12, step: 0.5, out: fmtH(s.mRush) })}
-          {Range({ k: "mFilm", min: 0, max: 60, step: 1, out: s.mFilm ? `${s.mFilm} min` : "pas de film" })}
+        {tab === "mariage" && <div className="card calc-one" style={card}>
+          <div className="wheels">{Range({ k: "mRush", min: 1, max: 12, step: 0.5, out: fmtH, label: "Rushes" })}{Range({ k: "mFilm", min: 0, max: 60, step: 1, out: (v) => (v ? `${v} min` : "pas de film"), label: "Durée du film" })}</div>
           <div className="row">{Check({ k: "mTeaser", label: "Teaser 60 s" })}{Check({ k: "mCeremonie", label: "Cérémonie" })}</div>
           <div className="row" style={{ justifyContent: "space-between", marginTop: 6 }}>{stat("Dérush", fmtH(mDer))}{stat("Film", fmtH(mFilmH))}{stat("Options", fmtH(mOpt))}{stat("Total", fmtH(mH))}<b style={{ fontSize: 20 }}>{eur(mPrix)}</b></div>
           <div style={{ marginTop: 8 }}>{Add({ disabled: !mH, onClick: () => onAdd({ label: `Montage mariage : ${[s.mFilm ? `film ${s.mFilm} min` : "", s.mTeaser ? "teaser 60 s" : "", s.mCeremonie ? "cérémonie" : ""].filter(Boolean).join(" + ")} (${fmtH(s.mRush)} de rushes)`, qty: 1, unitPrice: mPrix }) })}</div>
-        </div>
+        </div>}
 
-        <div className="card" style={card}>
-          <div className="eyebrow">youtube</div>
+        {tab === "youtube" && <div className="card calc-one" style={card}>
           <div className="row" style={{ gap: 6, marginBottom: 6 }}>
             {Y_STYLES.map((y, i) => <button key={y.nom} type="button" className={`small ${i === s.yStyle ? "primary" : "ghost"}`} onClick={() => set({ yStyle: i })}>{y.nom}</button>)}
           </div>
-          {Range({ k: "yRush", min: 0.5, max: 24, step: 0.5, out: fmtH(s.yRush) })}
-          {Range({ k: "yDur", min: 1, max: 180, step: 1, out: fmtMin(s.yDur) })}
+          <div className="wheels">{Range({ k: "yRush", min: 0.5, max: 24, step: 0.5, out: fmtH, label: "Rushes" })}{Range({ k: "yDur", min: 1, max: 180, step: 1, out: fmtMin, label: "Durée finale" })}</div>
           <div className="row">{Check({ k: "ySub", label: "Sous-titres" })}{Check({ k: "yMini", label: "Miniature" })}</div>
           <div className="row" style={{ justifyContent: "space-between", marginTop: 6 }}>{stat("Dérush", fmtH(yDer))}{stat("Montage", fmtH(yMont))}{stat("Options", fmtH(yOpt))}{stat("Total", fmtH(yH))}<b style={{ fontSize: 20 }}>{eur(yPrix)}</b></div>
           <div style={{ marginTop: 8 }}>{Add({ onClick: () => onAdd({ label: `Montage YouTube : ${[Y_STYLES[s.yStyle].nom.toLowerCase(), fmtMin(s.yDur), s.ySub ? "sous-titres" : "", s.yMini ? "miniature" : ""].filter(Boolean).join(" · ")}`, qty: 1, unitPrice: yPrix }) })}</div>
-        </div>
+        </div>}
 
-        <div className="card" style={card}>
-          <div className="eyebrow">tournage à la carte</div>
-          <div className="row">{Num({ k: "tTour", label: "Tournage (h)", step: 0.5, w: 70 })}{Num({ k: "tInst", label: "Installation (h)", step: 0.5, w: 70 })}{Num({ k: "tTaux", label: "€/h", w: 70 })}</div>
+        {tab === "tournage" && <div className="card calc-one" style={card}>
+          <div className="wheels">{Range({ k: "tTour", min: 0, max: 16, step: 0.5, out: fmtH, label: "Tournage" })}{Range({ k: "tInst", min: 0, max: 4, step: 0.5, out: fmtH, label: "Installation" })}</div>
+          <div className="row">{Num({ k: "tTaux", label: "€/h", w: 70 })}</div>
           <div className="row" style={{ justifyContent: "space-between", marginTop: 6 }}>{stat("Temps", `${fmtH(s.tTour + s.tInst)} à ${tTx} €/h`)}<b style={{ fontSize: 20 }}>{eur(tTot)}</b></div>
           <div style={{ marginTop: 8 }}>{Add({ disabled: !tTot, onClick: () => onAdd({ label: `Tournage : ${s.tTour.toLocaleString("fr-FR")} h (+ ${s.tInst.toLocaleString("fr-FR")} h d'installation)`, qty: 1, unitPrice: Math.round(tTot) }) })}</div>
-        </div>
+        </div>}
 
-        <div className="card" style={card}>
-          <div className="eyebrow">déplacement</div>
+        {tab === "deplacement" && <div className="card calc-one" style={card}>
           <div className="row">
             <input style={{ flex: 1 }} placeholder="Lieu du tournage (vide = adresse du client)" value={dTo} onChange={(e) => setDTo(e.target.value)} />
             <button type="button" className="ghost small" disabled={dBusy} onClick={calcKm}><Car size={14} /> {dBusy ? "Calcul…" : "Calculer les km"}</button>
           </div>
-          <div className="row" style={{ marginTop: 6 }}>{Num({ k: "dKm", label: "Km depuis Lyon (aller)", w: 70 })}{Num({ k: "dSeuil", label: "Zone incluse (km)", w: 60 })}{Num({ k: "dPrixKm", label: "€/km", step: 0.01, w: 70 })}{Num({ k: "dTemps", label: "Temps de route (h)", step: 0.25, w: 70 })}</div>
+          <div className="row" style={{ marginTop: 6 }}>{Num({ k: "dKm", label: "Km depuis Lyon (aller)", w: 70 })}{Num({ k: "dSeuil", label: "Zone incluse (km)", w: 60 })}{Num({ k: "dPrixKm", label: "€/km", step: 0.01, w: 70 })}</div>
+          <div className="wheels">{Range({ k: "dTemps", min: 0, max: 8, step: 0.25, out: (v) => (v ? fmtH(v) : "aucun"), label: "Temps de route" })}</div>
           {dInfo && <div className="muted small">{dInfo}</div>}
           <div className="row" style={{ justifyContent: "space-between", marginTop: 6 }}>
             <span className="muted small">{!s.dKm ? "Saisis la distance" : !dTot ? "Dans la zone : inclus" : [kmFact ? `${kmFact} km facturés (${eur(dKmPrix)})` : "", s.dTemps ? `${fmtH(s.dTemps)} de route (${eur(dTempsPrix)})` : ""].filter(Boolean).join(" + ")}</span>
             <b style={{ fontSize: 20 }}>{eur(dTot)}</b>
           </div>
           <div style={{ marginTop: 8 }}>{Add({ disabled: !dTot, onClick: () => onAdd({ label: `Déplacement : ${s.dKm} km de Lyon${dTo.trim() ? ` (${dTo.trim()})` : ""}, ${kmFact} km facturés aller-retour${s.dTemps ? ` + ${fmtH(s.dTemps)} de route` : ""}`, qty: 1, unitPrice: Math.round(dTot) }) })}</div>
-        </div>
+        </div>}
       </div>
     </div>
   );
