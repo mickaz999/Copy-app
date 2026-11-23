@@ -105,44 +105,57 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
 
   let mailed = false;
   if (opts.email && d.buyer.email) {
-    const acc = await mailAccount();
-    if (acc) {
-      const pdf = await invoicePdf(d);
-      const { due: ttc } = totals(d);
-      const what = d.kind === "deposit" ? "la facture d'acompte" : d.kind === "final" ? "la facture de solde" : d.kind === "credit" ? "l'avoir" : "la facture";
-      const title = d.kind === "deposit" ? "Facture d'acompte" : d.kind === "final" ? "Facture de solde" : d.kind === "credit" ? "Avoir" : "Facture";
-      const amount = ttc.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-      const until = d.dueDate.split("-").reverse().join("/");
-      const first = (d.buyer.name ?? "").trim().replace(/[<>&]/g, "");
-      const credit = d.kind === "credit";
-      const html = docMailHtml({
-        logo: d.logo,
-        eyebrow: `${title} ${d.number}`,
-        title: credit ? "Voici ton avoir" : d.kind === "deposit" ? "C'est parti pour ton projet 🎬" : d.kind === "final" ? "Ton projet est bouclé, merci ! 🙌" : "Merci pour ta confiance 🙌",
-        intro: [
-          `Bonjour${first ? ` ${first}` : ""},`,
-          credit
-            ? `Tu trouveras ci-joint l'avoir <b>${d.number}</b>${d.credited ? `, qui annule la facture ${d.credited.number}` : ""}.`
-            : d.kind === "deposit"
-              ? `Merci d'avoir validé le devis ! Voici ${what} <b>${d.number}</b> : dès réception du règlement, ta date est bloquée et on lance la préparation.`
-              : d.kind === "final"
-                ? `On espère que le résultat te plaît autant qu'à nous. Voici ${what} <b>${d.number}</b> pour clôturer le projet.`
-                : `Voici ${what} <b>${d.number}</b>. C'était un plaisir de bosser avec toi !`,
-        ],
-        amountLabel: credit ? "Montant de l'avoir" : "Montant à régler",
-        amount,
-        rows: credit ? [["Date", d.date.split("-").reverse().join("/")]] : [["À régler avant le", until], ...(d.iban ? ([["Virement (IBAN)", d.iban]] as [string, string][]) : [])],
-        outro: [credit ? "Une question ? Réponds simplement à ce mail." : "Une question sur la facture ? Réponds simplement à ce mail, on te répond vite."],
-        signature: "Coralie & Mickaël · Maderino Production",
-      });
-      try {
-        await sendGmail(acc.id, d.buyer.email, `${title} ${d.number}`, html, false, "", [{ name: `${title} ${d.number}.pdf`, type: "application/pdf", data: pdf }]);
-        mailed = true;
-      } catch (e) {
-        // La facture est déjà transmise : on garde l'erreur de mail sans tout annuler
-        await db.invoice.update({ where: { id }, data: { error: `Facture transmise, mais mail non envoyé : ${(e as Error).message}` } });
-      }
+    try { mailed = await mailInvoice(d); }
+    catch (e) {
+      // La facture est déjà émise : on garde l'erreur de mail sans tout annuler
+      await db.invoice.update({ where: { id }, data: { error: `Facture émise, mais mail non envoyé : ${(e as Error).message}` } });
     }
   }
   return { mailed, pro: electronic };
+}
+
+// Mail au client avec le PDF (à l'émission, ou renvoi d'une facture déjà émise)
+async function mailInvoice(d: InvoiceData) {
+  if (!d.buyer.email) throw new Error("Pas de mail pour ce client.");
+  const acc = await mailAccount();
+  if (!acc) throw new Error("Aucun compte Gmail connecté.");
+  const pdf = await invoicePdf(d);
+  const { due: ttc } = totals(d);
+  const what = d.kind === "deposit" ? "la facture d'acompte" : d.kind === "final" ? "la facture de solde" : d.kind === "credit" ? "l'avoir" : "la facture";
+  const title = d.kind === "deposit" ? "Facture d'acompte" : d.kind === "final" ? "Facture de solde" : d.kind === "credit" ? "Avoir" : "Facture";
+  const amount = ttc.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+  const until = d.dueDate.split("-").reverse().join("/");
+  const first = (d.buyer.name ?? "").trim().replace(/[<>&]/g, "");
+  const credit = d.kind === "credit";
+  const html = docMailHtml({
+    logo: d.logo,
+    eyebrow: `${title} ${d.number}`,
+    title: credit ? "Voici ton avoir" : d.kind === "deposit" ? "C'est parti pour ton projet 🎬" : d.kind === "final" ? "Ton projet est bouclé, merci ! 🙌" : "Merci pour ta confiance 🙌",
+    intro: [
+      `Bonjour${first ? ` ${first}` : ""},`,
+      credit
+        ? `Tu trouveras ci-joint l'avoir <b>${d.number}</b>${d.credited ? `, qui annule la facture ${d.credited.number}` : ""}.`
+        : d.kind === "deposit"
+          ? `Merci d'avoir validé le devis ! Voici ${what} <b>${d.number}</b> : dès réception du règlement, ta date est bloquée et on lance la préparation.`
+          : d.kind === "final"
+            ? `On espère que le résultat te plaît autant qu'à nous. Voici ${what} <b>${d.number}</b> pour clôturer le projet.`
+            : `Voici ${what} <b>${d.number}</b>. C'était un plaisir de bosser avec toi !`,
+    ],
+    amountLabel: credit ? "Montant de l'avoir" : "Montant à régler",
+    amount,
+    rows: credit ? [["Date", d.date.split("-").reverse().join("/")]] : [["À régler avant le", until], ...(d.iban ? ([["Virement (IBAN)", d.iban]] as [string, string][]) : [])],
+    outro: [credit ? "Une question ? Réponds simplement à ce mail." : "Une question sur la facture ? Réponds simplement à ce mail, on te répond vite."],
+    signature: "Coralie & Mickaël · Maderino Production",
+  });
+  await sendGmail(acc.id, d.buyer.email, `${title} ${d.number}`, html, false, "", [{ name: `${title} ${d.number}.pdf`, type: "application/pdf", data: pdf }]);
+  return true;
+}
+
+export async function resendInvoice(id: string) {
+  const inv = await db.invoice.findUniqueOrThrow({ where: { id } });
+  if (inv.status === "draft") throw new Error("La facture n'est pas encore émise.");
+  const d = await invoiceData(id);
+  await mailInvoice(d);
+  await db.invoice.update({ where: { id }, data: { error: "" } });
+  return { mailed: true, to: d.buyer.email };
 }
