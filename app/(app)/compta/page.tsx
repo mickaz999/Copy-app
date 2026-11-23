@@ -9,7 +9,7 @@ type Tx = {
 };
 type Settings = { rate: number; ceiling: number; activity: string };
 
-const PAYMENTS = ["Virement", "Carte", "Espèces", "Chèque", "PayPal", "Autre"];
+const PAYMENTS = ["Virement", "Espèces", "PayPal", "Carte", "Chèque", "Autre"];
 const MONTHS = ["Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
 
 export default function Compta() {
@@ -225,7 +225,7 @@ export default function Compta() {
 
               <label>Paiement
                 <select value={edit.payment} onChange={(e) => setEdit({ ...edit, payment: e.target.value })}>
-                  {PAYMENTS.map((p) => <option key={p}>{p}</option>)}
+                  {PAYMENTS.map((p) => <option key={p} value={p}>{p === "Espèces" ? "Liquide (espèces)" : p}</option>)}
                 </select>
               </label>
             </div>
