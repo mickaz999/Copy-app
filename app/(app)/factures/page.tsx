@@ -150,7 +150,10 @@ export default function Factures() {
   }
 
   async function emit() {
-    if (!edit || !confirm(edit.kind === "credit" ? "Générer l'avoir ? Le PDF part au client et l'avoir ne pourra plus être modifié." : "Générer la facture ? Le PDF part au client et la facture ne pourra plus être modifiée.")) return;
+    if (!edit) return;
+    const noMail = !edit.buyer.email.trim();
+    const what = edit.kind === "credit" ? "l'avoir" : "la facture";
+    if (!confirm(noMail ? `Générer ${what} en PDF ? Pas de mail client : le PDF s'ouvre pour que tu l'envoies toi-même (WhatsApp, SMS…). Ensuite ${what} ne pourra plus être modifié${edit.kind === "credit" ? "" : "e"}.` : `Générer ${what} ? Le PDF part au client par mail et ${what} ne pourra plus être modifié${edit.kind === "credit" ? "" : "e"}.`)) return;
     setBusy(true); setMsg("");
     // Pas de mail client : on ouvre le PDF pour l'envoyer soi-même (onglet ouvert tout de suite, sinon le navigateur le bloque)
     const tab = !edit.buyer.email.trim() ? window.open("", "_blank") : null;
@@ -312,13 +315,14 @@ export default function Factures() {
               <label>Note (facultatif)<input value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
             </fieldset>
             <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · {t.prepaid > 0 ? <>Total TTC {eur(t.ttc)} · Acomptes −{eur(t.prepaid)} · <b>Reste à payer {eur(t.due)}</b></> : <b>{edit.kind === "deposit" ? "Acompte" : edit.kind === "credit" ? "Total de l'avoir" : "Total TTC"} {eur(t.ttc)}</b>}{rate === 0 && ` · ${seller?.vatNote}`}</div>
+            {msg && <p className="modal-msg">{msg}</p>}
             <div className="row modal-actions">
               {edit.id && !ro && <button className="neg" onClick={remove}>Supprimer</button>}
               {edit.id && <a className="ghost" href={`/api/invoices/${edit.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={16} /> Aperçu PDF</a>}
               <span style={{ flex: 1 }} />
               <button onClick={() => setEdit(null)}>Fermer</button>
               {!ro && <button onClick={async () => { const id = await save(); if (id && !edit.id) setEdit({ ...edit, id }); setMsg("Brouillon enregistré"); }}>Enregistrer le brouillon</button>}
-              {!ro && <button className="primary" disabled={busy} onClick={emit}><Send size={16} /> {busy ? "Génération…" : "Générer et envoyer"}</button>}
+              {!ro && <button className="primary" disabled={busy} onClick={emit}>{edit.buyer.email.trim() ? <Send size={16} /> : <FileDown size={16} />} {busy ? "Génération…" : edit.buyer.email.trim() ? "Générer et envoyer" : "Générer le PDF"}</button>}
             </div>
           </div>
         </div>
