@@ -198,7 +198,8 @@ export default function Factures() {
             <h3 style={{ margin: 0 }}>{edit.number ? `${KIND[edit.kind]} ${edit.number}` : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
             {edit.error && <p className="neg small">{edit.error}</p>}
             {edit.id && (() => { const cur = list.find((x) => x.id === edit.id); const l = cur && links(cur); return l ? <div>{l}</div> : null; })()}
-            <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, display: "contents" }}>
+            {ro && <p className="small" style={{ margin: 0, padding: "8px 12px", borderRadius: 10, background: "var(--tag)" }}>🔒 Facture émise : elle ne peut plus être modifiée (obligation légale). Pour corriger une erreur, il faut faire un avoir.</p>}
+            <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 12, opacity: ro ? 0.75 : 1, pointerEvents: ro ? "none" : undefined }}>
               <div className="row">
                 {(["standard", "deposit", "final"] as const).map((k) => (
                   <button key={k} type="button" className={edit.kind === k ? "primary" : ""} onClick={() => setEdit({ ...edit, kind: k })}>{{ standard: "Facture", deposit: "Facture d'acompte", final: "Facture de solde" }[k]}</button>
