@@ -8,18 +8,18 @@ type Buyer = { name: string; siren: string; address: string; zip: string; city: 
 type Line = { label: string; qty: number; unitPrice: number };
 type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
-  note: string; discount: string; kind: InvoiceKind; deposits: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
+  note: string; discount: string; kind: InvoiceKind; deposits: string; refId: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
 type Product = { id: string; name: string; unitPrice: number };
 type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string; einvoice: boolean };
-type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; kind: InvoiceKind; deposits: string[]; status?: Inv["status"]; error?: string };
+type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; kind: InvoiceKind; deposits: string[]; refId?: string; status?: Inv["status"]; error?: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
 const STATUS = { draft: "Brouillon", sent: "Émise", paid: "Payée" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const NO_DISCOUNT: Discount = { type: "eur", value: 0, label: "Remise" };
 const totalOf = (lines: Line[], rate: number, discount?: Discount, prepaid?: Prepaid[]) => totals({ lines, vatRate: rate, discount, prepaid });
-const KIND = { standard: "Facture", deposit: "Acompte", final: "Solde" } as const;
+const KIND = { standard: "Facture", deposit: "Acompte", final: "Solde", credit: "Avoir" } as const;
 
 export default function Factures() {
   const [list, setList] = useState<Inv[]>([]);
@@ -39,7 +39,7 @@ export default function Factures() {
 
   const rate = seller?.vatRate ?? 0;
   const discountOf = (i: Inv): Discount | undefined => (i.discount ? parse<Discount>(i.discount, NO_DISCOUNT) : undefined);
-  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, kind: i.kind || "standard", deposits: parse<string[]>(i.deposits, []), status: i.status, error: i.error });
+  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, kind: i.kind || "standard", deposits: parse<string[]>(i.deposits, []), refId: i.refId, status: i.status, error: i.error });
   const fresh = () => {
     const d = new Date();
     setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "standard", deposits: [] });
@@ -57,7 +57,14 @@ export default function Factures() {
   const finalOf = (dep: Inv) => list.find((x) => x.kind === "final" && parse<string[]>(x.deposits, []).includes(dep.id));
   const depositsOf = (fin: Inv) => list.filter((x) => parse<string[]>(fin.deposits, []).includes(x.id)).sort((a, b) => a.number.localeCompare(b.number));
   const linkTo = (x: Inv) => <a key={x.id} href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); open(x); }}>{x.number}</a>;
+  const creditsOf = (orig: Inv) => list.filter((x) => x.kind === "credit" && x.refId === orig.id);
   const links = (i: Inv) => {
+    if (i.kind === "credit") {
+      const o = list.find((x) => x.id === i.refId);
+      return o ? <span className="muted small">Avoir sur {linkTo(o)}</span> : null;
+    }
+    const cr = creditsOf(i);
+    if (cr.length) return <span className="neg small">Avoir : {cr.map((x, j) => <span key={x.id}>{j ? ", " : ""}{linkTo(x)}</span>)}</span>;
     if (i.kind === "deposit") {
       const f = finalOf(i);
       return f ? <span className="muted small">Soldé par {linkTo(f)}</span> : i.status !== "draft" ? <span className="neg small">Solde à faire</span> : null;
@@ -69,6 +76,14 @@ export default function Factures() {
     return null;
   };
   // « Faire le solde » depuis un acompte : nouvelle facture de solde, même client, tous ses acomptes non soldés cochés
+  function makeCredit(orig: Inv) {
+    if (!confirm(`Créer un avoir pour annuler la facture ${orig.number} ? Tu pourras ajuster le montant avant de le générer (avoir partiel).`)) return;
+    const d = isoDay(new Date());
+    const o = totalOf(parse(orig.lines, []), rate, discountOf(orig), orig.kind === "final" ? prepaidOf(parse<string[]>(orig.deposits, [])) : undefined);
+    // Montant de l'avoir = ce qui a été facturé (reste à payer pour un solde)
+    const lines: Line[] = o.prepaid > 0 ? [{ label: `Annulation de la facture ${orig.number}`, qty: 1, unitPrice: o.due }] : parse<Line[]>(orig.lines, []);
+    setEdit({ date: d, dueDate: d, buyer: { ...EMPTY_BUYER, ...parse<Buyer>(orig.buyer, EMPTY_BUYER) }, lines, note: `Avoir sur la facture ${orig.number}`, discount: o.prepaid > 0 ? { ...NO_DISCOUNT } : discountOf(orig) ?? { ...NO_DISCOUNT }, kind: "credit", deposits: [], refId: orig.id });
+  }
   function makeFinal(dep: Inv) {
     const d = new Date();
     const buyer = { ...EMPTY_BUYER, ...parse<Buyer>(dep.buyer, EMPTY_BUYER) };
@@ -103,14 +118,14 @@ export default function Factures() {
 
   async function save(): Promise<string | undefined> {
     if (!edit) return;
-    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount, kind: edit.kind, deposits: edit.kind === "final" ? edit.deposits : [] };
+    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount, kind: edit.kind, deposits: edit.kind === "final" ? edit.deposits : [], ...(edit.kind === "credit" ? { refId: edit.refId ?? "" } : {}) };
     const r = edit.id ? await api<Inv>(`invoices/${edit.id}`, "PATCH", body) : await api<Inv>("invoices", "POST", body);
     await load();
     return r.id;
   }
 
   async function emit() {
-    if (!edit || !confirm("Générer la facture ? Le PDF part au client et la facture ne pourra plus être modifiée.")) return;
+    if (!edit || !confirm(edit.kind === "credit" ? "Générer l'avoir ? Le PDF part au client et l'avoir ne pourra plus être modifié." : "Générer la facture ? Le PDF part au client et la facture ne pourra plus être modifiée.")) return;
     setBusy(true); setMsg("");
     // Pas de mail client : on ouvre le PDF pour l'envoyer soi-même (onglet ouvert tout de suite, sinon le navigateur le bloque)
     const tab = !edit.buyer.email.trim() ? window.open("", "_blank") : null;
@@ -177,12 +192,13 @@ export default function Factures() {
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}{links(i) && <div>{links(i)}</div>}</td>
                 <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
-                <td className="num">{eur(totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
+                <td className="num">{eur((i.kind === "credit" ? -1 : 1) * totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
                   {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
                   {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
-                  {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>Payée</button>}
+                  {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>{i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
+                  {i.status !== "draft" && i.kind !== "credit" && <button className="ghost small" onClick={() => makeCredit(i)}>Faire un avoir</button>}
                   {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}>Faire le solde</button>}
                 </td>
               </tr>
@@ -195,16 +211,16 @@ export default function Factures() {
       {edit && (
         <div className="overlay" onClick={() => setEdit(null)}>
           <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: 0 }}>{edit.number ? `${KIND[edit.kind]} ${edit.number}` : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
+            <h3 style={{ margin: 0 }}>{edit.number ? `${KIND[edit.kind]} ${edit.number}` : edit.kind === "credit" ? "Nouvel avoir" : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
             {edit.error && <p className="neg small">{edit.error}</p>}
             {edit.id && (() => { const cur = list.find((x) => x.id === edit.id); const l = cur && links(cur); return l ? <div>{l}</div> : null; })()}
             {ro && <p className="small" style={{ margin: 0, padding: "8px 12px", borderRadius: 10, background: "var(--tag)" }}>🔒 Facture émise : elle ne peut plus être modifiée (obligation légale). Pour corriger une erreur, il faut faire un avoir.</p>}
             <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 12, opacity: ro ? 0.75 : 1, pointerEvents: ro ? "none" : undefined }}>
-              <div className="row">
+              {edit.kind !== "credit" && <div className="row">
                 {(["standard", "deposit", "final"] as const).map((k) => (
                   <button key={k} type="button" className={edit.kind === k ? "primary" : ""} onClick={() => setEdit({ ...edit, kind: k })}>{{ standard: "Facture", deposit: "Facture d'acompte", final: "Facture de solde" }[k]}</button>
                 ))}
-              </div>
+              </div>}
               <div className="row">
                 <label>Date<input type="date" value={edit.date} onChange={(e) => setEdit({ ...edit, date: e.target.value })} /></label>
                 <label>Échéance<input type="date" value={edit.dueDate} onChange={(e) => setEdit({ ...edit, dueDate: e.target.value })} /></label>
@@ -265,7 +281,7 @@ export default function Factures() {
               </div>
               <label>Note (facultatif)<input value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
             </fieldset>
-            <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · {t.prepaid > 0 ? <>Total TTC {eur(t.ttc)} · Acomptes −{eur(t.prepaid)} · <b>Reste à payer {eur(t.due)}</b></> : <b>{edit.kind === "deposit" ? "Acompte" : "Total TTC"} {eur(t.ttc)}</b>}{rate === 0 && ` · ${seller?.vatNote}`}</div>
+            <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · {t.prepaid > 0 ? <>Total TTC {eur(t.ttc)} · Acomptes −{eur(t.prepaid)} · <b>Reste à payer {eur(t.due)}</b></> : <b>{edit.kind === "deposit" ? "Acompte" : edit.kind === "credit" ? "Total de l'avoir" : "Total TTC"} {eur(t.ttc)}</b>}{rate === 0 && ` · ${seller?.vatNote}`}</div>
             <div className="row modal-actions">
               {edit.id && !ro && <button className="neg" onClick={remove}>Supprimer</button>}
               {edit.id && <a className="ghost" href={`/api/invoices/${edit.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={16} /> Aperçu PDF</a>}

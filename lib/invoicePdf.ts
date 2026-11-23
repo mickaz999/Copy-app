@@ -27,10 +27,11 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     page.drawImage(img, { x: 545 - img.width * k, y: 800 - img.height * k, width: img.width * k, height: img.height * k });
     top = Math.min(780, 800 - img.height * k - 18);
   }
-  t(inv.kind === "deposit" ? "FACTURE D'ACOMPTE" : inv.kind === "final" ? "FACTURE DE SOLDE" : "FACTURE", 50, 780, { size: inv.kind && inv.kind !== "standard" ? 18 : 22, b: true });
+  t(inv.kind === "deposit" ? "FACTURE D'ACOMPTE" : inv.kind === "final" ? "FACTURE DE SOLDE" : inv.kind === "credit" ? "AVOIR" : "FACTURE", 50, 780, { size: inv.kind && inv.kind !== "standard" ? 18 : 22, b: true });
   t(`N° ${inv.number}`, 50, 758, { size: 11 });
   t(`Date : ${fr(inv.date)}`, 545, top, { right: true });
-  t(`Échéance : ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
+  if (inv.kind !== "credit") t(`Échéance : ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
+  else if (inv.credited) t(`Sur la facture ${inv.credited.number} du ${fr(inv.credited.date)}`, 545, top - 15, { right: true });
 
   const block = (title: string, p: InvoiceData["seller"], x: number) => {
     let y = 710;
@@ -65,13 +66,17 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     y -= 3;
     t("Reste à payer", 460, y, { right: true, b: true, size: 12 }); t(eur(due), 540, y, { right: true, b: true, size: 12 });
   } else {
-    t(inv.kind === "deposit" ? "Acompte à payer" : "Total TTC", 460, y, { right: true, b: true, size: 12 }); t(eur(ttc), 540, y, { right: true, b: true, size: 12 });
+    t(inv.kind === "deposit" ? "Acompte à payer" : inv.kind === "credit" ? "Total de l'avoir" : "Total TTC", 460, y, { right: true, b: true, size: 12 }); t(eur(ttc), 540, y, { right: true, b: true, size: 12 });
   }
   y -= 30;
   if (inv.vatRate === 0) { t(inv.vatNote, 50, y, { color: grey }); y -= 15; }
   if (inv.note) { t(inv.note.slice(0, 100), 50, y); y -= 15; }
 
   let fy = 120;
+  if (inv.kind === "credit") {
+    t(inv.credited ? `Cet avoir annule ou corrige la facture ${inv.credited.number} du ${fr(inv.credited.date)}.` : "Avoir.", 50, fy, { b: true });
+    return doc.save();
+  }
   if (inv.iban) { t(`Paiement par virement - IBAN : ${inv.iban}`, 50, fy, { b: true }); fy -= 15; }
   for (const l of [
     `Paiement au plus tard le ${fr(inv.dueDate)}. Pas d'escompte pour paiement anticipé.`,

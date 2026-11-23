@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const date = body.date ? new Date(body.date) : new Date();
   const data = clean(body);
   const inv = await db.invoice.create({
-    data: { dueDate: new Date(date.getTime() + s.dueDays * 864e5), ...data, date, number: await nextNumber(date) },
+    data: { dueDate: new Date(date.getTime() + s.dueDays * 864e5), ...data, date, number: await nextNumber(date, data.kind === "credit" ? "A" : "F") },
   });
   return NextResponse.json(inv);
 }
