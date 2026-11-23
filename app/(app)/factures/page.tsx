@@ -53,6 +53,32 @@ export default function Factures() {
     const name = e.buyer.name.trim().toLowerCase();
     return list.filter((x) => x.kind === "deposit" && x.status !== "draft" && !used.has(x.id) && (!name || x.client.trim().toLowerCase() === name));
   };
+  // Liens acompte ↔ solde : la facture de solde qui a déduit cet acompte, et les acomptes d'une facture de solde
+  const finalOf = (dep: Inv) => list.find((x) => x.kind === "final" && parse<string[]>(x.deposits, []).includes(dep.id));
+  const depositsOf = (fin: Inv) => list.filter((x) => parse<string[]>(fin.deposits, []).includes(x.id)).sort((a, b) => a.number.localeCompare(b.number));
+  const linkTo = (x: Inv) => <a key={x.id} href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); open(x); }}>{x.number}</a>;
+  const links = (i: Inv) => {
+    if (i.kind === "deposit") {
+      const f = finalOf(i);
+      return f ? <span className="muted small">Soldé par {linkTo(f)}</span> : i.status !== "draft" ? <span className="neg small">Solde à faire</span> : null;
+    }
+    if (i.kind === "final") {
+      const d = depositsOf(i);
+      return d.length ? <span className="muted small">Acompte{d.length > 1 ? "s" : ""} : {d.map((x, j) => <span key={x.id}>{j ? ", " : ""}{linkTo(x)}</span>)}</span> : null;
+    }
+    return null;
+  };
+  // « Faire le solde » depuis un acompte : nouvelle facture de solde, même client, tous ses acomptes non soldés cochés
+  function makeFinal(dep: Inv) {
+    const d = new Date();
+    const buyer = { ...EMPTY_BUYER, ...parse<Buyer>(dep.buyer, EMPTY_BUYER) };
+    const e: Edit = { date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "final", deposits: [] };
+    e.deposits = depositsFor(e).map((x) => x.id);
+    // Total du projet repris du libellé « … (total 1 500,00 € HT) » si présent
+    const m = parse<Line[]>(dep.lines, [])[0]?.label.match(/^Acompte [\d,]+ %(?: - (.*?))? \(total ([\d\s  ,]+) €/);
+    if (m) e.lines = [{ label: m[1] || "Prestation", qty: 1, unitPrice: Number(m[2].replace(/[\s  ]/g, "").replace(",", ".")) || 0 }];
+    setEdit(e);
+  }
   function applyDeposit() {
     if (!edit || !(depCalc.total > 0) || !(depCalc.pct > 0)) return;
     const amount = Math.round(depCalc.total * depCalc.pct) / 100;
@@ -149,7 +175,7 @@ export default function Factures() {
               <tr key={i.id} onClick={() => open(i)} style={{ cursor: "pointer" }}>
                 <td>{i.number}</td>
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
-                <td>{i.client}</td>
+                <td>{i.client}{links(i) && <div>{links(i)}</div>}</td>
                 <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
                 <td className="num">{eur(totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
@@ -157,6 +183,7 @@ export default function Factures() {
                   {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
                   {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>Payée</button>}
+                  {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}>Faire le solde</button>}
                 </td>
               </tr>
             ))}
@@ -170,6 +197,7 @@ export default function Factures() {
           <div className="modal" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: 0 }}>{edit.number ? `${KIND[edit.kind]} ${edit.number}` : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
             {edit.error && <p className="neg small">{edit.error}</p>}
+            {edit.id && (() => { const cur = list.find((x) => x.id === edit.id); const l = cur && links(cur); return l ? <div>{l}</div> : null; })()}
             <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, display: "contents" }}>
               <div className="row">
                 {(["standard", "deposit", "final"] as const).map((k) => (
