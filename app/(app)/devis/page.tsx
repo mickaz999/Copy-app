@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, FileDown, Minus, Paperclip, Plus, Save, Send, Trash2, Upload, X } from "lucide-react";
+import { Car, Check, FileDown, Minus, Paperclip, Plus, Save, Send, Trash2, Upload, X } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
 import { CATALOGUE } from "@/lib/pricing";
 
@@ -36,6 +36,9 @@ export default function Devis() {
 
   const load = () => api<Quote[]>("quotes").then(setList);
   const [saved, setSaved] = useState<Buyer[]>([]);
+  // Déplacement : km aller (calculés ou saisis), aller-retour, tarif au km
+  const [trip, setTrip] = useState({ to: "", km: 0, round: true, rate: 0.6, from: "", defaultFrom: "", busy: false, info: "" });
+  useEffect(() => { api<{ kmRate: number; kmFrom: string; defaultFrom: string }>("quotes/travel").then((r) => setTrip((t) => ({ ...t, rate: r.kmRate, from: r.kmFrom, defaultFrom: r.defaultFrom }))).catch(() => {}); }, []);
   useEffect(() => { load(); api<Buyer[]>("clients/billing").then(setSaved).catch(() => {}); }, []);
 
   const lines = linesOf(edit);
@@ -43,6 +46,28 @@ export default function Devis() {
   const setQty = (id: string, n: number) => setEdit((e) => ({ ...e, qty: { ...e.qty, [id]: Math.max(0, n) } }));
   const setBuyer = (b: Partial<Buyer>) => setEdit((e) => ({ ...e, buyer: { ...e.buyer, ...b } }));
   const setExtra = (i: number, l: Partial<Line>) => setEdit((e) => ({ ...e, extra: e.extra.map((x, j) => (j === i ? { ...x, ...l } : x)) }));
+
+  const TRIP = "Frais de déplacement";
+  const tripKm = trip.km * (trip.round ? 2 : 1);
+  async function calcTrip() {
+    const to = trip.to.trim() || [edit.buyer.address, edit.buyer.zip, edit.buyer.city].filter(Boolean).join(" ");
+    if (!to) { setTrip({ ...trip, info: "Indique le lieu du tournage (ou l'adresse du client)." }); return; }
+    setTrip({ ...trip, to, busy: true, info: "" });
+    try {
+      const res = await fetch(`/api/quotes/travel?to=${encodeURIComponent(to)}`);
+      const b = await res.json();
+      if (!res.ok) throw new Error(b.error);
+      setTrip((t) => ({ ...t, km: b.km, busy: false, info: `${b.km} km en voiture jusqu'à ${String(b.to).split(",").slice(0, 2).join(",")}` }));
+    } catch (e) { setTrip((t) => ({ ...t, busy: false, info: String((e as Error).message) })); }
+  }
+  function addTrip() {
+    if (!(tripKm > 0)) return;
+    api("quotes/travel", "POST", { kmRate: trip.rate, kmFrom: trip.from });
+    const where = trip.to.trim() || edit.buyer.city;
+    const label = `${TRIP}${where ? ` - ${where}` : ""} (${trip.round ? "aller-retour" : "aller"}, ${String(trip.rate).replace(".", ",")} €/km)`;
+    const line = { label, qty: tripKm, unitPrice: trip.rate };
+    setEdit((e) => ({ ...e, extra: [...e.extra.filter((l) => !l.label.startsWith(TRIP)), line] }));
+  }
 
   // Reprend un devis existant dans le formulaire (prestations de la grille reconnues par leur nom)
   function open(q: Quote) {
@@ -209,6 +234,27 @@ export default function Devis() {
             </div>
           </div>
         ))}
+
+        <div style={{ marginTop: 14 }}>
+          <div className="eyebrow">déplacement</div>
+          <div className="card" style={{ cursor: "default" }}>
+            <div className="row">
+              <input style={{ flex: 3 }} placeholder="Lieu du tournage (vide = adresse du client)" value={trip.to} onChange={(e) => setTrip({ ...trip, to: e.target.value })} />
+              <button type="button" className="ghost" disabled={trip.busy} onClick={calcTrip}><Car size={15} /> {trip.busy ? "Calcul…" : "Calculer les km"}</button>
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
+              <label className="muted small row">Km aller <input style={{ width: 80 }} type="number" min={0} value={trip.km} onChange={(e) => setTrip({ ...trip, km: Number(e.target.value) })} /></label>
+              <label className="check small"><input type="checkbox" checked={trip.round} onChange={(e) => setTrip({ ...trip, round: e.target.checked })} /> Aller-retour</label>
+              <label className="muted small row">€ / km <input style={{ width: 80 }} type="number" min={0} step="0.01" value={trip.rate} onChange={(e) => setTrip({ ...trip, rate: Number(e.target.value) })} /></label>
+              <b>{tripKm} km · {eur(tripKm * trip.rate)}</b>
+              <button type="button" className="primary small" disabled={!(tripKm > 0)} onClick={addTrip}><Plus size={14} /> Ajouter au devis</button>
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
+              <label className="muted small row" style={{ flex: 1 }}>Départ <input style={{ flex: 1 }} placeholder={trip.defaultFrom || "Ton adresse"} value={trip.from} onChange={(e) => setTrip({ ...trip, from: e.target.value })} onBlur={() => api("quotes/travel", "POST", { kmFrom: trip.from })} /></label>
+            </div>
+            {trip.info && <div className="muted small" style={{ marginTop: 6 }}>{trip.info}</div>}
+          </div>
+        </div>
 
         <div style={{ marginTop: 14 }}>
           <div className="eyebrow">autre prestation</div>
