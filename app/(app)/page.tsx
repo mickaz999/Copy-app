@@ -50,7 +50,7 @@ export default function Home() {
     { href: "/livraisons", icon: Clapperboard, label: "Livraisons", info: feedback ? `${feedback} retour${feedback > 1 ? "s" : ""} à traiter` : `${waiting} en attente de validation` },
     { href: "/compta", icon: Wallet, label: "Compta EI", info: "Recettes, dépenses, URSSAF" },
     { href: "/inspi", icon: Workflow, label: "Espaces inspi", info: "Tes toiles d'idées" },
-    { href: "/outils", icon: Calculator, label: "Outils", info: "Calculs et utilitaires" },
+    { href: "/devis", icon: Calculator, label: "Devis", info: "Chiffrer puis facturer" },
     { href: "/reglages", icon: Bell, label: "Notifications", info: "Notifs, mails, lien de RDV" },
   ];
 
