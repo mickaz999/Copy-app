@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 
 type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
 type Billing = { siren: string; address: string; zip: string; city: string; vat: string; email: string; phone: string };
-type Q = { id: string; number: string; date: string; status: string; total: number; invoiceId: string };
+type Q = { id: string; number: string; date: string; status: string; total: number; invoiceId: string; signed: boolean };
 type I = { id: string; number: string; date: string; status: string; kind: string; total: number };
 const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const fr = (d: string) => new Date(d).toLocaleDateString("fr-FR", { timeZone: "UTC" });
@@ -78,7 +78,7 @@ export default function Clients() {
               {(c.quotes.length > 0 || c.invoices.length > 0) && (
                 <div className="client-docs">
                   {c.quotes.length > 0 && <div><b className="small">Devis</b>{c.quotes.map((q) => (
-                    <a key={q.id} className="client-doc" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><span>{q.number}</span><span className="muted">{fr(q.date)}</span><span className={`tag ${q.status}`}>{QS[q.status] ?? q.status}</span><b>{eur(q.total)}</b></a>
+                    <a key={q.id} className="client-doc" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><span>{q.number}{q.signed ? " · signé" : ""}</span><span className="muted">{fr(q.date)}</span><span className={`tag ${q.status}`}>{QS[q.status] ?? q.status}</span><b>{eur(q.total)}</b></a>
                   ))}</div>}
                   {c.invoices.length > 0 && <div><b className="small">Factures</b>{c.invoices.map((i) => (
                     <a key={i.id} className="client-doc" href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span><span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span><b>{eur(i.total)}</b></a>
