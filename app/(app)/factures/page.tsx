@@ -3,16 +3,17 @@ import { useEffect, useState } from "react";
 import { ExternalLink, FileCode, FileDown, Package, Plus, Send, Settings2, Trash2 } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
 import { totals, type Discount, type InvoiceKind, type Prepaid } from "@/lib/cii";
+import { einvoiceMandatory } from "@/lib/einvoice";
 
 type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string };
 type Line = { label: string; qty: number; unitPrice: number };
 type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
-  note: string; discount: string; kind: InvoiceKind; deposits: string; refId: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
+  note: string; discount: string; kind: InvoiceKind; deposits: string; refId: string; einvoice: boolean; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
 type Product = { id: string; name: string; unitPrice: number };
-type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string; einvoice: boolean };
-type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; kind: InvoiceKind; deposits: string[]; refId?: string; status?: Inv["status"]; error?: string };
+type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string };
+type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; kind: InvoiceKind; deposits: string[]; refId?: string; einvoice: boolean; status?: Inv["status"]; error?: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
 const STATUS = { draft: "Brouillon", sent: "Émise", paid: "Payée" } as const;
@@ -39,10 +40,10 @@ export default function Factures() {
 
   const rate = seller?.vatRate ?? 0;
   const discountOf = (i: Inv): Discount | undefined => (i.discount ? parse<Discount>(i.discount, NO_DISCOUNT) : undefined);
-  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, kind: i.kind || "standard", deposits: parse<string[]>(i.deposits, []), refId: i.refId, status: i.status, error: i.error });
+  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, kind: i.kind || "standard", deposits: parse<string[]>(i.deposits, []), refId: i.refId, einvoice: i.einvoice, status: i.status, error: i.error });
   const fresh = () => {
     const d = new Date();
-    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "standard", deposits: [] });
+    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "standard", deposits: [], einvoice: false });
   };
   // Acomptes : montant TTC de chaque facture d'acompte, et ceux déjà déduits dans une facture de solde
   const ttcOf = (i: Inv) => totalOf(parse(i.lines, []), rate, discountOf(i)).ttc;
@@ -82,12 +83,12 @@ export default function Factures() {
     const o = totalOf(parse(orig.lines, []), rate, discountOf(orig), orig.kind === "final" ? prepaidOf(parse<string[]>(orig.deposits, [])) : undefined);
     // Montant de l'avoir = ce qui a été facturé (reste à payer pour un solde)
     const lines: Line[] = o.prepaid > 0 ? [{ label: `Annulation de la facture ${orig.number}`, qty: 1, unitPrice: o.due }] : parse<Line[]>(orig.lines, []);
-    setEdit({ date: d, dueDate: d, buyer: { ...EMPTY_BUYER, ...parse<Buyer>(orig.buyer, EMPTY_BUYER) }, lines, note: `Avoir sur la facture ${orig.number}`, discount: o.prepaid > 0 ? { ...NO_DISCOUNT } : discountOf(orig) ?? { ...NO_DISCOUNT }, kind: "credit", deposits: [], refId: orig.id });
+    setEdit({ date: d, dueDate: d, buyer: { ...EMPTY_BUYER, ...parse<Buyer>(orig.buyer, EMPTY_BUYER) }, lines, note: `Avoir sur la facture ${orig.number}`, discount: o.prepaid > 0 ? { ...NO_DISCOUNT } : discountOf(orig) ?? { ...NO_DISCOUNT }, kind: "credit", deposits: [], refId: orig.id, einvoice: orig.einvoice });
   }
   function makeFinal(dep: Inv) {
     const d = new Date();
     const buyer = { ...EMPTY_BUYER, ...parse<Buyer>(dep.buyer, EMPTY_BUYER) };
-    const e: Edit = { date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "final", deposits: [] };
+    const e: Edit = { date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "final", deposits: [], einvoice: false };
     e.deposits = depositsFor(e).map((x) => x.id);
     // Total du projet repris du libellé « … (total 1 500,00 € HT) » si présent
     const m = parse<Line[]>(dep.lines, [])[0]?.label.match(/^Acompte [\d,]+ %(?: - (.*?))? \(total ([\d\s  ,]+) €/);
@@ -118,7 +119,7 @@ export default function Factures() {
 
   async function save(): Promise<string | undefined> {
     if (!edit) return;
-    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount, kind: edit.kind, deposits: edit.kind === "final" ? edit.deposits : [], ...(edit.kind === "credit" ? { refId: edit.refId ?? "" } : {}) };
+    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount, kind: edit.kind, einvoice: edit.einvoice, deposits: edit.kind === "final" ? edit.deposits : [], ...(edit.kind === "credit" ? { refId: edit.refId ?? "" } : {}) };
     const r = edit.id ? await api<Inv>(`invoices/${edit.id}`, "PATCH", body) : await api<Inv>("invoices", "POST", body);
     await load();
     return r.id;
@@ -173,7 +174,7 @@ export default function Factures() {
       <div className="eyebrow">factures</div>
       <h1 className="title">ce qu&apos;on <span className="accent">facture.</span></h1>
       <div className="row">
-        {seller?.einvoice && <a className="ghost" href="https://www.superpdp.tech" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Mon espace Super PDP</a>}
+        {list.some((x) => x.einvoice) && <a className="ghost" href="https://www.superpdp.tech" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Mon espace Super PDP</a>}
         <button className="ghost" onClick={() => setShowSettings(true)}><Settings2 size={16} /> Mes infos</button>
         <button className="ghost" onClick={() => setShowProducts(true)}><Package size={16} /> Produits</button>
         <span style={{ flex: 1 }} />
@@ -191,12 +192,12 @@ export default function Factures() {
                 <td>{i.number}</td>
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}{links(i) && <div>{links(i)}</div>}</td>
-                <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
+                <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
                 <td className="num">{eur((i.kind === "credit" ? -1 : 1) * totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
-                  {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
-                  {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
+                  {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
+                  {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>{i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
                   {i.status !== "draft" && i.kind !== "credit" && <button className="ghost small" onClick={() => makeCredit(i)}>Faire un avoir</button>}
                   {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}>Faire le solde</button>}
@@ -279,6 +280,9 @@ export default function Factures() {
                   <option value="pct">%</option>
                 </select>
               </div>
+              {edit.buyer.siren.trim() && (einvoiceMandatory(edit.date)
+                ? <span className="muted small">Facture électronique : obligatoire pour cette date, le fichier officiel sera à déposer sur Super PDP.</span>
+                : <label className="check"><input type="checkbox" checked={edit.einvoice} onChange={(e) => setEdit({ ...edit, einvoice: e.target.checked })} /> Facture électronique (dépôt Super PDP) · facultatif jusqu&apos;au 01/09/2027</label>)}
               <label>Note (facultatif)<input value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
             </fieldset>
             <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · {t.prepaid > 0 ? <>Total TTC {eur(t.ttc)} · Acomptes −{eur(t.prepaid)} · <b>Reste à payer {eur(t.due)}</b></> : <b>{edit.kind === "deposit" ? "Acompte" : edit.kind === "credit" ? "Total de l'avoir" : "Total TTC"} {eur(t.ttc)}</b>}{rate === 0 && ` · ${seller?.vatNote}`}</div>
@@ -331,8 +335,6 @@ export default function Factures() {
             </div>
             <label>Logo (lien d&apos;une image PNG ou JPG, vide = pas de logo)<input value={seller.logo} onChange={(e) => setSeller({ ...seller, logo: e.target.value })} /></label>
             {seller.logo && <img src={seller.logo} alt="" style={{ maxHeight: 40, maxWidth: 200, alignSelf: "flex-start" }} />}
-            <label className="check"><input type="checkbox" checked={seller.einvoice} onChange={(e) => setSeller({ ...seller, einvoice: e.target.checked })} /> Facturation électronique (fichier officiel à déposer sur Super PDP pour les clients entreprises)</label>
-            <span className="muted small">Obligatoire pour émettre à partir de septembre 2027 (micro-entreprise). Décoché : PDF par mail seulement.</span>
             {seller.vatRate === 0 && <label>Mention TVA<input value={seller.vatNote} onChange={(e) => setSeller({ ...seller, vatNote: e.target.value })} /></label>}
             <div className="row"><span style={{ flex: 1 }} /><button className="primary" onClick={saveSettings}>Enregistrer</button></div>
           </div>

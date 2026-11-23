@@ -403,6 +403,7 @@ model Invoice {
   refId      String   @default("") // avoir : id de la facture d'origine
   deposits   String   @default("[]") // facture de solde : ids des factures d'acompte déduites (JSON)
   status     String   @default("draft") // draft | sent | paid
+  einvoice   Boolean  @default(false) // facture électronique (fichier officiel + dépôt Super PDP), facultative avant le 01/09/2027
   deposited  Boolean  @default(false) // fichier officiel déposé sur l'espace Super PDP
   error      String   @default("") // dernière erreur (validation, envoi)
   sentAt     DateTime?

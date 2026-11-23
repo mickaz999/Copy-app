@@ -4,6 +4,7 @@ import { invoicePdf } from "@/lib/invoicePdf";
 import { validateInvoice } from "@/lib/superpdp";
 import { sendGmail } from "@/lib/google";
 import { mailAccount } from "@/lib/notify";
+import { einvoiceMandatory } from "@/lib/einvoice";
 
 export const invoiceSettings = () => db.invoiceSettings.upsert({ where: { id: 1 }, create: {}, update: {} });
 
@@ -89,7 +90,8 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
   d.seller.siren = d.seller.siren.replace(/\s/g, "");
   d.buyer.siren = (d.buyer.siren ?? "").replace(/\s/g, "");
 
-  const electronic = (await invoiceSettings()).einvoice && isPro(d);
+  const electronic = (inv.einvoice || einvoiceMandatory(d.date)) && isPro(d);
+  if (electronic && !inv.einvoice) await db.invoice.update({ where: { id }, data: { einvoice: true } });
   if (electronic) {
     const check = await validateInvoice(buildCii(d));
     if (!check.valid) {
