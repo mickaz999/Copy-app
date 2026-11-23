@@ -12,7 +12,6 @@ export async function GET() {
     db.delivery.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, title: true, client: true, createdAt: true, expiresAt: true, approvedV: true, approvedAt: true } }),
     db.dropLink.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, title: true, client: true, active: true, createdAt: true, expiresAt: true, _count: { select: { files: true } } } }),
   ]);
-  for (const n of Array.from(new Set([...deliveries, ...drops].map((d) => d.client.trim()).filter(Boolean)))) await clientFor(n).catch(() => {});
   // Devis et factures, rattachés au client par son nom
   const [invoices, quotes, s] = await Promise.all([
     db.invoice.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, client: true, buyer: true, lines: true, discount: true, kind: true, deposits: true, status: true } }),
@@ -30,7 +29,7 @@ export async function GET() {
     return t;
   };
   const who = (x: { buyer: string; client?: string }) => nameKey(parse<{ name?: string }>(x.buyer, {}).name || x.client || "");
-  for (const n of Array.from(new Set([...invoices, ...quotes].map((x) => parse<{ name?: string }>(x.buyer, {}).name?.trim() ?? "").filter(Boolean)))) await clientFor(n).catch(() => {});
+  // Pas de recréation automatique des fiches ici : une fiche supprimée doit le rester
   const clients = await db.client.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json(clients.map((c) => ({ ...c, space: spaceUrl(c), emails: emailsOf(c), billing: billingOf(c),
     quotes: quotes.filter((q) => who(q) === c.nameKey).map((q) => ({ id: q.id, number: q.number, date: q.date, status: q.status, total: ttc(q), invoiceId: q.invoiceId, signed: !!q.signedName })),
