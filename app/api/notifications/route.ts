@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     liveCategory: String(b.liveCategory ?? "Gaming"),
     blockCalendar: String(b.blockCalendar ?? ""),
     mailAccount: String(b.mailAccount ?? ""),
+    sendAs: String(b.sendAs ?? "").trim(),
   };
   return NextResponse.json(await db.notifSettings.upsert({ where: { id: 1 }, create: data, update: data }));
 }

@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import BookingSettings from "@/components/BookingSettings";
 import { MiniLoader } from "@/components/LivLoader";
 
-type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string; mailAccount: string };
+type Settings = { pushEnabled: boolean; emailEnabled: boolean; emailTo: string; digestHour: number; eventReminder: number; lateAlert: boolean; liveCalendar: string; liveDays: number; liveCategory: string; blockCalendar: string; mailAccount: string; sendAs: string };
 type Info = { settings: Settings; vapidPublicKey: string; pushReady: boolean; cronReady: boolean; mailFrom: string; googleConnected: boolean; mailAccounts: { id: string; email: string }[]; devices: number; calendars: { id: string; name: string }[]; writableCalendars: { id: string; name: string }[] };
 
 // Clé VAPID (base64url) vers le format attendu par le navigateur
@@ -135,6 +135,10 @@ export default function Reglages() {
             </select>
           </label>
         )}
+        <label className="field-line">Adresse d&apos;envoi (tous les mails de l&apos;app)
+          <input id="n-sendas" placeholder="Ton Nom <contact@tondomaine.fr>" defaultValue={s.sendAs} onBlur={(e) => e.target.value !== s.sendAs && save({ ...s, sendAs: e.target.value })} />
+        </label>
+        <p className="muted small">Laisse vide pour envoyer avec l&apos;adresse du compte Google. Sinon, mets une adresse ajoutée dans Gmail → Paramètres → Comptes → « Envoyer des e-mails en tant que », écrite exactement pareil (sinon Gmail utilise ton adresse principale).</p>
         <p className="muted small">Pour envoyer depuis un autre compte Google : <a className="link" href="/api/google/connect">connecte-le</a> en acceptant « envoyer des e-mails », puis choisis-le ici.</p>
         <label className="check-line"><input id="n-mail" type="checkbox" checked={s.emailEnabled} onChange={(e) => save({ ...s, emailEnabled: e.target.checked })} /> Recevoir le récap par mail</label>
         <label className="field-line">Adresse
