@@ -11,7 +11,6 @@ const fill = (t: string, p: P) => t.replace(/\{pr[ée]nom\}|\{nom\}/gi, p.name.s
 
 export default function Prospection() {
   const [list, setList] = useState<P[]>([]);
-  const [from, setFrom] = useState("");
   const [templates, setTemplates] = useState<T[]>([]);
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState("");
@@ -21,11 +20,11 @@ export default function Prospection() {
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const load = () => api<{ list: P[]; from: string; templates: T[] }>("prospects").then((r) => { setList(r.list); setFrom(r.from); setTemplates(r.templates); }).catch(() => {});
+  const load = () => api<{ list: P[]; templates: T[] }>("prospects").then((r) => { setList(r.list); setTemplates(r.templates); }).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const save = async (p: P, patch: Partial<P>) => { setList((l) => l.map((x) => (x.id === p.id ? { ...x, ...patch } : x))); await api("prospects", "POST", { id: p.id, ...patch }); };
-  const saveCfg = (f = from, t = templates) => api("prospects", "POST", { config: { from: f, templates: t } });
+  const saveCfg = (t = templates) => api("prospects", "POST", { config: { templates: t } });
 
   async function send() {
     if (!mail) return;
@@ -51,20 +50,19 @@ export default function Prospection() {
       <p className="muted">Ajoute tes prospects et écris-leur directement d'ici : le mail part de ton Gmail (et apparaît dans tes « Envoyés »). Dans les modèles, <b>{"{prénom}"}</b> et <b>{"{marque}"}</b> sont remplacés automatiquement.</p>
 
       <div className="row" style={{ margin: "10px 0" }}>
-        <button className="ghost" onClick={() => setShowCfg(!showCfg)}><Settings2 size={15} /> Adresse d'envoi & modèles</button>
+        <button className="ghost" onClick={() => setShowCfg(!showCfg)}><Settings2 size={15} /> Modèles de mails</button>
         {msg && <span className="muted">{msg}</span>}
       </div>
 
       {showCfg && (
         <section className="settings-card" style={{ display: "grid", gap: 10 }}>
-          <label className="muted small">Envoyer depuis (laisser vide = adresse Gmail principale). Utilise un alias ajouté dans Gmail → Paramètres → Comptes → « Envoyer des e-mails en tant que ».</label>
-          <input placeholder="Prénom Nom <contact@mondomaine.fr>" value={from} onChange={(e) => setFrom(e.target.value)} onBlur={() => saveCfg()} />
+          <p className="muted small">L'adresse d'envoi se règle dans <a className="link" href="/reglages">Réglages</a> (elle sert pour tous les mails de l'app).</p>
           <b>Modèles</b>
           {templates.map((t, i) => (
             <div key={i} style={{ display: "grid", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
               <div className="row">
                 <input placeholder="Nom du modèle (ex. Premier contact)" value={t.name} onChange={(e) => setTemplates(templates.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} onBlur={() => saveCfg()} />
-                <button className="ghost" title="Supprimer" onClick={() => { const n = templates.filter((_, j) => j !== i); setTemplates(n); saveCfg(from, n); }}><Trash2 size={15} /></button>
+                <button className="ghost" title="Supprimer" onClick={() => { const n = templates.filter((_, j) => j !== i); setTemplates(n); saveCfg(n); }}><Trash2 size={15} /></button>
               </div>
               <input placeholder="Objet" value={t.subject} onChange={(e) => setTemplates(templates.map((x, j) => (j === i ? { ...x, subject: e.target.value } : x)))} onBlur={() => saveCfg()} />
               <textarea rows={6} placeholder={"Salut {prénom},\n\n…"} value={t.body} onChange={(e) => setTemplates(templates.map((x, j) => (j === i ? { ...x, body: e.target.value } : x)))} onBlur={() => saveCfg()} />
@@ -114,7 +112,7 @@ export default function Prospection() {
         <div onClick={() => setMail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 }}>
           <div className="settings-card" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, display: "grid", gap: 8, background: "var(--card)", maxHeight: "90vh", overflow: "auto" }}>
             <div className="row" style={{ justifyContent: "space-between" }}><b>Mail à {mail.p.name}</b><button className="ghost" onClick={() => setMail(null)}><X size={16} /></button></div>
-            <div className="muted small">De : {from || "ton adresse Gmail principale"}</div>
+            <div className="muted small">De : ton adresse d'envoi (Réglages)</div>
             {templates.length > 0 && (
               <select defaultValue="" onChange={(e) => { const t = templates[Number(e.target.value)]; if (t) setMail({ ...mail, subject: fill(t.subject, mail.p), body: fill(t.body, mail.p) }); }}>
                 <option value="" disabled>Choisir un modèle…</option>

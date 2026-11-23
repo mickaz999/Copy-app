@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic";
 const config = () => db.prospectConfig.upsert({ where: { id: 1 }, create: {}, update: {} });
 const STATUSES = ["todo", "contacted", "replied", "won", "lost"];
 
-// Liste des prospects + réglages (adresse d'envoi, modèles)
+// Liste des prospects + modèles de mails
 export async function GET() {
   const [list, c] = await Promise.all([db.prospect.findMany({ orderBy: { createdAt: "desc" } }), config()]);
-  return NextResponse.json({ list, from: c.fromAddr, templates: JSON.parse(c.templates || "[]") });
+  return NextResponse.json({ list, templates: JSON.parse(c.templates || "[]") });
 }
 
 // Création / modification / suppression d'un prospect, ou des réglages ({ config: … })
@@ -17,7 +17,6 @@ export async function POST(req: Request) {
   const b = await req.json();
   if (b.config) {
     const data = {
-      fromAddr: String(b.config.from ?? "").trim(),
       templates: JSON.stringify((Array.isArray(b.config.templates) ? b.config.templates : []).map((t: any) => ({ name: String(t.name ?? ""), subject: String(t.subject ?? ""), body: String(t.body ?? "") }))),
     };
     await db.prospectConfig.upsert({ where: { id: 1 }, create: data, update: data });

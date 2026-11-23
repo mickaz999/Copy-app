@@ -130,6 +130,8 @@ export function toGoogleEvent(b: { title: string; allDay: boolean; start: string
 // Envoie un mail depuis le compte Gmail connecté
 export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false, from = ""): Promise<void> {
   const token = await accessToken(accountId);
+  // Adresse d'expéditeur choisie dans Réglages, pour tous les mails de l'app
+  if (!from) from = (await db.notifSettings.findUnique({ where: { id: 1 } }))?.sendAs ?? "";
   const b64 = (t: string) => Buffer.from(t, "utf8").toString("base64");
   const mime = [
     // Adresse d'envoi : doit être un alias « Envoyer en tant que » validé dans Gmail

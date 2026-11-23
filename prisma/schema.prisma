@@ -136,6 +136,7 @@ model NotifSettings {
   liveCategory   String  @default("Gaming")
   blockCalendar  String  @default("")  // agenda Google où bloquer les tâches avec horaire
   mailAccount    String  @default("")  // compte Google (GoogleAccount.id) qui envoie les mails ; vide = le premier connecté
+  sendAs         String  @default("")  // adresse d'expéditeur pour tous les mails (alias « Envoyer en tant que » de Gmail) ; vide = adresse du compte
 }
 
 // Rappels déjà envoyés, pour ne jamais notifier deux fois
@@ -380,9 +381,8 @@ model Prospect {
   createdAt DateTime  @default(now())
 }
 
-// Réglages de prospection : adresse d'envoi + modèles de mails
+// Réglages de prospection : modèles de mails
 model ProspectConfig {
   id        Int    @id @default(1)
-  fromAddr  String @default("") // ex. « Prénom Nom <contact@mondomaine.fr> » (alias « Envoyer en tant que » de Gmail)
   templates String @default("[]") // JSON [{ name, subject, body }]
 }

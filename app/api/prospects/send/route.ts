@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// Envoie un mail de prospection depuis le Gmail connecté (avec l'adresse d'envoi choisie)
+// Envoie un mail de prospection depuis le Gmail connecté (adresse d'envoi réglée dans Réglages)
 export async function POST(req: Request) {
   const { id, to, subject, body } = await req.json();
   const p = await db.prospect.findUnique({ where: { id } });
@@ -17,10 +17,9 @@ export async function POST(req: Request) {
   if (!String(subject ?? "").trim() || !String(body ?? "").trim()) return NextResponse.json({ error: "Objet et message requis" }, { status: 400 });
   const acc = await mailAccount();
   if (!acc) return NextResponse.json({ error: "Aucun compte Google avec l'envoi de mails : connecte-le dans Réglages." }, { status: 400 });
-  const cfg = await db.prospectConfig.findUnique({ where: { id: 1 } });
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${esc(String(body)).replace(/\n/g, "<br>")}</div>`;
   try {
-    await sendGmail(acc.id, dest, String(subject), html, false, cfg?.fromAddr ?? "");
+    await sendGmail(acc.id, dest, String(subject), html);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Envoi impossible" }, { status: 502 });
   }
