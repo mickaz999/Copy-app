@@ -194,7 +194,7 @@ export default function Factures() {
 
       {edit && (
         <div className="overlay" onClick={() => setEdit(null)}>
-          <div className="modal" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: 0 }}>{edit.number ? `${KIND[edit.kind]} ${edit.number}` : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
             {edit.error && <p className="neg small">{edit.error}</p>}
             {edit.id && (() => { const cur = list.find((x) => x.id === edit.id); const l = cur && links(cur); return l ? <div>{l}</div> : null; })()}
@@ -265,7 +265,7 @@ export default function Factures() {
               <label>Note (facultatif)<input value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
             </fieldset>
             <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · {t.prepaid > 0 ? <>Total TTC {eur(t.ttc)} · Acomptes −{eur(t.prepaid)} · <b>Reste à payer {eur(t.due)}</b></> : <b>{edit.kind === "deposit" ? "Acompte" : "Total TTC"} {eur(t.ttc)}</b>}{rate === 0 && ` · ${seller?.vatNote}`}</div>
-            <div className="row">
+            <div className="row modal-actions">
               {edit.id && !ro && <button className="neg" onClick={remove}>Supprimer</button>}
               {edit.id && <a className="ghost" href={`/api/invoices/${edit.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={16} /> Aperçu PDF</a>}
               <span style={{ flex: 1 }} />
