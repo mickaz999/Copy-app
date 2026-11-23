@@ -105,3 +105,16 @@ export async function spaceFor(name: string) {
   return c ? spaceUrl(c) : "";
 }
 export const spacePath = (url: string) => url.replace(/^https?:\/\/[^/]+/, "");
+
+// Devis et factures visibles par le client dans son espace (hors brouillons), rattachés par nom
+export async function clientDocs(nk: string) {
+  const name = (b: string, c = "") => { try { return nameKey((JSON.parse(b) as { name?: string }).name || c); } catch { return nameKey(c); } };
+  const [qs, is] = await Promise.all([
+    db.quote.findMany({ where: { status: { not: "draft" } }, orderBy: { number: "desc" }, select: { id: true, number: true, date: true, buyer: true, status: true } }),
+    db.invoice.findMany({ where: { status: { not: "draft" } }, orderBy: { number: "desc" }, select: { id: true, number: true, date: true, buyer: true, client: true, status: true, kind: true } }),
+  ]);
+  return {
+    quotes: qs.filter((q) => name(q.buyer) === nk).map(({ buyer: _b, ...q }) => q),
+    invoices: is.filter((i) => name(i.buyer, i.client) === nk).map(({ buyer: _b, client: _c, ...i }) => i),
+  };
+}
