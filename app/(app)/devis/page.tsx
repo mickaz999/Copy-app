@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Car, Check, FileDown, Minus, Paperclip, Plus, Save, Send, Trash2, Upload, X } from "lucide-react";
+import { Check, FileDown, Minus, Paperclip, Plus, Save, Send, Trash2, Upload, X } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
-import { CATALOGUE } from "@/lib/pricing";
+import PricingCalc from "@/components/PricingCalc";
 
 type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; phone: string };
 type Line = { label: string; qty: number; unitPrice: number };
@@ -11,18 +11,14 @@ type Quote = {
   id: string; number: string; date: string; validUntil: string; buyer: string; lines: string; note: string; discount: string;
   status: "draft" | "sent" | "accepted" | "refused"; signedName: string; invoiceId: string; error: string; sentAt: string | null;
 };
-type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; qty: Record<string, number>; price: Record<string, number>; extra: Line[]; note: string };
+type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; extra: Line[]; note: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "", phone: "" };
 const STATUS = { draft: "Brouillon", sent: "Envoyé", accepted: "Validé", refused: "Refusé" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
-const ITEMS = CATALOGUE.flatMap((s) => s.items);
 const in30 = () => isoDay(new Date(Date.now() + 30 * 864e5));
-const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, qty: {}, price: {}, extra: [], note: "" });
-const linesOf = (e: Edit): Line[] => [
-  ...ITEMS.filter((i) => (e.qty[i.id] ?? 0) > 0).map((i) => ({ label: i.name, qty: e.qty[i.id], unitPrice: e.price[i.id] ?? i.prix })),
-  ...e.extra.filter((l) => l.label.trim()),
-];
+const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, extra: [], note: "" });
+const linesOf = (e: Edit): Line[] => e.extra.filter((l) => l.label.trim());
 const sum = (lines: Line[]) => lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
 
 // Devis : composé avec la grille tarifaire, envoyé au client, puis validé (devis signé glissé dans l'app) → facture brouillon
@@ -36,49 +32,15 @@ export default function Devis() {
 
   const load = () => api<Quote[]>("quotes").then(setList);
   const [saved, setSaved] = useState<Buyer[]>([]);
-  // Déplacement : km aller (calculés ou saisis), aller-retour, tarif au km
-  const [trip, setTrip] = useState({ to: "", km: 0, round: true, rate: 0.6, from: "", defaultFrom: "", busy: false, info: "" });
-  useEffect(() => { api<{ kmRate: number; kmFrom: string; defaultFrom: string }>("quotes/travel").then((r) => setTrip((t) => ({ ...t, rate: r.kmRate, from: r.kmFrom, defaultFrom: r.defaultFrom }))).catch(() => {}); }, []);
-  useEffect(() => { load(); api<Buyer[]>("clients/billing").then(setSaved).catch(() => {}); }, []);
-
   const lines = linesOf(edit);
   const total = sum(lines);
-  const setQty = (id: string, n: number) => setEdit((e) => ({ ...e, qty: { ...e.qty, [id]: Math.max(0, n) } }));
   const setBuyer = (b: Partial<Buyer>) => setEdit((e) => ({ ...e, buyer: { ...e.buyer, ...b } }));
   const setExtra = (i: number, l: Partial<Line>) => setEdit((e) => ({ ...e, extra: e.extra.map((x, j) => (j === i ? { ...x, ...l } : x)) }));
 
-  const TRIP = "Frais de déplacement";
-  const tripKm = trip.km * (trip.round ? 2 : 1);
-  async function calcTrip() {
-    const to = trip.to.trim() || [edit.buyer.address, edit.buyer.zip, edit.buyer.city].filter(Boolean).join(" ");
-    if (!to) { setTrip({ ...trip, info: "Indique le lieu du tournage (ou l'adresse du client)." }); return; }
-    setTrip({ ...trip, to, busy: true, info: "" });
-    try {
-      const res = await fetch(`/api/quotes/travel?to=${encodeURIComponent(to)}`);
-      const b = await res.json();
-      if (!res.ok) throw new Error(b.error);
-      setTrip((t) => ({ ...t, km: b.km, busy: false, info: `${b.km} km en voiture jusqu'à ${String(b.to).split(",").slice(0, 2).join(",")}` }));
-    } catch (e) { setTrip((t) => ({ ...t, busy: false, info: String((e as Error).message) })); }
-  }
-  function addTrip() {
-    if (!(tripKm > 0)) return;
-    api("quotes/travel", "POST", { kmRate: trip.rate, kmFrom: trip.from });
-    const where = trip.to.trim() || edit.buyer.city;
-    const label = `${TRIP}${where ? ` - ${where}` : ""} (${trip.round ? "aller-retour" : "aller"}, ${String(trip.rate).replace(".", ",")} €/km)`;
-    const line = { label, qty: tripKm, unitPrice: trip.rate };
-    setEdit((e) => ({ ...e, extra: [...e.extra.filter((l) => !l.label.startsWith(TRIP)), line] }));
-  }
-
   // Reprend un devis existant dans le formulaire (prestations de la grille reconnues par leur nom)
   function open(q: Quote) {
-    const qty: Record<string, number> = {};
-    const price: Record<string, number> = {};
-    const extra: Line[] = [];
-    for (const l of parse<Line[]>(q.lines, [])) {
-      const it = ITEMS.find((i) => i.name === l.label && !qty[i.id]);
-      if (it) { qty[it.id] = l.qty; if (l.unitPrice !== it.prix) price[it.id] = l.unitPrice; } else extra.push(l);
-    }
-    setEdit({ id: q.id, number: q.number, validUntil: q.validUntil.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(q.buyer, {}) }, qty, price, extra, note: q.note });
+    const extra = parse<Line[]>(q.lines, []);
+    setEdit({ id: q.id, number: q.number, validUntil: q.validUntil.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(q.buyer, {}) }, extra, note: q.note });
     setMsg("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -210,58 +172,11 @@ export default function Devis() {
           </div>
         </div>
 
-        {CATALOGUE.map((s) => (
-          <div key={s.section} style={{ marginTop: 14 }}>
-            <div className="eyebrow">{s.section}</div>
-            {s.note && <div className="muted small" style={{ marginBottom: 4 }}>{s.note}</div>}
-            <div className="card" style={{ cursor: "default", padding: 0 }}>
-              {s.items.map((i) => {
-                const n = edit.qty[i.id] ?? 0;
-                return (
-                  <div key={i.id} className="row" style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", cursor: "pointer", flexWrap: "nowrap" }} onClick={() => setQty(i.id, n ? 0 : 1)}>
-                    <input type="checkbox" checked={n > 0} readOnly style={{ accentColor: "var(--accent)", flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontWeight: n ? 600 : 400 }}>{i.name}</span>
-                    {n > 0 && (
-                      <span className="row" onClick={(e) => e.stopPropagation()} style={{ flexWrap: "nowrap" }}>
-                        <button type="button" className="ghost small" onClick={() => setQty(i.id, Math.max(1, n - 1))}><Minus size={12} /></button>
-                        <b>{n}</b>
-                        <button type="button" className="ghost small" onClick={() => setQty(i.id, n + 1)}><Plus size={12} /></button>
-                      </span>
-                    )}
-                    <span className="muted small" style={{ minWidth: 60, textAlign: "right" }}>{i.duree}</span>
-                    {n > 0
-                      ? <input type="number" min={0} step="any" title="Prix unitaire HT" style={{ width: 90 }} onClick={(e) => e.stopPropagation()} value={edit.price[i.id] ?? i.prix} onChange={(e) => setEdit({ ...edit, price: { ...edit.price, [i.id]: Number(e.target.value) } })} />
-                      : <b style={{ minWidth: 70, textAlign: "right", color: "var(--accent)" }}>{i.prix ? `${i.from ? "dès " : ""}${eur(i.prix)}` : "sur devis"}</b>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+        <PricingCalc destination={[edit.buyer.address, edit.buyer.zip, edit.buyer.city].filter(Boolean).join(" ")} onAdd={(l) => setEdit((e) => ({ ...e, extra: [...e.extra, l] }))} />
 
-        <div style={{ marginTop: 14 }}>
-          <div className="eyebrow">déplacement</div>
-          <div className="card" style={{ cursor: "default" }}>
-            <div className="row">
-              <input style={{ flex: 3 }} placeholder="Lieu du tournage (vide = adresse du client)" value={trip.to} onChange={(e) => setTrip({ ...trip, to: e.target.value })} />
-              <button type="button" className="ghost" disabled={trip.busy} onClick={calcTrip}><Car size={15} /> {trip.busy ? "Calcul…" : "Calculer les km"}</button>
-            </div>
-            <div className="row" style={{ marginTop: 8 }}>
-              <label className="muted small row">Km aller <input style={{ width: 80 }} type="number" min={0} value={trip.km} onChange={(e) => setTrip({ ...trip, km: Number(e.target.value) })} /></label>
-              <label className="check small"><input type="checkbox" checked={trip.round} onChange={(e) => setTrip({ ...trip, round: e.target.checked })} /> Aller-retour</label>
-              <label className="muted small row">€ / km <input style={{ width: 80 }} type="number" min={0} step="0.01" value={trip.rate} onChange={(e) => setTrip({ ...trip, rate: Number(e.target.value) })} /></label>
-              <b>{tripKm} km · {eur(tripKm * trip.rate)}</b>
-              <button type="button" className="primary small" disabled={!(tripKm > 0)} onClick={addTrip}><Plus size={14} /> Ajouter au devis</button>
-            </div>
-            <div className="row" style={{ marginTop: 8 }}>
-              <label className="muted small row" style={{ flex: 1 }}>Départ <input style={{ flex: 1 }} placeholder={trip.defaultFrom || "Ton adresse"} value={trip.from} onChange={(e) => setTrip({ ...trip, from: e.target.value })} onBlur={() => api("quotes/travel", "POST", { kmFrom: trip.from })} /></label>
-            </div>
-            {trip.info && <div className="muted small" style={{ marginTop: 6 }}>{trip.info}</div>}
-          </div>
-        </div>
-
-        <div style={{ marginTop: 14 }}>
-          <div className="eyebrow">autre prestation</div>
+        <div style={{ marginTop: 18 }}>
+          <div className="eyebrow">lignes du devis</div>
+          {!edit.extra.length && <p className="muted small">Ajoute des prestations avec le calculateur, ou une ligne libre.</p>}
           {edit.extra.map((l, i) => (
             <div key={i} className="row" style={{ marginBottom: 6 }}>
               <input style={{ flex: 4 }} placeholder="Libellé" value={l.label} onChange={(e) => setExtra(i, { label: e.target.value })} />
