@@ -9,7 +9,7 @@ const safe = (s: string) => s.replace(/[’‘]/g, "'").replace(/[“”«»]/g,
 
 export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Facture ${inv.number}`);
+  doc.setTitle(`${inv.quote ? "Devis" : "Facture"} ${inv.number}`);
   const page = doc.addPage([595, 842]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -27,10 +27,11 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
     page.drawImage(img, { x: 545 - img.width * k, y: 800 - img.height * k, width: img.width * k, height: img.height * k });
     top = Math.min(780, 800 - img.height * k - 18);
   }
-  t(inv.kind === "deposit" ? "FACTURE D'ACOMPTE" : inv.kind === "final" ? "FACTURE DE SOLDE" : inv.kind === "credit" ? "AVOIR" : "FACTURE", 50, 780, { size: inv.kind && inv.kind !== "standard" ? 18 : 22, b: true });
+  t(inv.quote ? "DEVIS" : inv.kind === "deposit" ? "FACTURE D'ACOMPTE" : inv.kind === "final" ? "FACTURE DE SOLDE" : inv.kind === "credit" ? "AVOIR" : "FACTURE", 50, 780, { size: inv.kind && inv.kind !== "standard" ? 18 : 22, b: true });
   t(`N° ${inv.number}`, 50, 758, { size: 11 });
   t(`Date : ${fr(inv.date)}`, 545, top, { right: true });
-  if (inv.kind !== "credit") t(`Échéance : ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
+  if (inv.quote) t(`Valable jusqu'au ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
+  else if (inv.kind !== "credit") t(`Échéance : ${fr(inv.dueDate)}`, 545, top - 15, { right: true });
   else if (inv.credited) t(`Sur la facture ${inv.credited.number} du ${fr(inv.credited.date)}`, 545, top - 15, { right: true });
 
   const block = (title: string, p: InvoiceData["seller"], x: number) => {
@@ -73,6 +74,15 @@ export async function invoicePdf(inv: InvoiceData): Promise<Uint8Array> {
   if (inv.note) { t(inv.note.slice(0, 100), 50, y); y -= 15; }
 
   let fy = 120;
+  if (inv.quote) {
+    // Bon pour accord : le client signe et renvoie le devis
+    page.drawRectangle({ x: 320, y: 60, width: 225, height: 80, borderColor: grey, borderWidth: 0.7 });
+    t("Bon pour accord", 328, 126, { b: true });
+    t("Date, signature et mention « Bon pour accord »", 328, 112, { size: 8, color: grey });
+    t(`Devis valable jusqu'au ${fr(inv.dueDate)}.`, 50, fy, { size: 9, color: grey }); fy -= 13;
+    t("Une facture sera émise après acceptation du devis.", 50, fy, { size: 9, color: grey });
+    return doc.save();
+  }
   if (inv.kind === "credit") {
     t(inv.credited ? `Cet avoir annule ou corrige la facture ${inv.credited.number} du ${fr(inv.credited.date)}.` : "Avoir.", 50, fy, { b: true });
     return doc.save();

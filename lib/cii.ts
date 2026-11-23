@@ -29,6 +29,7 @@ export type InvoiceData = {
   discount?: Discount; // remise sur le total
   kind?: InvoiceKind; // facture normale, d'acompte, de solde, ou avoir
   credited?: { number: string; date: string }; // avoir : facture d'origine annulée ou corrigée
+  quote?: boolean; // devis (PDF seulement, jamais de fichier officiel)
   prepaid?: Prepaid[]; // facture de solde : acomptes déjà facturés, déduits du reste à payer
 };
 
