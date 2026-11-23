@@ -387,3 +387,37 @@ model ProspectConfig {
   id        Int    @id @default(1)
   templates String @default("[]") // JSON [{ name, subject, body }]
 }
+
+// Facture électronique : saisie dans l'app, validée et transmise par Super PDP (plateforme agréée), PDF envoyé par mail
+model Invoice {
+  id         String   @id @default(cuid())
+  number     String   @unique // F-2026-001, attribué à la création
+  date       DateTime
+  dueDate    DateTime
+  client     String   @default("")
+  buyer      String   @default("{}") // JSON { name, siren, address, zip, city, email, vat }
+  lines      String   @default("[]") // JSON [{ label, qty, unitPrice }]
+  note       String   @default("")
+  status     String   @default("draft") // draft | sent | paid
+  pdpId      String   @default("") // id de la facture chez Super PDP
+  error      String   @default("") // dernière erreur (validation, envoi)
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Mes infos d'émetteur, reprises sur chaque facture
+model InvoiceSettings {
+  id       Int    @id @default(1)
+  name     String @default("")
+  siren    String @default("")
+  address  String @default("")
+  zip      String @default("")
+  city     String @default("")
+  email    String @default("")
+  vat      String @default("") // n° de TVA intracom (facultatif)
+  iban     String @default("")
+  vatRate  Float  @default(0) // 0 = franchise en base de TVA
+  vatNote  String @default("TVA non applicable, art. 293 B du CGI")
+  dueDays  Int    @default(30)
+}

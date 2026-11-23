@@ -129,7 +129,9 @@ export function toGoogleEvent(b: { title: string; allDay: boolean; start: string
 }
 
 // Envoie un mail depuis le compte Gmail connecté
-export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false, from = ""): Promise<void> {
+export type MailAttachment = { name: string; type: string; data: Uint8Array };
+
+export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false, from = "", attachments: MailAttachment[] = []): Promise<void> {
   const token = await accessToken(accountId);
   // Adresse d'expéditeur et signature réglées dans Réglages, pour tous les mails de l'app
   const ns = retried ? null : await db.notifSettings.findUnique({ where: { id: 1 } });
@@ -142,10 +144,7 @@ export async function sendGmail(accountId: string, to: string, subject: string, 
     `To: ${to}`,
     `Subject: =?UTF-8?B?${b64(subject)}?=`,
     "MIME-Version: 1.0",
-    'Content-Type: text/html; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
-    "",
-    b64(html),
+    ...(attachments.length ? mixedBody(html, attachments) : ['Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", b64(html)]),
   ].join("\r\n");
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
@@ -155,10 +154,23 @@ export async function sendGmail(accountId: string, to: string, subject: string, 
   if (res.status === 401 && !retried) {
     tokenCache.delete(accountId);
     await db.googleAccount.update({ where: { id: accountId }, data: { accessToken: "", expiresAt: new Date(0) } });
-    return sendGmail(accountId, to, subject, html, true, from);
+    return sendGmail(accountId, to, subject, html, true, from, attachments);
   }
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
     throw new Error(e?.error?.message ?? `Gmail : erreur ${res.status}`);
   }
+}
+
+// Corps multipart : le HTML puis les pièces jointes (ex. PDF d'une facture)
+function mixedBody(html: string, attachments: MailAttachment[]): string[] {
+  const boundary = `part_${Date.now().toString(36)}`;
+  const wrap = (b: string) => (b.match(/.{1,76}/g) ?? []).join("\r\n");
+  const out = [`Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, 'Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", wrap(Buffer.from(html, "utf8").toString("base64"))];
+  for (const a of attachments) {
+    const name = `=?UTF-8?B?${Buffer.from(a.name, "utf8").toString("base64")}?=`;
+    out.push(`--${boundary}`, `Content-Type: ${a.type}; name="${name}"`, `Content-Disposition: attachment; filename="${name}"`, "Content-Transfer-Encoding: base64", "", wrap(Buffer.from(a.data).toString("base64")));
+  }
+  out.push(`--${boundary}--`);
+  return out;
 }

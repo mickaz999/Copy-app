@@ -1,0 +1,93 @@
+import { db } from "@/lib/db";
+import { InvoiceData, Line, Party, buildCii, totals } from "@/lib/cii";
+import { invoicePdf } from "@/lib/invoicePdf";
+import { sendInvoice, superPdpConfigured, validateInvoice } from "@/lib/superpdp";
+import { sendGmail } from "@/lib/google";
+import { mailAccount } from "@/lib/notify";
+
+export const invoiceSettings = () => db.invoiceSettings.upsert({ where: { id: 1 }, create: {}, update: {} });
+
+const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
+const day = (d: Date) => d.toISOString().slice(0, 10);
+
+// Prochain numéro, sans trou, par année : F-2026-001, F-2026-002…
+export async function nextNumber(date = new Date()) {
+  const prefix = `F-${date.getFullYear()}-`;
+  const last = await db.invoice.findFirst({ where: { number: { startsWith: prefix } }, orderBy: { number: "desc" } });
+  const n = last ? Number(last.number.slice(prefix.length)) + 1 : 1;
+  return prefix + String(n).padStart(3, "0");
+}
+
+export async function invoiceData(id: string): Promise<InvoiceData> {
+  const [inv, s] = await Promise.all([db.invoice.findUniqueOrThrow({ where: { id } }), invoiceSettings()]);
+  return {
+    number: inv.number,
+    date: day(inv.date),
+    dueDate: day(inv.dueDate),
+    seller: { name: s.name, siren: s.siren, address: s.address, zip: s.zip, city: s.city, email: s.email, vat: s.vat },
+    buyer: parse<Party>(inv.buyer, {} as Party),
+    lines: parse<Line[]>(inv.lines, []),
+    vatRate: s.vatRate,
+    vatNote: s.vatNote,
+    iban: s.iban,
+    note: inv.note,
+  };
+}
+
+// Ce qui manque pour pouvoir émettre (messages clairs, avant même d'appeler la plateforme)
+export function missing(d: InvoiceData): string[] {
+  const out: string[] = [];
+  const siren = (v: string) => /^\d{9}$/.test((v ?? "").replace(/\s/g, ""));
+  if (!d.seller.name || !d.seller.address || !d.seller.zip || !d.seller.city) out.push("Tes infos d'émetteur sont incomplètes (Réglages factures).");
+  if (!siren(d.seller.siren)) out.push("Ton SIREN (9 chiffres) manque dans les réglages.");
+  if (!d.buyer.name || !d.buyer.address || !d.buyer.zip || !d.buyer.city) out.push("L'adresse du client est incomplète.");
+  if (!siren(d.buyer.siren)) out.push("Le SIREN du client (9 chiffres) manque : obligatoire pour une facture entre pros.");
+  if (!d.lines.length || d.lines.some((l) => !l.label || !(l.qty > 0))) out.push("Ajoute au moins une ligne avec un libellé et une quantité.");
+  return out;
+}
+
+export async function pdfFor(id: string) {
+  const d = await invoiceData(id);
+  return { data: d, pdf: await invoicePdf(d) };
+}
+
+// Émet la facture : validation officielle → transmission par Super PDP → PDF envoyé par mail au client
+export async function emitInvoice(id: string, opts: { email: boolean }) {
+  const inv = await db.invoice.findUniqueOrThrow({ where: { id } });
+  if (inv.status !== "draft") throw new Error("Cette facture a déjà été émise.");
+  const d = await invoiceData(id);
+  const miss = missing(d);
+  if (miss.length) throw new Error(miss.join(" "));
+  d.seller.siren = d.seller.siren.replace(/\s/g, "");
+  d.buyer.siren = d.buyer.siren.replace(/\s/g, "");
+
+  const xml = buildCii(d);
+  const check = await validateInvoice(xml);
+  if (!check.valid) {
+    const msg = `Facture refusée par le validateur : ${check.errors.join(" · ") || "voir le détail sur superpdp.tech"}`;
+    await db.invoice.update({ where: { id }, data: { error: msg } });
+    throw new Error(msg);
+  }
+  if (!superPdpConfigured()) throw new Error("Super PDP n'est pas connecté : ajoute SUPERPDP_CLIENT_ID et SUPERPDP_CLIENT_SECRET.");
+  const { id: pdpId } = await sendInvoice(xml);
+  await db.invoice.update({ where: { id }, data: { status: "sent", pdpId, sentAt: new Date(), error: "" } });
+
+  let mailed = false;
+  if (opts.email && d.buyer.email) {
+    const acc = await mailAccount();
+    if (acc) {
+      const pdf = await invoicePdf(d);
+      const { ttc } = totals(d);
+      const amount = ttc.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+      const html = `<p>Bonjour,</p><p>Tu trouveras ci-joint la facture <b>${d.number}</b> d'un montant de <b>${amount}</b>, à régler avant le ${d.dueDate.split("-").reverse().join("/")}.</p>${d.iban ? `<p>IBAN : ${d.iban}</p>` : ""}<p>Merci !</p>`;
+      try {
+        await sendGmail(acc.id, d.buyer.email, `Facture ${d.number}`, html, false, "", [{ name: `Facture ${d.number}.pdf`, type: "application/pdf", data: pdf }]);
+        mailed = true;
+      } catch (e) {
+        // La facture est déjà transmise : on garde l'erreur de mail sans tout annuler
+        await db.invoice.update({ where: { id }, data: { error: `Facture transmise, mais mail non envoyé : ${(e as Error).message}` } });
+      }
+    }
+  }
+  return { pdpId, mailed };
+}
