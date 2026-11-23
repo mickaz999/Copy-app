@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ExternalLink, FileCode, FileDown, Package, Plus, Send, Settings2, Trash2 } from "lucide-react";
+import { CircleCheck, ExternalLink, FilePlus2, Undo2, FileCode, FileDown, Package, Plus, Send, Settings2, Trash2 } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
 import { totals, type Discount, type InvoiceKind, type Prepaid } from "@/lib/cii";
 import { einvoiceMandatory } from "@/lib/einvoice";
@@ -209,15 +209,15 @@ export default function Factures() {
                 <td>{i.client}{links(i) && <div>{links(i)}</div>}</td>
                 <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
                 <td className="num">{eur((i.kind === "credit" ? -1 : 1) * totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
-                <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
+                <td onClick={(e) => e.stopPropagation()}><div className="inv-actions">
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).email && <button className="ghost small" title="Renvoyer le mail au client" onClick={() => resend(i)}><Send size={14} /> Renvoyer</button>}
-                  {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>{i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
-                  {i.status !== "draft" && i.kind !== "credit" && <button className="ghost small" onClick={() => makeCredit(i)}>Faire un avoir</button>}
-                  {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}>Faire le solde</button>}
-                </td>
+                  {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}><CircleCheck size={14} /> {i.kind === "credit" ? "Remboursé" : "Payée"}</button>}
+                  {i.status !== "draft" && i.kind !== "credit" && <button className="ghost small" onClick={() => makeCredit(i)}><Undo2 size={14} /> Faire un avoir</button>}
+                  {i.kind === "deposit" && i.status !== "draft" && !finalOf(i) && <button className="ghost small" onClick={() => makeFinal(i)}><FilePlus2 size={14} /> Faire le solde</button>}
+                </div></td>
               </tr>
             ))}
             {!list.length && <tr><td colSpan={6} className="muted">Aucune facture pour l&apos;instant.</td></tr>}
