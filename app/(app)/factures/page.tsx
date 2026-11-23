@@ -34,7 +34,13 @@ export default function Factures() {
   const [newProduct, setNewProduct] = useState({ name: "", unitPrice: 0 });
   const [depCalc, setDepCalc] = useState({ label: "", total: 0, pct: 30 });
 
-  const load = () => api<{ invoices: Inv[]; settings: Seller }>("invoices").then((r) => { setList(r.invoices); setSeller(r.settings); });
+  const load = () => api<{ invoices: Inv[]; settings: Seller }>("invoices").then((r) => {
+    setList(r.invoices); setSeller(r.settings);
+    // Arrivée depuis un devis : on ouvre directement la facture créée
+    const id = new URLSearchParams(window.location.search).get("open");
+    const i = id ? r.invoices.find((x) => x.id === id) : undefined;
+    if (i) { open(i); window.history.replaceState(null, "", "/factures"); }
+  });
   const loadProducts = () => api<Product[]>("products").then(setProducts);
   useEffect(() => { load(); loadProducts(); }, []);
 

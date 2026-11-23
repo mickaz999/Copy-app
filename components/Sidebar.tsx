@@ -109,10 +109,10 @@ export default function Sidebar() {
       <Link href="/clients" className={`navitem ${path === "/clients" ? "active" : ""}`}><Users size={17} className="nav-ic" /> Clients</Link>
       <Link href="/messages" className={`navitem ${path === "/messages" ? "active" : ""}`}><MessagesSquare size={17} className="nav-ic" /> Messages{toAnswer > 0 && <span className="nav-badge">{toAnswer}</span>}</Link>
       <Link href="/compta" className={`navitem ${path === "/compta" ? "active" : ""}`}><Wallet size={17} className="nav-ic" /> Compta EI</Link>
+      <Link href="/devis" className={`navitem ${path === "/devis" ? "active" : ""}`}><Calculator size={17} className="nav-ic" /> Devis</Link>
       <Link href="/factures" className={`navitem ${path === "/factures" ? "active" : ""}`}><Receipt size={17} className="nav-ic" /> Factures</Link>
       <Link href="/reglages" className={`navitem ${path === "/reglages" ? "active" : ""}`}><Bell size={17} className="nav-ic" /> Réglages</Link>
       <Link href="/inspi" className={`navitem ${path.startsWith("/inspi") ? "active" : ""}`}><Workflow size={17} className="nav-ic" /> Espaces inspi</Link>
-      <Link href="/outils" className={`navitem ${path === "/outils" ? "active" : ""}`}><Calculator size={17} className="nav-ic" /> Outils</Link>
       <div className="section">
         Pages
         <button className="ghost" title="Nouvelle page" onClick={() => add(null)}><Plus size={15} /></button>
