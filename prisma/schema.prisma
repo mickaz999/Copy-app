@@ -420,5 +420,6 @@ model InvoiceSettings {
   vatRate  Float  @default(0) // 0 = franchise en base de TVA
   vatNote  String @default("TVA non applicable, art. 293 B du CGI")
   dueDays  Int    @default(30)
+  einvoice Boolean @default(false) // facturation électronique (fichier officiel + dépôt Super PDP) ; off = PDF par mail seulement
   logo     String @default("https://client.maderinoprod.com/icons/logo-facture.png") // PNG ou JPG en haut de la facture ; vide = pas de logo
 }

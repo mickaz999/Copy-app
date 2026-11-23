@@ -9,7 +9,7 @@ type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
   note: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
-type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string };
+type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string; einvoice: boolean };
 type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; status?: Inv["status"]; error?: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
@@ -92,7 +92,7 @@ export default function Factures() {
       <div className="eyebrow">factures</div>
       <h1 className="title">ce qu&apos;on <span className="accent">facture.</span></h1>
       <div className="row">
-        <a className="ghost" href="https://www.superpdp.tech" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Mon espace Super PDP</a>
+        {seller?.einvoice && <a className="ghost" href="https://www.superpdp.tech" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Mon espace Super PDP</a>}
         <button className="ghost" onClick={() => setShowSettings(true)}><Settings2 size={16} /> Mes infos</button>
         <span style={{ flex: 1 }} />
         <button className="primary" onClick={fresh}><Plus size={16} /> Nouvelle facture</button>
@@ -109,12 +109,12 @@ export default function Factures() {
                 <td>{i.number}</td>
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}</td>
-                <td><span className="tag">{STATUS[i.status]}</span>{i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
+                <td><span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
                 <td className="num">{eur(totalOf(parse(i.lines, []), rate).ttc)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
-                  {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
-                  {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
+                  {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
+                  {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>Payée</button>}
                 </td>
               </tr>
@@ -188,6 +188,8 @@ export default function Factures() {
             </div>
             <label>Logo (lien d&apos;une image PNG ou JPG, vide = pas de logo)<input value={seller.logo} onChange={(e) => setSeller({ ...seller, logo: e.target.value })} /></label>
             {seller.logo && <img src={seller.logo} alt="" style={{ maxHeight: 40, maxWidth: 200, alignSelf: "flex-start" }} />}
+            <label className="check"><input type="checkbox" checked={seller.einvoice} onChange={(e) => setSeller({ ...seller, einvoice: e.target.checked })} /> Facturation électronique (fichier officiel à déposer sur Super PDP pour les clients entreprises)</label>
+            <span className="muted small">Obligatoire pour émettre à partir de septembre 2027 (micro-entreprise). Décoché : PDF par mail seulement.</span>
             {seller.vatRate === 0 && <label>Mention TVA<input value={seller.vatNote} onChange={(e) => setSeller({ ...seller, vatNote: e.target.value })} /></label>}
             <div className="row"><span style={{ flex: 1 }} /><button className="primary" onClick={saveSettings}>Enregistrer</button></div>
           </div>

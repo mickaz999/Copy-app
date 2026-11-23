@@ -75,7 +75,8 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
   d.seller.siren = d.seller.siren.replace(/\s/g, "");
   d.buyer.siren = (d.buyer.siren ?? "").replace(/\s/g, "");
 
-  if (isPro(d)) {
+  const electronic = (await invoiceSettings()).einvoice && isPro(d);
+  if (electronic) {
     const check = await validateInvoice(buildCii(d));
     if (!check.valid) {
       const msg = `Facture refusée par le validateur : ${check.errors.join(" · ") || "voir le détail sur superpdp.tech"}`;
@@ -102,5 +103,5 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
       }
     }
   }
-  return { mailed, pro: isPro(d) };
+  return { mailed, pro: electronic };
 }
