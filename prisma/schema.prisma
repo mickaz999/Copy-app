@@ -387,3 +387,38 @@ model ProspectConfig {
   id        Int    @id @default(1)
   templates String @default("[]") // JSON [{ name, subject, body }]
 }
+
+// Facture client : saisie dans /factures, consultable par le client sur /f/<token> (imprimable en PDF)
+model Invoice {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  number    String    @unique // F-2026-001 : numérotation continue, attribuée à la création
+  client    String
+  email     String    @default("")
+  address   String    @default("") // adresse du client (plusieurs lignes)
+  siret     String    @default("")  // SIRET / n° TVA du client (pro)
+  date      DateTime  @default(now())
+  dueDate   DateTime?
+  items     String    @default("[]") // JSON [{ label, qty, price }]
+  notes     String    @default("")
+  status    String    @default("draft") // draft | sent | paid
+  sentAt    DateTime?
+  paidAt    DateTime?
+  transactionId String @default("") // recette créée dans Compta au paiement
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Mes infos d'émetteur, imprimées sur chaque facture
+model InvoiceConfig {
+  id       Int    @id @default(1)
+  name     String @default("")
+  address  String @default("")
+  siret    String @default("")
+  email    String @default("")
+  phone    String @default("")
+  iban     String @default("")
+  bic      String @default("")
+  dueDays  Int    @default(30)
+  mentions String @default("TVA non applicable, art. 293 B du CGI.\nEn cas de retard de paiement : pénalités au taux de 3 fois le taux d'intérêt légal et indemnité forfaitaire de 40 € pour frais de recouvrement (art. L441-10 du Code de commerce). Pas d'escompte pour paiement anticipé.")
+}

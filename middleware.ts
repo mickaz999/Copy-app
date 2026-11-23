@@ -9,5 +9,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/login|api/cron|api/report|rdv|l/|d/|c/|api/livraison/|api/espace/|api/drop/|api/booking/public|api/booking/manage|_next|favicon|manifest.webmanifest|sw.js|icons).*)"],
+  matcher: ["/((?!login|api/login|api/cron|api/report|rdv|l/|d/|c/|api/livraison/|api/espace/|api/drop/|api/booking/public|api/booking/manage|f/|_next|favicon|manifest.webmanifest|sw.js|icons).*)"],
 };
