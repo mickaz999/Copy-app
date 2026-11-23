@@ -16,6 +16,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     await db.transaction.create({ data: { date: body.paidAt ? new Date(body.paidAt) : new Date(), label: `Facture ${inv.number}`, kind: "recette", amount: totals(d).ttc, client: d.buyer.name || inv.client, payment: "Virement", reference: inv.number } });
     return NextResponse.json(await db.invoice.update({ where: { id: inv.id }, data: { status: "paid" } }));
   }
+  // Fichier officiel déposé (ou pas) sur l'espace Super PDP
+  if (typeof body.deposited === "boolean" && inv.status !== "draft")
+    return NextResponse.json(await db.invoice.update({ where: { id: inv.id }, data: { deposited: body.deposited } }));
   // Une facture émise ne se modifie plus (obligation légale) : il faudrait un avoir
   if (inv.status !== "draft") return NextResponse.json({ error: "Facture déjà émise : elle ne peut plus être modifiée." }, { status: 400 });
   return NextResponse.json(await db.invoice.update({ where: { id: inv.id }, data: clean(body) }));

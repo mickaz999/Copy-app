@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoiceSettings, nextNumber } from "@/lib/invoices";
-import { superPdpConfigured } from "@/lib/superpdp";
 import { clean } from "./clean";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [invoices, settings] = await Promise.all([db.invoice.findMany({ orderBy: { number: "desc" } }), invoiceSettings()]);
-  return NextResponse.json({ invoices, settings, connected: superPdpConfigured() });
+  return NextResponse.json({ invoices, settings });
 }
 
 // Nouvelle facture (brouillon) : numéro attribué tout de suite, échéance selon les réglages

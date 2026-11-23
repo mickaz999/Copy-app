@@ -388,7 +388,7 @@ model ProspectConfig {
   templates String @default("[]") // JSON [{ name, subject, body }]
 }
 
-// Facture électronique : saisie dans l'app, validée et transmise par Super PDP (plateforme agréée), PDF envoyé par mail
+// Facture : saisie dans l'app, PDF envoyé par mail ; pour une entreprise, fichier officiel validé puis déposé sur Super PDP
 model Invoice {
   id         String   @id @default(cuid())
   number     String   @unique // F-2026-001, attribué à la création
@@ -399,7 +399,7 @@ model Invoice {
   lines      String   @default("[]") // JSON [{ label, qty, unitPrice }]
   note       String   @default("")
   status     String   @default("draft") // draft | sent | paid
-  pdpId      String   @default("") // id de la facture chez Super PDP
+  deposited  Boolean  @default(false) // fichier officiel déposé sur l'espace Super PDP
   error      String   @default("") // dernière erreur (validation, envoi)
   sentAt     DateTime?
   createdAt  DateTime @default(now())

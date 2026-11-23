@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { InvoiceData, Line, Party, buildCii, totals } from "@/lib/cii";
 import { invoicePdf } from "@/lib/invoicePdf";
-import { sendInvoice, superPdpConfigured, validateInvoice } from "@/lib/superpdp";
+import { validateInvoice } from "@/lib/superpdp";
 import { sendGmail } from "@/lib/google";
 import { mailAccount } from "@/lib/notify";
 
@@ -41,9 +41,21 @@ export function missing(d: InvoiceData): string[] {
   if (!d.seller.name || !d.seller.address || !d.seller.zip || !d.seller.city) out.push("Tes infos d'émetteur sont incomplètes (Réglages factures).");
   if (!siren(d.seller.siren)) out.push("Ton SIREN (9 chiffres) manque dans les réglages.");
   if (!d.buyer.name || !d.buyer.address || !d.buyer.zip || !d.buyer.city) out.push("L'adresse du client est incomplète.");
-  if (!siren(d.buyer.siren)) out.push("Le SIREN du client (9 chiffres) manque : obligatoire pour une facture entre pros.");
+  // SIREN vide = client particulier (pas de fichier officiel à déposer) ; rempli = entreprise
+  if (d.buyer.siren && !siren(d.buyer.siren)) out.push("Le SIREN du client doit faire 9 chiffres (laisse vide pour un particulier).");
   if (!d.lines.length || d.lines.some((l) => !l.label || !(l.qty > 0))) out.push("Ajoute au moins une ligne avec un libellé et une quantité.");
   return out;
+}
+
+export const isPro = (d: InvoiceData) => !!(d.buyer.siren ?? "").trim();
+
+// Fichier officiel (CII) à déposer sur l'espace Super PDP — entreprises seulement
+export async function xmlFor(id: string) {
+  const d = await invoiceData(id);
+  if (!isPro(d)) throw new Error("Client particulier : pas de fichier officiel, le PDF suffit.");
+  d.seller.siren = d.seller.siren.replace(/\s/g, "");
+  d.buyer.siren = d.buyer.siren.replace(/\s/g, "");
+  return { data: d, xml: buildCii(d) };
 }
 
 export async function pdfFor(id: string) {
@@ -51,7 +63,8 @@ export async function pdfFor(id: string) {
   return { data: d, pdf: await invoicePdf(d) };
 }
 
-// Émet la facture : validation officielle → transmission par Super PDP → PDF envoyé par mail au client
+// Émet la facture : validation officielle (entreprise) → PDF envoyé par mail au client.
+// Le fichier officiel se dépose ensuite à la main sur l'espace Super PDP (gratuit).
 export async function emitInvoice(id: string, opts: { email: boolean }) {
   const inv = await db.invoice.findUniqueOrThrow({ where: { id } });
   if (inv.status !== "draft") throw new Error("Cette facture a déjà été émise.");
@@ -59,18 +72,17 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
   const miss = missing(d);
   if (miss.length) throw new Error(miss.join(" "));
   d.seller.siren = d.seller.siren.replace(/\s/g, "");
-  d.buyer.siren = d.buyer.siren.replace(/\s/g, "");
+  d.buyer.siren = (d.buyer.siren ?? "").replace(/\s/g, "");
 
-  const xml = buildCii(d);
-  const check = await validateInvoice(xml);
-  if (!check.valid) {
-    const msg = `Facture refusée par le validateur : ${check.errors.join(" · ") || "voir le détail sur superpdp.tech"}`;
-    await db.invoice.update({ where: { id }, data: { error: msg } });
-    throw new Error(msg);
+  if (isPro(d)) {
+    const check = await validateInvoice(buildCii(d));
+    if (!check.valid) {
+      const msg = `Facture refusée par le validateur : ${check.errors.join(" · ") || "voir le détail sur superpdp.tech"}`;
+      await db.invoice.update({ where: { id }, data: { error: msg } });
+      throw new Error(msg);
+    }
   }
-  if (!superPdpConfigured()) throw new Error("Super PDP n'est pas connecté : ajoute SUPERPDP_CLIENT_ID et SUPERPDP_CLIENT_SECRET.");
-  const { id: pdpId } = await sendInvoice(xml);
-  await db.invoice.update({ where: { id }, data: { status: "sent", pdpId, sentAt: new Date(), error: "" } });
+  await db.invoice.update({ where: { id }, data: { status: "sent", sentAt: new Date(), error: "" } });
 
   let mailed = false;
   if (opts.email && d.buyer.email) {
@@ -89,5 +101,5 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
       }
     }
   }
-  return { pdpId, mailed };
+  return { mailed, pro: isPro(d) };
 }

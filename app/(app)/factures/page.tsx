@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { FileDown, Plus, Send, Settings2, Trash2 } from "lucide-react";
+import { ExternalLink, FileCode, FileDown, Plus, Send, Settings2, Trash2 } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
 
 type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string };
 type Line = { label: string; qty: number; unitPrice: number };
 type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
-  note: string; status: "draft" | "sent" | "paid"; pdpId: string; error: string; sentAt: string | null;
+  note: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
 type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number };
 type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; status?: Inv["status"]; error?: string };
@@ -20,13 +20,12 @@ const totalOf = (lines: Line[], rate: number) => { const ht = lines.reduce((s, l
 export default function Factures() {
   const [list, setList] = useState<Inv[]>([]);
   const [seller, setSeller] = useState<Seller | null>(null);
-  const [connected, setConnected] = useState(false);
   const [edit, setEdit] = useState<Edit | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const load = () => api<{ invoices: Inv[]; settings: Seller; connected: boolean }>("invoices").then((r) => { setList(r.invoices); setSeller(r.settings); setConnected(r.connected); });
+  const load = () => api<{ invoices: Inv[]; settings: Seller }>("invoices").then((r) => { setList(r.invoices); setSeller(r.settings); });
   useEffect(() => { load(); }, []);
 
   const rate = seller?.vatRate ?? 0;
@@ -49,14 +48,18 @@ export default function Factures() {
   }
 
   async function emit() {
-    if (!edit || !confirm("Émettre la facture ? Elle sera transmise officiellement et ne pourra plus être modifiée.")) return;
+    if (!edit || !confirm("Générer la facture ? Le PDF part au client et la facture ne pourra plus être modifiée.")) return;
     setBusy(true); setMsg("");
     try {
       const id = await save();
       const res = await fetch(`/api/invoices/${id}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: true }) });
       const b = await res.json();
       if (!res.ok) { setMsg(b.error); if (id && !edit.id) setEdit({ ...edit, id }); }
-      else { setMsg(b.mailed ? "Facture transmise et envoyée par mail ✓" : "Facture transmise ✓ (pas de mail envoyé : adresse du client ou compte Gmail manquant)"); setEdit(null); }
+      else {
+        const mail = b.mailed ? "PDF envoyé au client ✓" : "Facture générée ✓ (pas de mail : adresse du client ou compte Gmail manquant)";
+        setMsg(b.pro ? `${mail} Dernière étape : télécharge le fichier officiel (bouton « Fichier ») et dépose-le sur ton espace Super PDP.` : mail);
+        setEdit(null);
+      }
       await load();
     } catch (e) { setMsg((e as Error).message); }
     setBusy(false);
@@ -89,7 +92,7 @@ export default function Factures() {
       <div className="eyebrow">factures</div>
       <h1 className="title">ce qu&apos;on <span className="accent">facture.</span></h1>
       <div className="row">
-        <span className="muted">{connected ? "Super PDP connecté · plateforme agréée" : "Super PDP non connecté (variables SUPERPDP_CLIENT_ID / SECRET)"}</span>
+        <a className="ghost" href="https://www.superpdp.tech" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Mon espace Super PDP</a>
         <button className="ghost" onClick={() => setShowSettings(true)}><Settings2 size={16} /> Mes infos</button>
         <span style={{ flex: 1 }} />
         <button className="primary" onClick={fresh}><Plus size={16} /> Nouvelle facture</button>
@@ -106,10 +109,12 @@ export default function Factures() {
                 <td>{i.number}</td>
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}</td>
-                <td><span className="tag">{STATUS[i.status]}</span>{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
+                <td><span className="tag">{STATUS[i.status]}</span>{i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
                 <td className="num">{eur(totalOf(parse(i.lines, []), rate).ttc)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
+                  {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
+                  {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status === "sent" && <button className="ghost small" onClick={() => markPaid(i)}>Payée</button>}
                 </td>
               </tr>
@@ -132,7 +137,7 @@ export default function Factures() {
               <h4 style={{ margin: "8px 0 0" }}>Client</h4>
               <div className="row">
                 <label>Nom / raison sociale<input list="known-buyers" value={edit.buyer.name} onChange={(e) => { const k = known.find((b) => b.name.toLowerCase() === e.target.value.toLowerCase()); setBuyer(k ?? { name: e.target.value }); }} /></label>
-                <label>SIREN<input value={edit.buyer.siren} placeholder="9 chiffres" onChange={(e) => setBuyer({ siren: e.target.value })} /></label>
+                <label>SIREN (vide si particulier)<input value={edit.buyer.siren} placeholder="9 chiffres" onChange={(e) => setBuyer({ siren: e.target.value })} /></label>
               </div>
               <datalist id="known-buyers">{known.map((b) => <option key={b.name} value={b.name} />)}</datalist>
               <label>Adresse<input value={edit.buyer.address} onChange={(e) => setBuyer({ address: e.target.value })} /></label>
@@ -163,7 +168,7 @@ export default function Factures() {
               <span style={{ flex: 1 }} />
               <button onClick={() => setEdit(null)}>Fermer</button>
               {!ro && <button onClick={async () => { const id = await save(); if (id && !edit.id) setEdit({ ...edit, id }); setMsg("Brouillon enregistré"); }}>Enregistrer le brouillon</button>}
-              {!ro && <button className="primary" disabled={busy} onClick={emit}><Send size={16} /> {busy ? "Envoi…" : "Émettre et envoyer"}</button>}
+              {!ro && <button className="primary" disabled={busy} onClick={emit}><Send size={16} /> {busy ? "Génération…" : "Générer et envoyer"}</button>}
             </div>
           </div>
         </div>
