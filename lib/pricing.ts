@@ -16,9 +16,9 @@ export const CATALOGUE: { section: string; note?: string; items: PriceItem[] }[]
   {
     section: "Reels / TikTok",
     items: [
-      { id: "r1", name: "Montage reel basique : coupes simples, sous-titres et musique", duree: "", prix: 20 },
-      { id: "r2", name: "Montage reel intermédiaire : basique + habillage sonore et inserts", duree: "", prix: 40 },
-      { id: "r3", name: "Montage pub / ads : motion design, format publicitaire", duree: "", prix: 80 },
+      { id: "r1", name: "Reel ultra simple : coupes simples, sous-titres et musique", duree: "", prix: 20 },
+      { id: "r2", name: "Reel simple : coupes, sous-titres, musique, habillage sonore et inserts", duree: "", prix: 40 },
+      { id: "r3", name: "Reel poussé / pub ads : motion design, format publicitaire", duree: "", prix: 80 },
     ],
   },
   {
