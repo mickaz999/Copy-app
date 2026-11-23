@@ -27,7 +27,12 @@ export type InvoiceData = {
   note?: string;
   logo?: string; // URL d'image, utilisée seulement sur le PDF
   discount?: Discount; // remise sur le total
+  kind?: InvoiceKind; // facture normale, d'acompte ou de solde
+  prepaid?: Prepaid[]; // facture de solde : acomptes déjà facturés, déduits du reste à payer
 };
+
+export type InvoiceKind = "standard" | "deposit" | "final";
+export type Prepaid = { number: string; date: string; amount: number };
 
 export type Discount = { type: "eur" | "pct"; value: number; label: string };
 
@@ -36,13 +41,15 @@ const d8 = (iso: string) => iso.slice(0, 10).replace(/-/g, "");
 const m = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
 
 // gross = total des lignes, remise = montant de la remise, ht = base après remise
-export function totals(inv: Pick<InvoiceData, "lines" | "vatRate" | "discount">) {
+export function totals(inv: Pick<InvoiceData, "lines" | "vatRate" | "discount" | "prepaid">) {
   const gross = inv.lines.reduce((s, l) => s + Math.round(l.qty * l.unitPrice * 100) / 100, 0);
   const d = inv.discount;
   const remise = !d || !(d.value > 0) ? 0 : Math.min(gross, d.type === "pct" ? Math.round(gross * d.value) / 100 : Math.round(d.value * 100) / 100);
   const ht = Math.round((gross - remise) * 100) / 100;
   const tva = Math.round(ht * inv.vatRate) / 100;
-  return { gross, remise, ht, tva, ttc: ht + tva };
+  const ttc = Math.round((ht + tva) * 100) / 100;
+  const prepaid = Math.min(ttc, Math.round((inv.prepaid ?? []).reduce((s, p) => s + p.amount, 0) * 100) / 100);
+  return { gross, remise, ht, tva, ttc, prepaid, due: Math.round((ttc - prepaid) * 100) / 100 };
 }
 
 function party(tag: string, p: Party, fiscal: boolean) {
@@ -62,7 +69,8 @@ function party(tag: string, p: Party, fiscal: boolean) {
 }
 
 export function buildCii(inv: InvoiceData): string {
-  const { gross, remise, ht, tva, ttc } = totals(inv);
+  const { gross, remise, ht, tva, ttc, prepaid, due } = totals(inv);
+  const refs = inv.kind === "final" ? (inv.prepaid ?? []) : [];
   const cat = inv.vatRate > 0 ? "S" : "E"; // E = exonéré (franchise en base)
   const exempt = cat === "E" ? `
       <ram:ExemptionReason>${esc(inv.vatNote)}</ram:ExemptionReason>` : "";
@@ -83,14 +91,14 @@ export function buildCii(inv: InvoiceData): string {
   </ram:IncludedSupplyChainTradeLineItem>`).join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:qdt="urn:un:unece:uncefact:data:standard:QualifiedDataType:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
 <rsm:ExchangedDocumentContext>
   <ram:BusinessProcessSpecifiedDocumentContextParameter><ram:ID>S1</ram:ID></ram:BusinessProcessSpecifiedDocumentContextParameter>
   <ram:GuidelineSpecifiedDocumentContextParameter><ram:ID>urn:cen.eu:en16931:2017</ram:ID></ram:GuidelineSpecifiedDocumentContextParameter>
 </rsm:ExchangedDocumentContext>
 <rsm:ExchangedDocument>
   <ram:ID>${esc(inv.number)}</ram:ID>
-  <ram:TypeCode>380</ram:TypeCode>
+  <ram:TypeCode>${inv.kind === "deposit" ? 386 : 380}</ram:TypeCode>
   <ram:IssueDateTime><udt:DateTimeString format="102">${d8(inv.date)}</udt:DateTimeString></ram:IssueDateTime>${inv.note ? `
   <ram:IncludedNote><ram:Content>${esc(inv.note)}</ram:Content></ram:IncludedNote>` : ""}
   <ram:IncludedNote><ram:Content>Pénalités de retard : 3 fois le taux d'intérêt légal. Indemnité forfaitaire pour frais de recouvrement : 40 €.</ram:Content><ram:SubjectCode>PMT</ram:SubjectCode></ram:IncludedNote>
@@ -132,9 +140,14 @@ ${remise > 0 ? `    <ram:SpecifiedTradeAllowanceCharge>
       <ram:AllowanceTotalAmount>${m(remise)}</ram:AllowanceTotalAmount>` : ""}
       <ram:TaxBasisTotalAmount>${m(ht)}</ram:TaxBasisTotalAmount>
       <ram:TaxTotalAmount currencyID="EUR">${m(tva)}</ram:TaxTotalAmount>
-      <ram:GrandTotalAmount>${m(ttc)}</ram:GrandTotalAmount>
-      <ram:DuePayableAmount>${m(ttc)}</ram:DuePayableAmount>
-    </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+      <ram:GrandTotalAmount>${m(ttc)}</ram:GrandTotalAmount>${prepaid > 0 ? `
+      <ram:TotalPrepaidAmount>${m(prepaid)}</ram:TotalPrepaidAmount>` : ""}
+      <ram:DuePayableAmount>${m(due)}</ram:DuePayableAmount>
+    </ram:SpecifiedTradeSettlementHeaderMonetarySummation>${refs.map((r) => `
+    <ram:InvoiceReferencedDocument>
+      <ram:IssuerAssignedID>${esc(r.number)}</ram:IssuerAssignedID>
+      <ram:FormattedIssueDateTime><qdt:DateTimeString format="102">${d8(r.date)}</qdt:DateTimeString></ram:FormattedIssueDateTime>
+    </ram:InvoiceReferencedDocument>`).join("")}
   </ram:ApplicableHeaderTradeSettlement>
 </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>

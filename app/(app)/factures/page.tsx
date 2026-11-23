@@ -2,23 +2,24 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, FileCode, FileDown, Package, Plus, Send, Settings2, Trash2 } from "lucide-react";
 import { api, eur, isoDay } from "@/lib/api";
-import { totals, type Discount } from "@/lib/cii";
+import { totals, type Discount, type InvoiceKind, type Prepaid } from "@/lib/cii";
 
 type Buyer = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string };
 type Line = { label: string; qty: number; unitPrice: number };
 type Inv = {
   id: string; number: string; date: string; dueDate: string; client: string; buyer: string; lines: string;
-  note: string; discount: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
+  note: string; discount: string; kind: InvoiceKind; deposits: string; status: "draft" | "sent" | "paid"; deposited: boolean; error: string; sentAt: string | null;
 };
 type Product = { id: string; name: string; unitPrice: number };
 type Seller = { name: string; siren: string; address: string; zip: string; city: string; email: string; vat: string; iban: string; vatRate: number; vatNote: string; dueDays: number; logo: string; einvoice: boolean };
-type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; status?: Inv["status"]; error?: string };
+type Edit = { id?: string; number?: string; date: string; dueDate: string; buyer: Buyer; lines: Line[]; note: string; discount: Discount; kind: InvoiceKind; deposits: string[]; status?: Inv["status"]; error?: string };
 
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "" };
 const STATUS = { draft: "Brouillon", sent: "Émise", paid: "Payée" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
 const NO_DISCOUNT: Discount = { type: "eur", value: 0, label: "Remise" };
-const totalOf = (lines: Line[], rate: number, discount?: Discount) => totals({ lines, vatRate: rate, discount });
+const totalOf = (lines: Line[], rate: number, discount?: Discount, prepaid?: Prepaid[]) => totals({ lines, vatRate: rate, discount, prepaid });
+const KIND = { standard: "Facture", deposit: "Acompte", final: "Solde" } as const;
 
 export default function Factures() {
   const [list, setList] = useState<Inv[]>([]);
@@ -30,6 +31,7 @@ export default function Factures() {
   const [products, setProducts] = useState<Product[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: "", unitPrice: 0 });
+  const [depCalc, setDepCalc] = useState({ label: "", total: 0, pct: 30 });
 
   const load = () => api<{ invoices: Inv[]; settings: Seller }>("invoices").then((r) => { setList(r.invoices); setSeller(r.settings); });
   const loadProducts = () => api<Product[]>("products").then(setProducts);
@@ -37,11 +39,26 @@ export default function Factures() {
 
   const rate = seller?.vatRate ?? 0;
   const discountOf = (i: Inv): Discount | undefined => (i.discount ? parse<Discount>(i.discount, NO_DISCOUNT) : undefined);
-  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, status: i.status, error: i.error });
+  const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, kind: i.kind || "standard", deposits: parse<string[]>(i.deposits, []), status: i.status, error: i.error });
   const fresh = () => {
     const d = new Date();
-    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT } });
+    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "standard", deposits: [] });
   };
+  // Acomptes : montant TTC de chaque facture d'acompte, et ceux déjà déduits dans une facture de solde
+  const ttcOf = (i: Inv) => totalOf(parse(i.lines, []), rate, discountOf(i)).ttc;
+  const prepaidOf = (ids: string[]): Prepaid[] => list.filter((x) => ids.includes(x.id) && x.kind === "deposit").map((x) => ({ number: x.number, date: x.date.slice(0, 10), amount: ttcOf(x) }));
+  const usedDeposits = (exceptId?: string) => new Set(list.filter((x) => x.kind === "final" && x.id !== exceptId).flatMap((x) => parse<string[]>(x.deposits, [])));
+  const depositsFor = (e: Edit) => {
+    const used = usedDeposits(e.id);
+    const name = e.buyer.name.trim().toLowerCase();
+    return list.filter((x) => x.kind === "deposit" && x.status !== "draft" && !used.has(x.id) && (!name || x.client.trim().toLowerCase() === name));
+  };
+  function applyDeposit() {
+    if (!edit || !(depCalc.total > 0) || !(depCalc.pct > 0)) return;
+    const amount = Math.round(depCalc.total * depCalc.pct) / 100;
+    const label = `Acompte ${String(depCalc.pct).replace(".", ",")} %${depCalc.label.trim() ? ` - ${depCalc.label.trim()}` : ""} (total ${eur(depCalc.total)} HT)`;
+    setEdit({ ...edit, lines: [{ label, qty: 1, unitPrice: amount }] });
+  }
   // Produit du catalogue choisi dans une ligne : le prix se remplit tout seul
   const pickLabel = (i: number, label: string) => {
     const p = products.find((x) => x.name.toLowerCase() === label.trim().toLowerCase());
@@ -60,7 +77,7 @@ export default function Factures() {
 
   async function save(): Promise<string | undefined> {
     if (!edit) return;
-    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount };
+    const body = { date: edit.date, dueDate: edit.dueDate, buyer: edit.buyer, client: edit.buyer.name, lines: edit.lines.filter((l) => l.label.trim()), note: edit.note, discount: edit.discount, kind: edit.kind, deposits: edit.kind === "final" ? edit.deposits : [] };
     const r = edit.id ? await api<Inv>(`invoices/${edit.id}`, "PATCH", body) : await api<Inv>("invoices", "POST", body);
     await load();
     return r.id;
@@ -69,18 +86,22 @@ export default function Factures() {
   async function emit() {
     if (!edit || !confirm("Générer la facture ? Le PDF part au client et la facture ne pourra plus être modifiée.")) return;
     setBusy(true); setMsg("");
+    // Pas de mail client : on ouvre le PDF pour l'envoyer soi-même (onglet ouvert tout de suite, sinon le navigateur le bloque)
+    const tab = !edit.buyer.email.trim() ? window.open("", "_blank") : null;
     try {
       const id = await save();
       const res = await fetch(`/api/invoices/${id}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: true }) });
       const b = await res.json();
-      if (!res.ok) { setMsg(b.error); if (id && !edit.id) setEdit({ ...edit, id }); }
+      if (!res.ok) { tab?.close(); setMsg(b.error); if (id && !edit.id) setEdit({ ...edit, id }); }
       else {
-        const mail = b.mailed ? "PDF envoyé au client ✓" : "Facture générée ✓ (pas de mail : adresse du client ou compte Gmail manquant)";
+        if (tab) tab.location.href = `/api/invoices/${id}/pdf`;
+        else if (!b.mailed) window.open(`/api/invoices/${id}/pdf`, "_blank");
+        const mail = b.mailed ? "PDF envoyé au client ✓" : "Facture générée ✓ Le PDF s'est ouvert : tu peux l'enregistrer ou l'envoyer toi-même.";
         setMsg(b.pro ? `${mail} Dernière étape : télécharge le fichier officiel (bouton « Fichier ») et dépose-le sur ton espace Super PDP.` : mail);
         setEdit(null);
       }
       await load();
-    } catch (e) { setMsg((e as Error).message); }
+    } catch (e) { tab?.close(); setMsg((e as Error).message); }
     setBusy(false);
   }
 
@@ -102,7 +123,7 @@ export default function Factures() {
     setShowSettings(false);
   }
 
-  const t = totalOf(edit?.lines ?? [], rate, edit?.discount);
+  const t = totalOf(edit?.lines ?? [], rate, edit?.discount, edit?.kind === "final" ? prepaidOf(edit.deposits) : undefined);
   const ro = !!edit && !!edit.status && edit.status !== "draft";
   const sellerOk = seller && seller.name && /^\d{9}$/.test(seller.siren);
 
@@ -129,8 +150,8 @@ export default function Factures() {
                 <td>{i.number}</td>
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}</td>
-                <td><span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
-                <td className="num">{eur(totalOf(parse(i.lines, []), rate, discountOf(i)).ttc)}</td>
+                <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}<span className="tag">{STATUS[i.status]}</span>{seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
+                <td className="num">{eur(totalOf(parse(i.lines, []), rate, discountOf(i), i.kind === "final" ? prepaidOf(parse<string[]>(i.deposits, [])) : undefined).due)}</td>
                 <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
                   {seller?.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
@@ -147,9 +168,14 @@ export default function Factures() {
       {edit && (
         <div className="overlay" onClick={() => setEdit(null)}>
           <div className="modal" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: 0 }}>{edit.number ? `Facture ${edit.number}` : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
+            <h3 style={{ margin: 0 }}>{edit.number ? `${KIND[edit.kind]} ${edit.number}` : "Nouvelle facture"}{edit.status && <span className="tag" style={{ marginLeft: 8 }}>{STATUS[edit.status]}</span>}</h3>
             {edit.error && <p className="neg small">{edit.error}</p>}
             <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, display: "contents" }}>
+              <div className="row">
+                {(["standard", "deposit", "final"] as const).map((k) => (
+                  <button key={k} type="button" className={edit.kind === k ? "primary" : ""} onClick={() => setEdit({ ...edit, kind: k })}>{{ standard: "Facture", deposit: "Facture d'acompte", final: "Facture de solde" }[k]}</button>
+                ))}
+              </div>
               <div className="row">
                 <label>Date<input type="date" value={edit.date} onChange={(e) => setEdit({ ...edit, date: e.target.value })} /></label>
                 <label>Échéance<input type="date" value={edit.dueDate} onChange={(e) => setEdit({ ...edit, dueDate: e.target.value })} /></label>
@@ -169,7 +195,15 @@ export default function Factures() {
                 <label>Mail (envoi du PDF)<input type="email" value={edit.buyer.email} onChange={(e) => setBuyer({ email: e.target.value })} /></label>
                 <label>N° TVA (facultatif)<input value={edit.buyer.vat} onChange={(e) => setBuyer({ vat: e.target.value })} /></label>
               </div>
-              <h4 style={{ margin: "8px 0 0" }}>Lignes</h4>
+              {edit.kind === "deposit" && !ro && (
+                <div className="row" style={{ alignItems: "flex-end" }}>
+                  <label style={{ flex: 2 }}>Projet<input placeholder="ex. Clip de Marie" value={depCalc.label} onChange={(e) => setDepCalc({ ...depCalc, label: e.target.value })} /></label>
+                  <label>Total du projet HT<input type="number" step="0.01" value={depCalc.total} onChange={(e) => setDepCalc({ ...depCalc, total: Number(e.target.value) })} /></label>
+                  <label style={{ width: 80 }}>%<input type="number" step="1" value={depCalc.pct} onChange={(e) => setDepCalc({ ...depCalc, pct: Number(e.target.value) })} /></label>
+                  <button type="button" onClick={applyDeposit}>Calculer l&apos;acompte</button>
+                </div>
+              )}
+              <h4 style={{ margin: "8px 0 0" }}>Lignes{edit.kind === "final" && <span className="muted small"> (le total du projet, les acomptes sont déduits en dessous)</span>}</h4>
               {edit.lines.map((l, i) => (
                 <div className="row" key={i}>
                   <input style={{ flex: 3 }} list="products-list" placeholder="Produit ou désignation (ex. Montage vidéo)" value={l.label} onChange={(e) => pickLabel(i, e.target.value)} />
@@ -180,6 +214,17 @@ export default function Factures() {
               ))}
               <datalist id="products-list">{products.map((p) => <option key={p.id} value={p.name}>{eur(p.unitPrice)}</option>)}</datalist>
               {!ro && <button className="ghost small" onClick={() => setEdit({ ...edit, lines: [...edit.lines, { label: "", qty: 1, unitPrice: 0 }] })}><Plus size={14} /> Ligne</button>}
+              {edit.kind === "final" && (<>
+                <h4 style={{ margin: "8px 0 0" }}>Acomptes à déduire</h4>
+                {(() => {
+                  const avail = depositsFor(edit);
+                  const shown = [...list.filter((x) => edit.deposits.includes(x.id) && !avail.includes(x)), ...avail];
+                  if (!shown.length) return <span className="muted small">Aucune facture d&apos;acompte émise pour {edit.buyer.name.trim() || "ce client"}.</span>;
+                  return shown.map((x) => (
+                    <label key={x.id} className="check"><input type="checkbox" checked={edit.deposits.includes(x.id)} onChange={(e) => setEdit({ ...edit, deposits: e.target.checked ? [...edit.deposits, x.id] : edit.deposits.filter((y) => y !== x.id) })} /> {x.number} du {new Date(x.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })} · {eur(ttcOf(x))}</label>
+                  ));
+                })()}
+              </>)}
               <h4 style={{ margin: "8px 0 0" }}>Remise / promo</h4>
               <div className="row">
                 <input style={{ flex: 2 }} placeholder="Libellé (ex. Promo de lancement)" value={edit.discount.label} onChange={(e) => setEdit({ ...edit, discount: { ...edit.discount, label: e.target.value } })} />
@@ -191,7 +236,7 @@ export default function Factures() {
               </div>
               <label>Note (facultatif)<input value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
             </fieldset>
-            <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · <b>Total TTC {eur(t.ttc)}</b>{rate === 0 && ` · ${seller?.vatNote}`}</div>
+            <div className="muted">{t.remise > 0 && <>Sous-total {eur(t.gross)} · Remise −{eur(t.remise)} · </>}Total HT {eur(t.ht)} · TVA {rate} % · {t.prepaid > 0 ? <>Total TTC {eur(t.ttc)} · Acomptes −{eur(t.prepaid)} · <b>Reste à payer {eur(t.due)}</b></> : <b>{edit.kind === "deposit" ? "Acompte" : "Total TTC"} {eur(t.ttc)}</b>}{rate === 0 && ` · ${seller?.vatNote}`}</div>
             <div className="row">
               {edit.id && !ro && <button className="neg" onClick={remove}>Supprimer</button>}
               {edit.id && <a className="ghost" href={`/api/invoices/${edit.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={16} /> Aperçu PDF</a>}

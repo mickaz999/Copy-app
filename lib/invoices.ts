@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { Discount, InvoiceData, Line, Party, buildCii, totals } from "@/lib/cii";
+import { Discount, InvoiceData, InvoiceKind, Line, Party, Prepaid, buildCii, totals } from "@/lib/cii";
 import { invoicePdf } from "@/lib/invoicePdf";
 import { validateInvoice } from "@/lib/superpdp";
 import { sendGmail } from "@/lib/google";
@@ -20,7 +20,17 @@ export async function nextNumber(date = new Date()) {
 
 export async function invoiceData(id: string): Promise<InvoiceData> {
   const [inv, s] = await Promise.all([db.invoice.findUniqueOrThrow({ where: { id } }), invoiceSettings()]);
+  // Facture de solde : montant TTC de chaque facture d'acompte déduite
+  const depIds = inv.kind === "final" ? parse<string[]>(inv.deposits, []) : [];
+  const deps = depIds.length ? await db.invoice.findMany({ where: { id: { in: depIds }, kind: "deposit" }, orderBy: { number: "asc" } }) : [];
+  const prepaid: Prepaid[] = deps.map((x) => ({
+    number: x.number,
+    date: day(x.date),
+    amount: totals({ lines: parse<Line[]>(x.lines, []), vatRate: s.vatRate, discount: x.discount ? parse<Discount | undefined>(x.discount, undefined) : undefined }).ttc,
+  }));
   return {
+    kind: (inv.kind as InvoiceKind) || "standard",
+    prepaid,
     number: inv.number,
     date: day(inv.date),
     dueDate: day(inv.dueDate),
@@ -92,11 +102,13 @@ export async function emitInvoice(id: string, opts: { email: boolean }) {
     const acc = await mailAccount();
     if (acc) {
       const pdf = await invoicePdf(d);
-      const { ttc } = totals(d);
+      const { due: ttc } = totals(d);
+      const what = d.kind === "deposit" ? "la facture d'acompte" : d.kind === "final" ? "la facture de solde" : "la facture";
+      const title = d.kind === "deposit" ? "Facture d'acompte" : d.kind === "final" ? "Facture de solde" : "Facture";
       const amount = ttc.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-      const html = `<p>Bonjour,</p><p>Tu trouveras ci-joint la facture <b>${d.number}</b> d'un montant de <b>${amount}</b>, à régler avant le ${d.dueDate.split("-").reverse().join("/")}.</p>${d.iban ? `<p>IBAN : ${d.iban}</p>` : ""}<p>Merci !</p>`;
+      const html = `<p>Bonjour,</p><p>Tu trouveras ci-joint ${what} <b>${d.number}</b> d'un montant de <b>${amount}</b>, à régler avant le ${d.dueDate.split("-").reverse().join("/")}.</p>${d.iban ? `<p>IBAN : ${d.iban}</p>` : ""}<p>Merci !</p>`;
       try {
-        await sendGmail(acc.id, d.buyer.email, `Facture ${d.number}`, html, false, "", [{ name: `Facture ${d.number}.pdf`, type: "application/pdf", data: pdf }]);
+        await sendGmail(acc.id, d.buyer.email, `${title} ${d.number}`, html, false, "", [{ name: `${title} ${d.number}.pdf`, type: "application/pdf", data: pdf }]);
         mailed = true;
       } catch (e) {
         // La facture est déjà transmise : on garde l'erreur de mail sans tout annuler
