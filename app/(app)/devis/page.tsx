@@ -216,8 +216,9 @@ export default function Devis() {
             <span style={{ flex: 1 }}>{b.name || "Sans client"} <span className="muted small">· {new Date(q.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</span></span>
             <span>{eur(sum(parse(q.lines, [])))}</span>
             <span className={`tag ${q.status === "accepted" ? "ok" : q.status === "refused" ? "neg" : ""}`}>{STATUS[q.status]}</span>
-            <a className="ghost small gbutton" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
-            {q.signedName && <a className="ghost small gbutton" href={`/api/quotes/${q.id}/signed`} target="_blank" rel="noreferrer"><Paperclip size={14} /> Signé</a>}
+            {q.signedName
+              ? <a className="ghost small gbutton" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><Paperclip size={14} /> Devis signé</a>
+              : <a className="ghost small gbutton" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>}
             {q.status === "accepted" && q.invoiceId && <button className="ghost small" onClick={() => router.push(`/factures?open=${q.invoiceId}`)}>Voir la facture</button>}
             {q.status !== "accepted" && <button className="ghost small" onClick={() => open(q)}>Modifier</button>}
             {q.status !== "accepted" && <button className="ghost small" title="Supprimer" onClick={() => remove(q)}><Trash2 size={14} /></button>}

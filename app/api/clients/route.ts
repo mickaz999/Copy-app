@@ -16,7 +16,7 @@ export async function GET() {
   // Devis et factures, rattachés au client par son nom
   const [invoices, quotes, s] = await Promise.all([
     db.invoice.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, client: true, buyer: true, lines: true, discount: true, kind: true, deposits: true, status: true } }),
-    db.quote.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, buyer: true, lines: true, discount: true, status: true, invoiceId: true } }),
+    db.quote.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, buyer: true, lines: true, discount: true, status: true, invoiceId: true, signedName: true } }),
     invoiceSettings(),
   ]);
   const parse = <T,>(v: string, d: T): T => { try { return JSON.parse(v) as T; } catch { return d; } };
@@ -33,7 +33,7 @@ export async function GET() {
   for (const n of Array.from(new Set([...invoices, ...quotes].map((x) => parse<{ name?: string }>(x.buyer, {}).name?.trim() ?? "").filter(Boolean)))) await clientFor(n).catch(() => {});
   const clients = await db.client.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json(clients.map((c) => ({ ...c, space: spaceUrl(c), emails: emailsOf(c), billing: billingOf(c),
-    quotes: quotes.filter((q) => who(q) === c.nameKey).map((q) => ({ id: q.id, number: q.number, date: q.date, status: q.status, total: ttc(q), invoiceId: q.invoiceId })),
+    quotes: quotes.filter((q) => who(q) === c.nameKey).map((q) => ({ id: q.id, number: q.number, date: q.date, status: q.status, total: ttc(q), invoiceId: q.invoiceId, signed: !!q.signedName })),
     invoices: invoices.filter((i) => who(i) === c.nameKey).map((i) => ({ id: i.id, number: i.number, date: i.date, status: i.status, kind: i.kind, total: due(i) })), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
 }
 
