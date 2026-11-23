@@ -366,3 +366,23 @@ model Notice {
 
   @@index([createdAt])
 }
+
+// Prospection : personnes à démarcher par mail
+model Prospect {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @default("")
+  company   String    @default("") // chaîne, marque, plateforme…
+  status    String    @default("todo") // todo | contacted | replied | won | lost
+  note      String    @default("")
+  lastMail  DateTime?
+  mails     Int       @default(0) // nombre de mails envoyés
+  createdAt DateTime  @default(now())
+}
+
+// Réglages de prospection : adresse d'envoi + modèles de mails
+model ProspectConfig {
+  id        Int    @id @default(1)
+  fromAddr  String @default("") // ex. « Prénom Nom <contact@mondomaine.fr> » (alias « Envoyer en tant que » de Gmail)
+  templates String @default("[]") // JSON [{ name, subject, body }]
+}

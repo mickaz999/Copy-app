@@ -128,10 +128,12 @@ export function toGoogleEvent(b: { title: string; allDay: boolean; start: string
 }
 
 // Envoie un mail depuis le compte Gmail connecté
-export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false): Promise<void> {
+export async function sendGmail(accountId: string, to: string, subject: string, html: string, retried = false, from = ""): Promise<void> {
   const token = await accessToken(accountId);
   const b64 = (t: string) => Buffer.from(t, "utf8").toString("base64");
   const mime = [
+    // Adresse d'envoi : doit être un alias « Envoyer en tant que » validé dans Gmail
+    ...(from ? [`From: ${from}`] : []),
     `To: ${to}`,
     `Subject: =?UTF-8?B?${b64(subject)}?=`,
     "MIME-Version: 1.0",
@@ -148,7 +150,7 @@ export async function sendGmail(accountId: string, to: string, subject: string, 
   if (res.status === 401 && !retried) {
     tokenCache.delete(accountId);
     await db.googleAccount.update({ where: { id: accountId }, data: { accessToken: "", expiresAt: new Date(0) } });
-    return sendGmail(accountId, to, subject, html, true);
+    return sendGmail(accountId, to, subject, html, true, from);
   }
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
