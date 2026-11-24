@@ -32,6 +32,7 @@ export default function Devis() {
 
   const load = () => api<Quote[]>("quotes").then(setList).catch((e) => setMsg(`Liste des devis indisponible : ${(e as Error).message.slice(0, 200)}`));
   const [saved, setSaved] = useState<Buyer[]>([]);
+  useEffect(() => { load(); api<Buyer[]>("clients/billing").then(setSaved).catch(() => {}); }, []);
   const lines = linesOf(edit);
   const total = sum(lines);
   const setBuyer = (b: Partial<Buyer>) => setEdit((e) => ({ ...e, buyer: { ...e.buyer, ...b } }));
