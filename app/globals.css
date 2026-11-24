@@ -2214,3 +2214,6 @@ tr.inv-cancelled td:first-child { text-decoration: line-through; }
 tr.inv-credit td:first-child { padding-left: 26px; position: relative; }
 tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left: 10px; color: var(--muted); }
 .modal-msg { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13px; }
+/* Fiche client : facture annulée grisée, avoir rangé dessous */
+.client-doc.inv-cancelled > span:first-child, .client-doc.inv-cancelled > b { opacity: .5; text-decoration: line-through; }
+.client-doc.inv-credit > span:first-child::before { content: "↳ "; color: var(--muted); }

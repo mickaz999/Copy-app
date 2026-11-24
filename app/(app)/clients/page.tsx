@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 type D = { id: string; title: string; createdAt: string; approvedV: number; approvedAt: string | null };
 type Billing = { siren: string; address: string; zip: string; city: string; vat: string; email: string; phone: string };
 type Q = { id: string; number: string; date: string; status: string; total: number; invoiceId: string; signed: boolean };
-type I = { id: string; number: string; date: string; status: string; kind: string; total: number };
+type I = { id: string; number: string; date: string; status: string; kind: string; total: number; credited?: number; linked?: boolean; cancelled?: boolean; refOf?: string };
 const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const fr = (d: string) => new Date(d).toLocaleDateString("fr-FR", { timeZone: "UTC" });
 const QS: Record<string, string> = { draft: "brouillon", sent: "en attente", accepted: "validé", refused: "refusé" };
@@ -41,8 +41,10 @@ export default function Clients() {
               <b>{c.name}</b>
               {(() => {
                 const em = c.invoices.filter((i) => i.status !== "draft");
-                const paid = em.filter((i) => i.status === "paid").reduce((n, i) => n + i.total, 0);
-                const unpaid = em.filter((i) => i.status === "sent").reduce((n, i) => n + i.total, 0);
+                // Un avoir rattaché à une facture se déduit de celle-ci (et ne compte pas à part)
+                const net = (i: I) => i.total - (i.credited ?? 0);
+                const paid = em.filter((i) => i.status === "paid" && !i.linked).reduce((n, i) => n + (i.kind === "credit" ? i.total : net(i)), 0);
+                const unpaid = em.filter((i) => i.status === "sent" && !i.linked).reduce((n, i) => n + Math.max(0, net(i)), 0);
                 const pending = c.quotes.filter((q) => q.status === "sent").reduce((n, q) => n + q.total, 0);
                 return (em.length > 0 || pending > 0) && (
                   <div className="client-money">
@@ -83,8 +85,8 @@ export default function Clients() {
                       <button className="ghost small" title="Supprimer le devis" onClick={async () => { if (confirm(`Supprimer le devis ${q.number} ?`)) { await api(`quotes/${q.id}`, "DELETE"); load(); } }}><Trash2 size={14} /></button>
                     </span>}</a>
                   ))}</div>}
-                  {c.invoices.length > 0 && <div><b className="small">Factures</b>{c.invoices.map((i) => (
-                    <a key={i.id} className="client-doc" href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span><span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span><b>{eur(i.total)}</b></a>
+                  {c.invoices.length > 0 && <div><b className="small">Factures</b>{[...c.invoices.filter((i) => !i.linked).flatMap((i) => [i, ...c.invoices.filter((x) => x.linked && x.refOf === i.id)]), ...c.invoices.filter((x) => x.linked && !c.invoices.some((o) => o.id === x.refOf))].map((i) => (
+                    <a key={i.id} className={`client-doc${i.cancelled ? " inv-cancelled" : ""}${i.linked ? " inv-credit" : ""}`} href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span>{i.cancelled ? <span className="tag neg">annulée par avoir</span> : i.kind === "credit" ? <span className="tag">{i.status === "draft" ? "brouillon" : "émis"}</span> : <span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span>}<b>{eur(i.total)}</b></a>
                   ))}</div>}
                 </div>
               )}
