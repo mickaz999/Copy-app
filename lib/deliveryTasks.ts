@@ -1,9 +1,9 @@
 import type { Delivery, DeliveryComment } from "@prisma/client";
 import { db } from "@/lib/db";
-import { expiryOf, fio } from "@/lib/frameio";
+import { dropExpiry, expiryOf, fio } from "@/lib/frameio";
 import { sendGmail } from "@/lib/google";
 import { emailsOf, mailHtml, nameKey, spaceUrl } from "@/lib/clients";
-import { deliveryUrl } from "@/lib/site";
+import { deliveryUrl, dropUrl } from "@/lib/site";
 import { getSettings, mailAccount, parisNow, sendPush } from "@/lib/notify";
 
 type Sub = { id: string; title: string; done: boolean };
@@ -211,3 +211,32 @@ export async function remindExpiringDeliveries(_appUrl?: string) {
   return sent;
 }
 const escHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+
+// Lien de dépôt ouvert, aucun fichier reçu, moins de 24 h avant la fin : un rappel par mail (une fois)
+export async function remindEmptyDrops() {
+  const acc = await mailAccount();
+  if (!acc) return 0;
+  const [list, clients] = await Promise.all([
+    db.dropLink.findMany({ where: { active: true }, include: { _count: { select: { files: true } } } }),
+    db.client.findMany(),
+  ]);
+  let sent = 0;
+  for (const l of list) {
+    if (l._count.files > 0) continue;
+    const left = dropExpiry(l).getTime() - Date.now();
+    if (left <= 0 || left > 864e5) continue;
+    const c = clients.find((x) => x.nameKey === nameKey(l.client));
+    const to = c ? emailsOf(c) : [];
+    if (!to.length) continue;
+    const end = dropExpiry(l).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    for (const email of to) {
+      const key = `dropempty-${l.id}-${email}`;
+      try { await db.sentReminder.create({ data: { key } }); } catch { continue; }
+      const html = mailHtml("N'oublie pas de déposer tes rushs",
+        [`Le lien de dépôt <b>${escHtml(l.title)}</b> est encore vide, et il ferme le <b>${end}</b> (heure de Paris).`, "Il te reste 24 h pour y déposer tes fichiers."],
+        "Déposer mes rushs", c ? spaceUrl(c) : dropUrl(l));
+      await sendGmail(acc.id, email, `Il te reste 24 h pour déposer tes rushs · ${l.title}`, html).then(() => sent++).catch(() => db.sentReminder.delete({ where: { key } }).catch(() => {}));
+    }
+  }
+  return sent;
+}

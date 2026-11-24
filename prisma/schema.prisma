@@ -275,6 +275,7 @@ model Client {
   emails    String   @default("[]") // JSON
   key       String   @unique // clé ajoutée aux liens (?c=…) pour reconnaître le client sur un nouvel appareil
   note      String   @default("")
+  hidden    Boolean  @default(false) // fiche supprimée : ne réapparaît plus toute seule
   billing   String   @default("{}") // coordonnées de facturation JSON { siren, address, zip, city, vat, email, phone }, reprises dans devis et factures
   createdAt DateTime @default(now())
 }
@@ -380,13 +381,19 @@ model Prospect {
   note      String    @default("")
   lastMail  DateTime?
   mails     Int       @default(0) // nombre de mails envoyés
+  hook      String    @default("") // accroche perso, remplace {accroche} dans les modèles
+  step      Int       @default(0) // étape de la séquence = nombre de mails de séquence envoyés
+  nextAt    DateTime? // date de la prochaine relance prévue ; null = séquence finie ou arrêtée
+  threadId  String    @default("") // fil Gmail du premier mail, pour que les relances arrivent dans la même conversation
+  msgId     String    @default("") // Message-ID du premier mail (en-têtes In-Reply-To / References)
+  subject   String    @default("") // objet du premier mail, repris en « Re: » dans les relances
   createdAt DateTime  @default(now())
 }
 
 // Réglages de prospection : modèles de mails
 model ProspectConfig {
   id        Int    @id @default(1)
-  templates String @default("[]") // JSON [{ name, subject, body }]
+  templates String @default("[]") // JSON [{ name, subject, body, delay }] : dans l'ordre = la séquence (delay = jours après le mail précédent)
 }
 
 // Facture : saisie dans l'app, PDF envoyé par mail ; pour une entreprise, fichier officiel validé puis déposé sur Super PDP

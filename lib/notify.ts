@@ -134,6 +134,15 @@ export async function runCron(appUrl: string) {
     }
   }
 
+  // Prospection : mails à valider aujourd'hui (une notif par jour)
+  if (s.pushEnabled && pushConfigured() && now.hour >= s.digestHour && (await once(`prospects:${now.day}`))) {
+    const n = await db.prospect.count({ where: { email: { not: "" }, OR: [{ status: "todo", step: 0 }, { status: "contacted", nextAt: { lte: new Date() } }] } });
+    if (n) {
+      await sendPush({ title: "Prospection", body: `${n} mail${n > 1 ? "s" : ""} à valider aujourd'hui`, url: "/prospection", tag: `prospects-${now.day}` });
+      log.push(`prospection : ${n} à valider`);
+    }
+  }
+
   // Rappel avant chaque RDV
   if (s.pushEnabled && s.eventReminder > 0 && pushConfigured()) {
     const from = new Date();
