@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { COOKIE as SESSION, verifyToken } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { keyFromSlug, addClientEmail, clientItems, clientDocs, emailsOf } from "@/lib/clients";
+import { keyFromSlug, addClientEmail, clientItems, emailsOf } from "@/lib/clients";
 import { dropExpiry, expiryOf, fileMedia, pool } from "@/lib/frameio";
 import { getSettings, sendPush } from "@/lib/notify";
 
@@ -25,7 +25,6 @@ export async function GET(req: Request, { params }: { params: { key: string } })
   if (!email && !admin && !emailsOf(c).length) return NextResponse.json({ needEmail: true, name: c.name }, { status: 401 });
   if (email && !admin) await addClientEmail(c.name, email).catch(() => {});
   const { deliveries, drops } = await clientItems(c.nameKey);
-  const docs = await clientDocs(c.nameKey);
   const items = await pool(deliveries, 6, async (d) => {
     const files: { fileId: string }[] = JSON.parse(d.files || "[]");
     let thumb = "";
@@ -37,8 +36,6 @@ export async function GET(req: Request, { params }: { params: { key: string } })
   const res = NextResponse.json({
     name: c.name,
     deliveries: items,
-    quotes: docs.quotes,
-    invoices: docs.invoices,
     drops: drops.map((l) => ({ token: l.token, title: l.title, expiresAt: dropExpiry(l), createdAt: l.createdAt })),
   });
   if (email && !cookie && !admin) res.cookies.set("liv_viewer", email, COOKIE);
