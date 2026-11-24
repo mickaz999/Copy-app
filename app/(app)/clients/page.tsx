@@ -85,8 +85,8 @@ export default function Clients() {
                       <button className="ghost small" title="Supprimer le devis" onClick={async () => { if (confirm(`Supprimer le devis ${q.number} ?`)) { await api(`quotes/${q.id}`, "DELETE"); load(); } }}><Trash2 size={14} /></button>
                     </span>}</a>
                   ))}</div>}
-                  {c.invoices.length > 0 && <div><b className="small">Factures</b>{[...c.invoices.filter((i) => !i.linked).flatMap((i) => [i, ...c.invoices.filter((x) => x.linked && x.refOf === i.id)]), ...c.invoices.filter((x) => x.linked && !c.invoices.some((o) => o.id === x.refOf))].map((i) => (
-                    <a key={i.id} className={`client-doc${i.cancelled ? " inv-cancelled" : ""}${i.linked ? " inv-credit" : ""}`} href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span>{i.cancelled ? <span className="tag neg">annulée par avoir</span> : i.kind === "credit" ? <span className="tag">{i.status === "draft" ? "brouillon" : "émis"}</span> : <span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span>}<b>{eur(i.total)}</b></a>
+                  {c.invoices.length > 0 && <div><b className="small">Factures</b>{[...c.invoices.filter((i) => !i.linked).flatMap((i) => (i.cancelled ? [i] : [i, ...c.invoices.filter((x) => x.linked && x.refOf === i.id)])), ...c.invoices.filter((x) => x.linked && !c.invoices.some((o) => o.id === x.refOf))].map((i) => (
+                    <a key={i.id} className={`client-doc${i.cancelled ? " inv-cancelled" : ""}${i.linked ? " inv-credit" : ""}`} href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span>{i.cancelled ? <span className="tag neg">annulée</span> : i.kind === "credit" ? <span className="tag">{i.status === "draft" ? "brouillon" : "émis"}</span> : <span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span>}<b>{eur(i.cancelled ? 0 : i.total - (i.linked ? 0 : i.credited ?? 0))}</b></a>
                   ))}</div>}
                 </div>
               )}
