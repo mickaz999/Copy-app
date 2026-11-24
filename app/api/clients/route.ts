@@ -15,7 +15,7 @@ export async function GET() {
   for (const n of Array.from(new Set([...deliveries, ...drops].map((d) => d.client.trim()).filter(Boolean)))) await clientFor(n).catch(() => {});
   // Devis et factures, rattachés au client par son nom
   const [invoices, quotes, s] = await Promise.all([
-    db.invoice.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, client: true, buyer: true, lines: true, discount: true, kind: true, deposits: true, status: true } }),
+    db.invoice.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, client: true, buyer: true, lines: true, discount: true, kind: true, deposits: true, status: true, refId: true } }),
     db.quote.findMany({ orderBy: { number: "desc" }, select: { id: true, number: true, date: true, buyer: true, lines: true, discount: true, status: true, invoiceId: true, signedName: true } }),
     invoiceSettings(),
   ]);
@@ -29,12 +29,16 @@ export async function GET() {
     if (i.kind === "final") return t - parse<string[]>(i.deposits, []).reduce((n, id) => n + (invTtc.get(id) ?? 0), 0);
     return t;
   };
+  // Avoirs émis rattachés à une facture : ils réduisent ce qu'elle rapporte (facture annulée = 0)
+  const creditedOn = new Map<string, number>();
+  for (const i of invoices) if (i.kind === "credit" && i.refId && i.status !== "draft") creditedOn.set(i.refId, (creditedOn.get(i.refId) ?? 0) + (invTtc.get(i.id) ?? 0));
+  const linked = (i: (typeof invoices)[number]) => i.kind === "credit" && !!i.refId && invoices.some((o) => o.id === i.refId);
   const who = (x: { buyer: string; client?: string }) => nameKey(parse<{ name?: string }>(x.buyer, {}).name || x.client || "");
   for (const n of Array.from(new Set([...invoices, ...quotes].map((x) => parse<{ name?: string }>(x.buyer, {}).name?.trim() ?? "").filter(Boolean)))) await clientFor(n).catch(() => {});
   const clients = await db.client.findMany({ where: { hidden: false }, orderBy: { name: "asc" } });
   return NextResponse.json(clients.map((c) => ({ ...c, space: spaceUrl(c), emails: emailsOf(c), billing: billingOf(c),
     quotes: quotes.filter((q) => who(q) === c.nameKey).map((q) => ({ id: q.id, number: q.number, date: q.date, status: q.status, total: ttc(q), invoiceId: q.invoiceId, signed: !!q.signedName })),
-    invoices: invoices.filter((i) => who(i) === c.nameKey).map((i) => ({ id: i.id, number: i.number, date: i.date, status: i.status, kind: i.kind, total: due(i) })), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
+    invoices: invoices.filter((i) => who(i) === c.nameKey).map((i) => ({ id: i.id, number: i.number, date: i.date, status: i.status, kind: i.kind, total: due(i), credited: creditedOn.get(i.id) ?? 0, linked: linked(i), refOf: i.refId, cancelled: i.kind !== "credit" && i.status !== "draft" && due(i) - (creditedOn.get(i.id) ?? 0) <= 0.005 })), deliveries: deliveries.filter((d) => nameKey(d.client) === c.nameKey), drops: drops.filter((d) => nameKey(d.client) === c.nameKey).map((d) => ({ id: d.id, title: d.title, active: d.active, createdAt: d.createdAt, files: d._count.files })) })));
 }
 
 // { name } : nouveau client | { id, emails, note } : mise à jour | { id, delete: true }

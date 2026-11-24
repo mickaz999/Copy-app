@@ -74,14 +74,15 @@ export default function Factures() {
     return cr.length > 0 && cr.reduce((n, x) => n + dueOf(x), 0) >= dueOf(i) - 0.005;
   };
   // Ordre d'affichage : chaque avoir juste sous la facture qu'il annule
-  const rows = list.filter((i) => !(i.kind === "credit" && list.some((o) => o.id === i.refId))).flatMap((i) => [i, ...creditsOf(i)]);
+  // Facture entièrement annulée : une seule ligne à 0 €, l'avoir reste accessible en lien (pas de ligne +/− en double)
+  const rows = list.filter((i) => !(i.kind === "credit" && list.some((o) => o.id === i.refId))).flatMap((i) => (cancelled(i) ? [i] : [i, ...creditsOf(i)]));
   const links = (i: Inv) => {
     if (i.kind === "credit") {
       const o = list.find((x) => x.id === i.refId);
       return o ? <span className="muted small">Avoir sur {linkTo(o)}</span> : null;
     }
     const cr = creditsOf(i);
-    if (cr.length) return <span className="neg small">Avoir : {cr.map((x, j) => <span key={x.id}>{j ? ", " : ""}{linkTo(x)}</span>)}</span>;
+    if (cr.length) return <span className="neg small">{cancelled(i) ? "Annulée par l'avoir " : "Avoir : "}{cr.map((x, j) => <span key={x.id}>{j ? ", " : ""}{linkTo(x)}</span>)}</span>;
     if (i.kind === "deposit") {
       const f = finalOf(i);
       return f ? <span className="muted small">Soldé par {linkTo(f)}</span> : i.status !== "draft" ? <span className="neg small">Solde à faire</span> : null;
@@ -220,9 +221,10 @@ export default function Factures() {
                 <td>{new Date(i.date).toLocaleDateString("fr-FR", { timeZone: "UTC" })}</td>
                 <td>{i.client}{links(i) && <div>{links(i)}</div>}</td>
                 <td>{i.kind && i.kind !== "standard" && <span className="tag" style={{ marginRight: 6 }}>{KIND[i.kind]}</span>}{cancelled(i) ? <span className="tag neg">Annulée</span> : <span className="tag">{STATUS[i.status]}</span>}{i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <span className={`tag ${i.deposited ? "" : "neg"}`} style={{ marginLeft: 6 }}>{i.deposited ? "déposée" : "à déposer"}</span>}{i.error && <span className="tag neg" style={{ marginLeft: 6 }} title={i.error}>erreur</span>}</td>
-                <td className="num">{eur((i.kind === "credit" && dueOf(i) ? -1 : 1) * dueOf(i))}</td>
+                <td className="num">{cancelled(i) ? <>{eur(0)}<div className="muted small" style={{ textDecoration: "line-through" }}>{eur(dueOf(i))}</div></> : eur((i.kind === "credit" && dueOf(i) ? -1 : 1) * dueOf(i))}</td>
                 <td onClick={(e) => e.stopPropagation()}><div className="inv-actions">
                   <a className="ghost small" href={`/api/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> PDF</a>
+                  {cancelled(i) && creditsOf(i).filter((x) => x.status !== "draft").map((x) => <a key={x.id} className="ghost small" href={`/api/invoices/${x.id}/pdf`} target="_blank" rel="noreferrer"><FileDown size={14} /> Avoir {x.number}</a>)}
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <a className="ghost small" href={`/api/invoices/${i.id}/xml`} title="Fichier officiel à déposer sur Super PDP"><FileCode size={14} /> Fichier</a>}
                   {i.einvoice && i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).siren && <label className="check small" title="Déposée sur Super PDP"><input type="checkbox" checked={i.deposited} onChange={async (e) => { await api(`invoices/${i.id}`, "PATCH", { deposited: e.target.checked }); load(); }} /> Déposée</label>}
                   {i.status !== "draft" && parse<Buyer>(i.buyer, EMPTY_BUYER).email && <button className="ghost small" title="Renvoyer le mail au client" onClick={() => resend(i)}><Send size={14} /> Renvoyer</button>}

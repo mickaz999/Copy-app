@@ -20,9 +20,9 @@ export async function GET(req: Request, { params }: { params: { key: string } })
   if (!c) return NextResponse.json({ error: "Lien invalide." }, { status: 404 });
   const cookie = req.headers.get("cookie")?.match(/(?:^|;\s*)liv_viewer=([^;]+)/)?.[1];
   const email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
-  // Mail demandé une seule fois : déjà donné sur cet appareil, ou déjà connu dans la fiche client
+  // Mail obligatoire pour chaque visiteur, demandé une seule fois par appareil (toi connecté : pas de demande)
   const admin = await verifyToken(req.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${SESSION}=([^;]+)`))?.[1]);
-  if (!email && !admin && !emailsOf(c).length) return NextResponse.json({ needEmail: true, name: c.name }, { status: 401 });
+  if (!email && !admin) return NextResponse.json({ needEmail: true, name: c.name }, { status: 401 });
   if (email && !admin) await addClientEmail(c.name, email).catch(() => {});
   const { deliveries, drops } = await clientItems(c.nameKey);
   const items = await pool(deliveries, 6, async (d) => {
