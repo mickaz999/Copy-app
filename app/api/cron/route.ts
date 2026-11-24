@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runCron } from "@/lib/notify";
-import { mergeDropTasks, pullFrameComments, purgeExpiredDeliveries, remindExpiringDeliveries } from "@/lib/deliveryTasks";
+import { mergeDropTasks, pullFrameComments, purgeExpiredDeliveries, remindEmptyDrops, remindExpiringDeliveries } from "@/lib/deliveryTasks";
 import { frameConnected } from "@/lib/frameio";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ export async function GET(req: Request) {
     if (await frameConnected()) await pullFrameComments().then((n) => n && log.push(`${n} retour(s) Frame.io`)).catch((e) => log.push(`Frame.io : ${e.message}`));
     await mergeDropTasks().then((n) => n && log.push(`${n} tâche(s) « Dérusher » en double fusionnée(s)`)).catch(() => {});
     await remindExpiringDeliveries(url.origin).then((n) => n && log.push(`${n} mail(s) de relance « lien bientôt expiré »`)).catch((e) => log.push(`relance livraison : ${e.message}`));
+    await remindEmptyDrops().then((n) => n && log.push(`${n} mail(s) « dépose tes rushs »`)).catch((e) => log.push(`relance dépôt : ${e.message}`));
     await purgeExpiredDeliveries().then((n) => n && log.push(`${n} lien(s) de livraison expiré(s) supprimé(s)`)).catch(() => {});
     return NextResponse.json({ ok: true, log });
   } catch (e) {
