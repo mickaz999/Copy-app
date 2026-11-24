@@ -78,7 +78,10 @@ export default function Clients() {
               {(c.quotes.length > 0 || c.invoices.length > 0) && (
                 <div className="client-docs">
                   {c.quotes.length > 0 && <div><b className="small">Devis</b>{c.quotes.map((q) => (
-                    <a key={q.id} className="client-doc" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><span>{q.number}{q.signed ? " · signé" : ""}</span><span className="muted">{fr(q.date)}</span><span className={`tag ${q.status}`}>{QS[q.status] ?? q.status}</span><b>{eur(q.total)}</b></a>
+                    <a key={q.id} className="client-doc" href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"><span>{q.number}{q.signed ? " · signé" : ""}</span><span className="muted">{fr(q.date)}</span><span className={`tag ${q.status}`}>{QS[q.status] ?? q.status}</span><b>{eur(q.total)}</b>{q.status !== "accepted" && <span className="row" style={{ gap: 4 }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                      {q.status === "sent" && <button className="ghost small" title="Annuler (refusé)" onClick={async () => { await api(`quotes/${q.id}`, "PATCH", { status: "refused" }); load(); }}><X size={14} /></button>}
+                      <button className="ghost small" title="Supprimer le devis" onClick={async () => { if (confirm(`Supprimer le devis ${q.number} ?`)) { await api(`quotes/${q.id}`, "DELETE"); load(); } }}><Trash2 size={14} /></button>
+                    </span>}</a>
                   ))}</div>}
                   {c.invoices.length > 0 && <div><b className="small">Factures</b>{c.invoices.map((i) => (
                     <a key={i.id} className="client-doc" href={`/factures?open=${i.id}`}><span>{IK[i.kind] ?? "Facture"} {i.number}</span><span className="muted">{fr(i.date)}</span><span className={`tag ${i.status}`}>{IS[i.status] ?? i.status}</span><b>{eur(i.total)}</b></a>
