@@ -2244,3 +2244,6 @@ tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left:
 .wk-tasks .span-bar.block .chip-text { flex: 1 1 0; }
 .chip.task.span-bar.block:has(.sub-list) { flex-wrap: wrap; }
 .span-bar.block .sub-list { margin: 2px 0 0 21px; width: calc(100% - 21px); }
+/* Le badge (J-1…) reste sur la ligne du titre, les sous-tâches passent dessous */
+.span-bar.block .sub-list { order: 2; }
+.span-bar.block .span-end { align-self: center; }
