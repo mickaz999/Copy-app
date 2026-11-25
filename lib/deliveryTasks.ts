@@ -130,6 +130,8 @@ export async function purgeExpiredDeliveries() {
 
 // Notification « le client télécharge » : une seule toutes les 30 min par livraison (« Tout télécharger » = 1 notif)
 export async function notifyDownload(d: { id: string; title: string; client: string }, what: string) {
+  // Garde la trace du premier téléchargement (accueil : « téléchargée »)
+  await db.delivery.updateMany({ where: { id: d.id, downloadedAt: null }, data: { downloadedAt: new Date() } }).catch(() => {});
   const key = `dl-${d.id}-${Math.floor(Date.now() / (30 * 60_000))}`;
   try { await db.sentReminder.create({ data: { key } }); } catch { return; }
   const s = await getSettings();
