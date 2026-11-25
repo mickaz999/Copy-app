@@ -586,10 +586,10 @@ export default function Planning() {
     return { spans, lanes: laneEnds.length, depth };
   }
 
-  const SpanBar = ({ sp, offset = 0 }: { sp: Span; offset?: number }) => {
+  const SpanBar = ({ sp, offset = 0, block }: { sp: Span; offset?: number; block?: boolean }) => {
     const lastDay = sp.ev ? (sp.ev.allDay ? isoDay(addDays(new Date(sp.ev.end + "T00:00"), -1)) : isoDay(new Date(sp.ev.end))) : (sp.task?.endDate ?? sp.task?.date ?? "");
     const isPast = !!lastDay && lastDay < today && !(sp.task && lateDays(sp.task) > 0);
-    const cls = `span-bar ${sp.head ? "head" : ""} ${sp.tail ? "tail" : ""} ${isPast ? "past" : ""}`;
+    const cls = `span-bar ${block ? "block" : ""} ${sp.head ? "head" : ""} ${sp.tail ? "tail" : ""} ${isPast ? "past" : ""}`;
     const pos = { gridColumn: `${sp.s + 1 + offset} / ${sp.e + 2 + offset}`, gridRow: sp.lane + 1 };
     if (sp.ev) {
       const e = sp.ev;
@@ -619,7 +619,7 @@ export default function Planning() {
           {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
         </span>
         <span className="chip-text">{t.title}</span>
-        <SubList t={t} inline onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
+        <SubList t={t} inline={!block} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
         {/* Compte à rebours aussi quand la fin est hors de la vue (barre coupée à droite) */}
         <span className={`span-end ${remainingLabel(t, today).urgent ? "urgent" : ""}`}>{remainingLabel(t, today).text}{!sp.tail && " →"}</span>
       </div>
@@ -872,12 +872,15 @@ export default function Planning() {
             {(() => {
               const keys = days.map(isoDay);
               const { spans, lanes, depth } = layoutSpans(keys, { tasks: true });
+              // Barres en bloc : chaque ligne prend la hauteur de sa tâche la plus longue (titre + sous-tâches)
+              const laneH = Array.from({ length: lanes }, (_, l) => 30 + Math.max(0, ...spans.filter((sp) => sp.lane === l && sp.task).map((sp) => subsOf(sp.task!).length)) * 18);
+              const lead = (n: number) => laneH.slice(0, n).reduce((a, h) => a + h + 8, 0) - 2;
               return (
                 <div className="wk-row wk-allday wk-tasks">
                   <div className="wk-gutter muted" style={{ gridColumn: 1 }}>Tâches</div>
                   {keys.map((k, ci) => (
                     <div key={k} className={`wk-cell ${over === k ? "over" : ""}`} style={{ gridColumn: ci + 2 }} onClick={() => newTask(k)} {...dropProps(k)}>
-                      {depth[ci] > 0 && <div style={{ height: depth[ci] * 36 - 6, flexShrink: 0 }} />}
+                      {depth[ci] > 0 && <div style={{ height: lead(depth[ci]), flexShrink: 0 }} />}
                       {k === today && lateTasks.filter((t) => !multiTask(t) || !onDay(t, k)).map((t) => <TaskChip key={`late-${t.id}`} t={t} late />)}
                       {onCal.filter((t) => !multiTask(t) && !timed(t) && onDay(t, k)).map((t) => <TaskChip key={t.id} t={t} />)}
                       {ghostsOn(k).map((t) => (
@@ -887,7 +890,7 @@ export default function Planning() {
                       ))}
                     </div>
                   ))}
-                  {lanes > 0 && <div className="span-layer days">{spans.map((sp) => <SpanBar key={sp.key} sp={sp} offset={1} />)}</div>}
+                  {lanes > 0 && <div className="span-layer days" style={{ gridTemplateRows: laneH.map((h) => `${h}px`).join(" ") }}>{spans.map((sp) => <SpanBar key={sp.key} sp={sp} offset={1} block />)}</div>}
                 </div>
               );
             })()}
