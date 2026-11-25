@@ -7,7 +7,7 @@ import { api, isoDay } from "@/lib/api";
 type Task = { id: string; title: string; status: string; category: string; date: string | null; endDate: string | null; startTime: string };
 type Ev = { id: string; title: string; start: string; end: string; allDay: boolean; color: string };
 type Appt = { id: string; name: string; mode: string; day: string; time: string; start: string; status: string };
-type Delivery = { id: string; title: string; client: string; approvedV: number; approved: string; kind: string; comments: { resolved: boolean }[] };
+type Delivery = { id: string; title: string; client: string; approvedV: number; approved: string; kind: string; mode: string; dlMode: string; validation: boolean; download: boolean; downloadedAt: string | null; comments: { resolved: boolean }[] };
 
 const hm = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
@@ -28,7 +28,7 @@ export default function Home() {
     const to = new Date(from.getTime() + 864e5);
     api<{ events: Ev[] }>(`events?from=${from.toISOString()}&to=${to.toISOString()}`).then((r) => setEvents(r.events ?? [])).catch(() => {});
     api<Appt[]>("rdv").then(setAppts).catch(() => {});
-    api<Delivery[]>("livraisons").then(setDeliv).catch(() => {});
+    api<Delivery[]>("livraisons").then((l) => setDeliv(l.filter((d) => d.mode !== "frame"))).catch(() => {});
     api<typeof quotes>("quotes").then(setQuotes).catch(() => {});
   }, []);
 
@@ -47,7 +47,9 @@ export default function Home() {
   const qDone = quotes.filter((q) => q.status === "accepted" || q.status === "refused");
   const qRate = qDone.length ? Math.round((100 * qDone.filter((q) => q.status === "accepted").length) / qDone.length) : null;
   const feedback = deliv.reduce((n, d) => n + d.comments.filter((c) => !c.resolved).length, 0);
-  const waiting = deliv.filter((d) => (d.kind === "videos" ? JSON.parse(d.approved || "[]").length === 0 : !d.approvedV) && d.kind !== "folder").length;
+  // DL ouvert d'office (sans validation) : on attend le téléchargement, pas une validation
+  const dlOnly = (d: Delivery) => d.download && (d.dlMode === "always" || !d.validation);
+  const waiting = deliv.filter((d) => !dlOnly(d)).filter((d) => (d.kind === "videos" ? JSON.parse(d.approved || "[]").length === 0 : !d.approvedV) && d.kind !== "folder").length;
 
   const h = new Date().getHours();
   const hello = h < 6 ? "bonne nuit" : h < 12 ? "bonjour" : h < 18 ? "bon après-midi" : "bonsoir";
@@ -106,12 +108,13 @@ export default function Home() {
           {!deliv.length && <p className="muted small">Aucune livraison.</p>}
           {deliv.slice(0, 4).map((d) => {
             const todo = d.comments.filter((c) => !c.resolved).length;
-            const ok = d.kind === "videos" ? JSON.parse(d.approved || "[]").length > 0 : !!d.approvedV;
+            const ok = dlOnly(d) ? !!d.downloadedAt : d.kind === "videos" ? JSON.parse(d.approved || "[]").length > 0 : !!d.approvedV;
+            const label = dlOnly(d) ? (ok ? "téléchargée" : "en attente de DL") : ok ? "validée" : "en attente";
             return (
               <Link key={d.id} href="/livraisons" className="home-row">
                 {todo ? <MessageSquare size={14} className="hot" /> : ok ? <CheckCircle2 size={14} className="ok" /> : <Clock size={14} className="muted" />}
                 <span className="home-t">{d.title}</span>
-                <span className="muted small">{todo ? `${todo} retour${todo > 1 ? "s" : ""}` : ok ? "validée" : "en attente"}</span>
+                <span className="muted small">{todo ? `${todo} retour${todo > 1 ? "s" : ""}` : label}</span>
               </Link>
             );
           })}
