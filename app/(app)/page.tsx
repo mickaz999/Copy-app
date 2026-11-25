@@ -49,7 +49,7 @@ export default function Home() {
   const feedback = deliv.reduce((n, d) => n + d.comments.filter((c) => !c.resolved).length, 0);
   // DL ouvert d'office (sans validation) : on attend le téléchargement, pas une validation
   const dlOnly = (d: Delivery) => d.download && (d.dlMode === "always" || !d.validation);
-  const waiting = deliv.filter((d) => !dlOnly(d)).filter((d) => (d.kind === "videos" ? JSON.parse(d.approved || "[]").length === 0 : !d.approvedV) && d.kind !== "folder").length;
+  const waiting = deliv.filter((d) => !dlOnly(d) && !d.downloadedAt).filter((d) => (d.kind === "videos" ? JSON.parse(d.approved || "[]").length === 0 : !d.approvedV) && d.kind !== "folder").length;
 
   const h = new Date().getHours();
   const hello = h < 6 ? "bonne nuit" : h < 12 ? "bonjour" : h < 18 ? "bon après-midi" : "bonsoir";
@@ -108,8 +108,10 @@ export default function Home() {
           {!deliv.length && <p className="muted small">Aucune livraison.</p>}
           {deliv.slice(0, 4).map((d) => {
             const todo = d.comments.filter((c) => !c.resolved).length;
-            const ok = dlOnly(d) ? !!d.downloadedAt : d.kind === "videos" ? JSON.parse(d.approved || "[]").length > 0 : !!d.approvedV;
-            const label = dlOnly(d) ? (ok ? "téléchargée" : "en attente de DL") : ok ? "validée" : "en attente";
+            // Le téléchargement est l'étape finale : il prime sur tout le reste (y compris les livraisons de modifs)
+            const validated = d.kind === "videos" ? JSON.parse(d.approved || "[]").length > 0 : !!d.approvedV;
+            const ok = !!d.downloadedAt || (!dlOnly(d) && validated);
+            const label = d.downloadedAt ? "téléchargée" : dlOnly(d) ? "en attente de DL" : validated ? (d.download ? "validée · en attente de DL" : "validée") : "en attente";
             return (
               <Link key={d.id} href="/livraisons" className="home-row">
                 {todo ? <MessageSquare size={14} className="hot" /> : ok ? <CheckCircle2 size={14} className="ok" /> : <Clock size={14} className="muted" />}
