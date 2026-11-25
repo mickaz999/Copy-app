@@ -215,7 +215,6 @@ const escHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<":
 // Lien de dépôt ouvert, aucun fichier reçu, moins de 24 h avant la fin : un rappel par mail (une fois)
 export async function remindEmptyDrops() {
   const acc = await mailAccount();
-  if (!acc) return 0;
   const [list, clients] = await Promise.all([
     db.dropLink.findMany({ where: { active: true }, include: { _count: { select: { files: true } } } }),
     db.client.findMany(),
@@ -227,8 +226,15 @@ export async function remindEmptyDrops() {
     if (left <= 0 || left > 864e5) continue;
     const c = clients.find((x) => x.nameKey === nameKey(l.client));
     const to = c ? emailsOf(c) : [];
-    if (!to.length) continue;
+    if (!to.length) {
+      // Pas de mail client connu : on te prévient (une fois) pour que tu relances toi-même
+      const key = `dropempty-nomail-${l.id}`;
+      try { await db.sentReminder.create({ data: { key } }); } catch { continue; }
+      await sendPush({ title: `Dépôt vide · ${l.title}`, body: `${l.client || "Lien sans client"} : aucun rush déposé, le lien ferme dans moins de 24 h. Pas de mail client enregistré, relance-le toi-même.`, url: "/clients", tag: key }).catch(() => db.sentReminder.delete({ where: { key } }).catch(() => {}));
+      continue;
+    }
     const end = dropExpiry(l).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    if (!acc) continue;
     for (const email of to) {
       const key = `dropempty-${l.id}-${email}`;
       try { await db.sentReminder.create({ data: { key } }); } catch { continue; }
