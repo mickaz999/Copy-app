@@ -93,11 +93,11 @@ function Progress({ t, small }: { t: Task; small?: boolean }) {
   );
 }
 // Liste des sous-tâches visible partout (cochables directement)
-function SubList({ t, onToggle }: { t: Task; onToggle?: (subs: Sub[]) => void }) {
+function SubList({ t, onToggle, inline }: { t: Task; onToggle?: (subs: Sub[]) => void; inline?: boolean }) {
   const subs = subsOf(t);
   if (!subs.length) return null;
   return (
-    <ul className="sub-list" onClick={(e) => e.stopPropagation()}>
+    <ul className={`sub-list ${inline ? "inline" : ""}`} onClick={(e) => e.stopPropagation()}>
       {subs.map((s) => (
         <li key={s.id} className={s.done ? "done" : ""}
           onClick={() => onToggle?.(subs.map((x) => (x.id === s.id ? { ...x, done: !x.done } : x)))}
@@ -619,6 +619,7 @@ export default function Planning() {
           {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
         </span>
         <span className="chip-text">{t.title}</span>
+        <SubList t={t} inline onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
         {/* Compte à rebours aussi quand la fin est hors de la vue (barre coupée à droite) */}
         <span className={`span-end ${remainingLabel(t, today).urgent ? "urgent" : ""}`}>{remainingLabel(t, today).text}{!sp.tail && " →"}</span>
       </div>
