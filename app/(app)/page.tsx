@@ -28,7 +28,7 @@ export default function Home() {
     const to = new Date(from.getTime() + 864e5);
     api<{ events: Ev[] }>(`events?from=${from.toISOString()}&to=${to.toISOString()}`).then((r) => setEvents(r.events ?? [])).catch(() => {});
     api<Appt[]>("rdv").then(setAppts).catch(() => {});
-    api<Delivery[]>("livraisons").then((l) => setDeliv(l.filter((d) => d.mode !== "frame"))).catch(() => {});
+    api<Delivery[]>("livraisons").then((l) => setDeliv(l.filter((d) => d.mode !== "frame" && d.client.trim()))).catch(() => {});
     api<typeof quotes>("quotes").then(setQuotes).catch(() => {});
   }, []);
 
@@ -47,6 +47,7 @@ export default function Home() {
   const qDone = quotes.filter((q) => q.status === "accepted" || q.status === "refused");
   const qRate = qDone.length ? Math.round((100 * qDone.filter((q) => q.status === "accepted").length) / qDone.length) : null;
   const feedback = deliv.reduce((n, d) => n + d.comments.filter((c) => !c.resolved).length, 0);
+  // Accueil : ni suivis agence ni livraisons sans client (gérées ailleurs)
   // DL ouvert d'office (sans validation) : on attend le téléchargement, pas une validation
   const dlOnly = (d: Delivery) => d.download && (d.dlMode === "always" || !d.validation);
   const waiting = deliv.filter((d) => !dlOnly(d) && !d.downloadedAt).filter((d) => (d.kind === "videos" ? JSON.parse(d.approved || "[]").length === 0 : !d.approvedV) && d.kind !== "folder").length;
