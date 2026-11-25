@@ -79,7 +79,7 @@ function timeLeft(t: Task) {
 }
 
 // Sous-tâches (checklist) et progression
-type Sub = { id: string; title: string; done: boolean };
+type Sub = { id: string; title: string; done: boolean; deliveryId?: string };
 const subsOf = (t: Pick<Task, "subtasks">): Sub[] => { try { return JSON.parse(t.subtasks || "[]"); } catch { return []; } };
 function Progress({ t, small }: { t: Task; small?: boolean }) {
   const subs = subsOf(t);
@@ -90,6 +90,24 @@ function Progress({ t, small }: { t: Task; small?: boolean }) {
       <span className="bar"><span style={{ width: `${(done / subs.length) * 100}%` }} /></span>
       <span className="n">{done}/{subs.length}</span>
     </span>
+  );
+}
+// Liste des sous-tâches visible partout (cochables directement)
+function SubList({ t, onToggle }: { t: Task; onToggle?: (subs: Sub[]) => void }) {
+  const subs = subsOf(t);
+  if (!subs.length) return null;
+  return (
+    <ul className="sub-list" onClick={(e) => e.stopPropagation()}>
+      {subs.map((s) => (
+        <li key={s.id} className={s.done ? "done" : ""}
+          onClick={() => onToggle?.(subs.map((x) => (x.id === s.id ? { ...x, done: !x.done } : x)))}
+          title={onToggle ? "Clic pour cocher / décocher" : undefined}>
+          <span className="sub-box">{s.done && <Check size={8} strokeWidth={4} />}</span>
+          <span className="sub-t">{s.title}</span>
+          {s.deliveryId && <Clapperboard size={10} className="sub-linked" aria-label="Livraison liée" />}
+        </li>
+      ))}
+    </ul>
   );
 }
 // Couleur de la catégorie (le « projet ») : bordure + fond teinté de la vignette
@@ -444,6 +462,7 @@ export default function Planning() {
 
   // Tâche Clients terminée : demander quelle(s) vidéo(s) Frame.io correspondent
   const [linking, setLinking] = useState<Task | null>(null);
+  const [linkSub, setLinkSub] = useState<Sub | null>(null);
   async function move(id: string, patch: Partial<Task>) {
     if (!id) return;
     const before = tasks.find((t) => t.id === id);
@@ -627,6 +646,7 @@ export default function Planning() {
       {!late && timeOver(t) && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> en retard</span>}
       {late && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> {lateLabel(lateDays(t))}</span>}
       {t.repeat && <Repeat size={11} className="rep" aria-label={REPEATS[t.repeat]} />}
+      <SubList t={t} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
     </div>
   );
 
@@ -899,6 +919,7 @@ export default function Planning() {
               <Progress t={t} />
               {!late && latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
             </div>
+            <SubList t={t} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
           </div>
         );
         const lateOnly = lateTasks.filter((t) => !todays.some((x) => x.id === t.id));
@@ -994,6 +1015,7 @@ export default function Planning() {
                 <div key={t.id} className="card task-card" style={catStyle(t)} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)} onClick={() => setViewing(t)}>
                   <div>{t.title}{latePill(t) && <span className="late-pill" style={{ marginLeft: 6 }}><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}{!latePill(t) && <Countdown t={t} />}</div>
                   <Progress t={t} />
+                  <SubList t={t} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
                   <div className="row" style={{ marginTop: 4 }}>
                     <span className="tag" style={{ color: COLORS[t.category] }}>{t.category}</span>
                     {t.date && <span className="muted">{fmtDay(t.date)}{t.endDate && t.endDate.slice(0, 10) !== t.date.slice(0, 10) ? ` → ${fmtDay(t.endDate)}` : ""}</span>}
@@ -1045,7 +1067,7 @@ export default function Planning() {
             onClose={() => setViewing(null)}
             onEdit={() => { setViewing(null); setEdit({ ...t, date: day(t), endDate: endDay(t) }); }}
             onStatus={(st) => move(t.id, { status: st })}
-            onLinkVideos={() => { setViewing(null); setLinking(t); }}
+            onLinkVideos={(sub) => { setViewing(null); setLinkSub(sub ?? null); setLinking(t); }}
             onSubs={(subs) => {
               // Première sous-tâche cochée : la tâche passe « en cours »
               const patch: Partial<Task> = { subtasks: JSON.stringify(subs) };
@@ -1192,7 +1214,7 @@ export default function Planning() {
         />
       )}
 
-      {linking && <LinkVideos task={linking} onClose={() => setLinking(null)} onLinked={(deliveryId) => setTasks((ts) => ts.map((t) => (t.id === linking.id ? { ...t, deliveryId } : t)))} />}
+      {linking && <LinkVideos task={linking} sub={linkSub} onClose={() => { setLinking(null); setLinkSub(null); }} onLinked={(patch) => setTasks((ts) => ts.map((t) => (t.id === linking.id ? { ...t, ...patch } : t)))} />}
 
       {showCals && (
         <CalendarsModal
@@ -1520,6 +1542,7 @@ function TaskTable({ tasks, props, onPatch, onSetProp, onAddOption, onOpen, onNe
                 <input id={`t-${t.id}`} className="cell-input" placeholder="Sans titre" value={t.title} onChange={(e) => onPatch(t.id, { title: e.target.value })} />
                 {!latePill(t) && <Countdown t={t} />}
                 <Progress t={t} small />
+                <SubList t={t} onToggle={(subs) => onPatch(t.id, { subtasks: JSON.stringify(subs) })} />
                 {latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
                 <button className="ghost open-btn" title="Ouvrir la tâche" onClick={() => onOpen(t)}>Ouvrir</button>
               </td>
@@ -1570,7 +1593,7 @@ function revisionTitle(title: string) {
 function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onSubs, onDelete, onRevision, onLinkVideos }: {
   t: Task; color: string; late: number; filled: Prop[]; vals: Record<string, unknown>;
   onClose: () => void; onEdit: () => void; onStatus: (s: string) => void; onSubs: (subs: Sub[]) => void; onDelete: () => void;
-  onRevision: (feedback: string) => void; onLinkVideos: () => void;
+  onRevision: (feedback: string) => void; onLinkVideos: (sub?: Sub) => void;
 }) {
   const [revising, setRevising] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -1633,6 +1656,8 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onS
             <div key={s.id} className={`tv-sub ${s.done ? "done" : ""}`}>
               <input type="checkbox" checked={s.done} onChange={() => onSubs(subs.map((x) => x.id === s.id ? { ...x, done: !x.done } : x))} />
               <input className="tv-sub-title" value={s.title} onChange={(e) => onSubs(subs.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} />
+              {t.category === "Clients" && <button className={`ghost ${s.deliveryId ? "sub-linked" : ""}`} title={s.deliveryId ? "Livraison liée · ajouter une vidéo Frame" : "Lier une vidéo Frame à cette sous-tâche"} onClick={() => onLinkVideos(s)}><Clapperboard size={13} /></button>}
+              {s.deliveryId && <a className="ghost sub-linked" title="Voir la livraison liée" href="/livraisons"><ExternalLink size={13} /></a>}
               <button className="ghost" title="Monter" disabled={i === 0} onClick={() => { const c = [...subs]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; onSubs(c); }}><ArrowUp size={13} /></button>
               <button className="ghost" title="Supprimer" onClick={() => onSubs(subs.filter((x) => x.id !== s.id))}><X size={13} /></button>
             </div>
@@ -1650,7 +1675,7 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onS
 
         {t.category === "Clients" && (
           <div className="tv-frame">
-            <button className="tv-revision" onClick={onLinkVideos}><Clapperboard size={16} /> {t.deliveryId ? "Ajouter une vidéo Frame à la livraison" : "Lier une vidéo Frame"}</button>
+            <button className="tv-revision" onClick={() => onLinkVideos()}><Clapperboard size={16} /> {t.deliveryId ? "Ajouter une vidéo Frame à la livraison" : "Lier une vidéo Frame"}</button>
             {t.deliveryId && <a className="link small" href="/livraisons">Voir la livraison liée →</a>}
           </div>
         )}
@@ -1688,19 +1713,21 @@ function TaskView({ t, color, late, filled, vals, onClose, onEdit, onStatus, onS
 
 // Fin d'une tâche Clients : rattacher la ou les vidéos exportées sur Frame.io à une livraison
 type DeliveryLite = { space?: string; id: string; token: string; title: string; client: string; mode: string; accountId: string; files: string };
-function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => void; onLinked: (deliveryId: string) => void }) {
+function LinkVideos({ task, sub, onClose, onLinked }: { task: Task; sub?: Sub | null; onClose: () => void; onLinked: (patch: Partial<Task>) => void }) {
+  // Lien posé sur une sous-tâche (ex. un des 4 reels) ou sur la tâche entière
+  const linkedId = sub ? sub.deliveryId : task.deliveryId;
   const [list, setList] = useState<DeliveryLite[] | null>(null);
-  const [target, setTarget] = useState(task.deliveryId || "");
+  const [target, setTarget] = useState(linkedId || "");
   const [done, setDone] = useState<{ text: string; link: string } | null>(null);
   const [error, setError] = useState("");
   const [client, setClient] = useState("");
   const [notify, setNotify] = useState(true);
-  const base = task.title.replace(/^Modifs V\d+ · /, "");
+  const base = [task.title.replace(/^Modifs V\d+ · /, ""), sub?.title.trim()].filter(Boolean).join(" · ");
   useEffect(() => {
     api<DeliveryLite[]>("livraisons").then((l) => {
       setList(l);
       // Livraison liée supprimée (ou absente) : on retombe sur celle du même nom, sinon une nouvelle
-      if (!task.deliveryId || !l.some((d) => d.id === task.deliveryId)) setTarget(l.find((d) => d.title === base)?.id ?? "new-page");
+      if (!linkedId || !l.some((d) => d.id === linkedId)) setTarget(l.find((d) => d.title === base)?.id ?? "new-page");
     }).catch(() => setList([]));
   }, []);
 
@@ -1716,8 +1743,11 @@ function LinkVideos({ task, onClose, onLinked }: { task: Task; onClose: () => vo
         if (cur.accountId !== accountId) return setError("Choisis une vidéo du même compte Frame.io que cette livraison.");
         d = await api<DeliveryLite>(`livraisons/${cur.id}`, "PATCH", { files: [...JSON.parse(cur.files || "[]"), ...files] });
       }
-      await api(`tasks/${task.id}`, "PATCH", { deliveryId: d.id });
-      onLinked(d.id);
+      const patch: Partial<Task> = sub
+        ? { subtasks: JSON.stringify(subsOf(task).map((x) => (x.id === sub.id ? { ...x, deliveryId: d.id } : x))) }
+        : { deliveryId: d.id };
+      await api(`tasks/${task.id}`, "PATCH", patch);
+      onLinked(patch);
       const n = JSON.parse(d.files || "[]").length;
       const link = d.mode === "frame" ? "" : d.space || deliveryUrl(d);
       if (link) navigator.clipboard?.writeText(link).catch(() => {});
