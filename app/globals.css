@@ -2235,3 +2235,7 @@ tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left:
 .chip.task:has(.sub-list) { flex-wrap: wrap; white-space: normal; }
 .sub-list .sub-linked { flex: none; color: var(--accent); }
 .tv-sub .sub-linked { color: var(--accent); display: inline-grid; place-items: center; }
+/* Barres multi-jours : sous-tâches en ligne, à côté du titre */
+.chip .sub-list.inline { flex-direction: row; flex: 0 1 auto; width: auto; margin: 0; gap: 8px; overflow: hidden; }
+.chip .sub-list.inline li { flex: none; }
+.chip.task:has(.sub-list.inline) { flex-wrap: nowrap; }
