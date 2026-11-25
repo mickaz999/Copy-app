@@ -13,13 +13,19 @@ export async function GET(req: Request) {
   const ok = secret && (req.headers.get("authorization") === `Bearer ${secret}` || url.searchParams.get("key") === secret);
   if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try {
-    const log = await runCron(url.origin);
-    // Commentaires laissés directement sur Frame.io → tâches « Modifs »
-    if (await frameConnected()) await pullFrameComments().then((n) => n && log.push(`${n} retour(s) Frame.io`)).catch((e) => log.push(`Frame.io : ${e.message}`));
-    await mergeDropTasks().then((n) => n && log.push(`${n} tâche(s) « Dérusher » en double fusionnée(s)`)).catch(() => {});
-    await remindExpiringDeliveries(url.origin).then((n) => n && log.push(`${n} mail(s) de relance « lien bientôt expiré »`)).catch((e) => log.push(`relance livraison : ${e.message}`));
-    await remindEmptyDrops().then((n) => n && log.push(`${n} mail(s) « dépose tes rushs »`)).catch((e) => log.push(`relance dépôt : ${e.message}`));
-    await purgeExpiredDeliveries().then((n) => n && log.push(`${n} lien(s) de livraison expiré(s) supprimé(s)`)).catch(() => {});
+    // Les rappels clients passent en premier et en parallèle : une étape lente (Frame.io) ne doit plus les bloquer
+    const log: string[] = [];
+    const step = (p: Promise<unknown>, label: string) => p.catch((e) => { log.push(`${label} : ${(e as Error).message}`); });
+    await Promise.all([
+      step(remindEmptyDrops().then((n) => { if (n) log.push(`${n} rappel(s) « dépose tes rushs »`); }), "relance dépôt"),
+      step(remindExpiringDeliveries(url.origin).then((n) => { if (n) log.push(`${n} mail(s) de relance « lien bientôt expiré »`); }), "relance livraison"),
+    ]);
+    log.push(...(await runCron(url.origin)));
+    await Promise.all([
+      step(frameConnected().then(async (ok) => { if (ok) { const n = await pullFrameComments(); if (n) log.push(`${n} retour(s) Frame.io`); } }), "Frame.io"),
+      step(mergeDropTasks().then((n) => { if (n) log.push(`${n} tâche(s) « Dérusher » en double fusionnée(s)`); }), "fusion dérush"),
+      step(purgeExpiredDeliveries().then((n) => { if (n) log.push(`${n} lien(s) de livraison expiré(s) supprimé(s)`); }), "purge"),
+    ]);
     return NextResponse.json({ ok: true, log });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });

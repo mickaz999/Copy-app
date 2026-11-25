@@ -234,14 +234,23 @@ export async function remindEmptyDrops() {
       continue;
     }
     const end = dropExpiry(l).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-    if (!acc) continue;
+    if (!acc) {
+      const k = `dropempty-noacc-${l.id}`;
+      if (await db.sentReminder.create({ data: { key: k } }).then(() => true, () => false)) await sendPush({ title: `Relance non envoyée · ${l.title}`, body: "Aucun compte Gmail connecté dans l'app : le rappel « dépose tes rushs » n'a pas pu partir.", url: "/reglages", tag: k }).catch(() => {});
+      continue;
+    }
     for (const email of to) {
       const key = `dropempty-${l.id}-${email}`;
       try { await db.sentReminder.create({ data: { key } }); } catch { continue; }
       const html = mailHtml("N'oublie pas de déposer tes rushs",
         [`Le lien de dépôt <b>${escHtml(l.title)}</b> est encore vide, et il ferme le <b>${end}</b> (heure de Paris).`, "Il te reste 24 h pour y déposer tes fichiers."],
         "Déposer mes rushs", c ? spaceUrl(c) : dropUrl(l));
-      await sendGmail(acc.id, email, `Il te reste 24 h pour déposer tes rushs · ${l.title}`, html).then(() => sent++).catch(() => db.sentReminder.delete({ where: { key } }).catch(() => {}));
+      await sendGmail(acc.id, email, `Il te reste 24 h pour déposer tes rushs · ${l.title}`, html).then(() => sent++).catch(async (e) => {
+        await db.sentReminder.delete({ where: { key } }).catch(() => {});
+        // Échec d'envoi : tu es prévenu (une fois) au lieu d'un échec silencieux
+        const k = `dropempty-fail-${l.id}`;
+        if (await db.sentReminder.create({ data: { key: k } }).then(() => true, () => false)) await sendPush({ title: `Relance non envoyée · ${l.title}`, body: `Le mail de rappel à ${email} n'est pas parti (${(e as Error).message}). Relance-le toi-même.`, url: "/clients", tag: k }).catch(() => {});
+      });
     }
   }
   return sent;
