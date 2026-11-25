@@ -2233,3 +2233,5 @@ tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left:
 .todo-row .sub-list { margin: 6px 0 2px 40px; width: auto; }
 .title-cell .sub-list { margin-top: 4px; }
 .chip.task:has(.sub-list) { flex-wrap: wrap; white-space: normal; }
+.sub-list .sub-linked { flex: none; color: var(--accent); }
+.tv-sub .sub-linked { color: var(--accent); display: inline-grid; place-items: center; }
