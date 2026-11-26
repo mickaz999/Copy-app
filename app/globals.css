@@ -1576,8 +1576,8 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 .home-stat span { font-size: 13px; color: var(--muted); }
 .home-stat.warn b { color: var(--red); }
 .home-stat.hot b { color: var(--accent); }
-.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.home-card { display: grid; gap: 8px; align-content: start; padding: 20px 20px; border-radius: 16px; background: var(--card); border: 1px solid var(--border); }
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.home-card { display: grid; gap: 8px; align-content: start; grid-template-columns: minmax(0, 1fr); min-width: 0; overflow: hidden; padding: 20px 20px; border-radius: 16px; background: var(--card); border: 1px solid var(--border); }
 .home-card-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .home-card-h h3 { margin: 0; font-size: 15px; }
 .home-card-h .link { display: inline-flex; align-items: center; gap: 4px; }
@@ -1597,7 +1597,7 @@ body:has(.liv.dark) { background: #0c0b0a !important; }
 @media (max-width: 760px) {
   .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .home-stat b { font-size: 28px; }
-  .home-grid { grid-template-columns: 1fr; }
+  .home-grid { grid-template-columns: minmax(0, 1fr); }
   .home-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .home-tile { padding: 16px; }
 }
