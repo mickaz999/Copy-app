@@ -61,10 +61,11 @@ export default function Espace({ params }: { params: { id: string } }) {
     return { x: (cx - r.left - view.x) / view.z, y: (cy - r.top - view.y) / view.z };
   };
 
-  function addNode(type: NodeType) {
+  function addNode(type: NodeType, at?: { x: number; y: number }) {
     const r = vp.current!.getBoundingClientRect();
-    const c = toWorld(r.left + r.width / 2, r.top + r.height / 2);
+    const c = at ? toWorld(at.x, at.y) : toWorld(r.left + r.width / 2, r.top + r.height / 2);
     const d = DEFAULTS[type];
+    if (at) { setNodes((ns) => [...ns, { id: uid(), type, x: c.x, y: c.y, ...(d as any) }]); return; }
     setNodes((ns) => {
       // Cherche une place libre en spirale autour du centre pour ne pas empiler les blocs
       const w = d.w!, h = d.h!, gap = 24;
@@ -144,9 +145,26 @@ export default function Espace({ params }: { params: { id: string } }) {
   const moveNode = (e: React.PointerEvent, n: BNode) => { toFront(n.id); drag(e, (dx, dy) => setNodes((ns) => ns.map((m) => (m.id === n.id ? { ...m, x: m.x + dx / viewRef.current.z, y: m.y + dy / viewRef.current.z } : m)))); };
   const resizeNode = (e: React.PointerEvent, n: BNode) => drag(e, (dx, dy) => setNodes((ns) => ns.map((m) => (m.id === n.id ? { ...m, w: Math.max(160, m.w + dx / view.z), h: Math.max(110, m.h + dy / view.z) } : m))));
   // Toucher le fond : désélectionner (le déplacement lui-même est géré par les gestes ci-dessous)
+  // Clic droit ou appui long sur le fond : menu pour insérer un bloc à cet endroit
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const press = useRef<{ t: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  const isBg = (t: EventTarget) => t === vp.current || (t as HTMLElement).classList?.contains("board-world") || (t as HTMLElement).closest?.(".board-wires") && !(t as HTMLElement).closest(".wire-hit, .wire-del, g");
+  const cancelPress = () => { if (press.current) clearTimeout(press.current.t); press.current = null; };
   const pan = (e: React.PointerEvent) => {
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains("board-world")) return;
-    setSelEdge(null); setPending(null); setSelNode(null);
+    setSelEdge(null); setPending(null); setSelNode(null); setMenu(null);
+    if (e.pointerType !== "mouse") {
+      cancelPress();
+      const x = e.clientX, y = e.clientY;
+      press.current = { x, y, t: setTimeout(() => { press.current = null; if (!panMoved.current) { navigator.vibrate?.(15); setMenu({ x, y }); } }, 500) };
+    }
+  };
+  const pressMove = (e: React.PointerEvent) => { const p = press.current; if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) cancelPress(); };
+  const ctxMenu = (e: React.MouseEvent) => {
+    if (!isBg(e.target)) return;
+    e.preventDefault();
+    if (press.current || menu) return; // l'appui long gère déjà le tactile
+    setMenu({ x: e.clientX, y: e.clientY });
   };
 
   // Gestes fluides : un doigt (ou la souris) pour se déplacer, deux doigts pour zoomer et se déplacer en même temps.
@@ -357,7 +375,7 @@ export default function Espace({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      <div className="board-viewport" ref={vp} onPointerDown={pan}>
+      <div className="board-viewport" ref={vp} onPointerDown={pan} onPointerMove={pressMove} onPointerUp={cancelPress} onPointerCancel={cancelPress} onContextMenu={ctxMenu}>
         <div className="board-world" ref={world} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.z})` }} onPointerDown={pan}>
           <svg className="board-wires">
             {edges.map((e) => {
@@ -429,7 +447,7 @@ export default function Espace({ params }: { params: { id: string } }) {
         {pending && (
           <div className="link-banner">Touche le bloc à relier · <button className="ghost" onClick={() => setPending(null)}>Annuler</button></div>
         )}
-        {!nodes.length && loaded && <div className="board-empty muted">Ajoute une vidéo, une note ou une couleur avec les boutons du haut.<br />Relie les blocs en tirant un fil depuis le rond de droite.</div>}
+        {!nodes.length && loaded && <div className="board-empty muted">Ajoute une vidéo, une note ou une couleur avec les boutons du haut.<br />Relie les blocs en tirant un fil depuis le rond de droite.<br />Clic droit ou appui long sur le fond pour insérer un bloc à cet endroit.</div>}
 
         {selNode && (() => {
           const n = byId(selNode); if (!n) return null;
@@ -444,6 +462,22 @@ export default function Espace({ params }: { params: { id: string } }) {
           <div className="undo-toast">{undoMsg} <button onClick={undo}><Undo2 size={15} /> Annuler</button></div>
         )}
 
+        {menu && (() => {
+          const r = vp.current!.getBoundingClientRect();
+          const left = Math.min(menu.x - r.left, r.width - 190), top = Math.min(menu.y - r.top, r.height - 330);
+          return (
+            <>
+              <div style={{ position: "absolute", inset: 0, zIndex: 40 }} onPointerDown={(e) => { e.stopPropagation(); setMenu(null); }} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
+              <div className="node-actions board-ctx" style={{ left: Math.max(6, left), top: Math.max(6, top), zIndex: 41, flexDirection: "column", alignItems: "stretch" }} onPointerDown={(e) => e.stopPropagation()}>
+                <span className="muted small" style={{ padding: "4px 8px" }}>Insérer ici</span>
+                {(Object.keys(LABELS) as NodeType[]).map((t) => {
+                  const Icon = ICONS[t];
+                  return <button key={t} style={{ justifyContent: "flex-start" }} onClick={() => { addNode(t, menu); setMenu(null); }}><Icon size={15} /> {LABELS[t]}</button>;
+                })}
+              </div>
+            </>
+          );
+        })()}
         <div className="board-zoom">
           <button onClick={() => zoom(1 / 1.2)} title="Dézoomer"><Minus size={16} /></button>
           <span>{Math.round(view.z * 100)} %</span>
