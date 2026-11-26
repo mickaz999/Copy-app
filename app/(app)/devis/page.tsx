@@ -16,7 +16,7 @@ type Edit = { id?: string; number?: string; validUntil: string; buyer: Buyer; ex
 const EMPTY_BUYER: Buyer = { name: "", siren: "", address: "", zip: "", city: "", email: "", vat: "", phone: "" };
 const STATUS = { draft: "Brouillon", sent: "Envoyé", accepted: "Validé", refused: "Refusé" } as const;
 const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) as T; } catch { return d; } };
-const in30 = () => isoDay(new Date(Date.now() + 30 * 864e5));
+const in30 = () => isoDay(new Date(Date.now() + 7 * 864e5)); // devis valable 1 semaine
 const blank = (): Edit => ({ validUntil: in30(), buyer: { ...EMPTY_BUYER }, extra: [], note: "", depositPct: 50 });
 const linesOf = (e: Edit): Line[] => e.extra.filter((l) => l.label.trim());
 const sum = (lines: Line[]) => lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);

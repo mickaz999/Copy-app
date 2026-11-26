@@ -50,7 +50,7 @@ export default function Factures() {
   const open = (i: Inv) => setEdit({ id: i.id, number: i.number, date: i.date.slice(0, 10), dueDate: i.dueDate.slice(0, 10), buyer: { ...EMPTY_BUYER, ...parse(i.buyer, {}) }, lines: parse(i.lines, []), note: i.note, discount: discountOf(i) ?? { ...NO_DISCOUNT }, kind: i.kind || "standard", deposits: parse<string[]>(i.deposits, []), refId: i.refId, einvoice: i.einvoice, status: i.status, error: i.error });
   const fresh = () => {
     const d = new Date();
-    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "standard", deposits: [], einvoice: false });
+    setEdit({ date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 14) * 864e5)), buyer: { ...EMPTY_BUYER }, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "standard", deposits: [], einvoice: false });
   };
   // Acomptes : montant TTC de chaque facture d'acompte, et ceux déjà déduits dans une facture de solde
   const ttcOf = (i: Inv) => totalOf(parse(i.lines, []), rate, discountOf(i)).ttc;
@@ -113,7 +113,7 @@ export default function Factures() {
   function makeFinal(dep: Inv) {
     const d = new Date();
     const buyer = { ...EMPTY_BUYER, ...parse<Buyer>(dep.buyer, EMPTY_BUYER) };
-    const e: Edit = { date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 30) * 864e5)), buyer, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "final", deposits: [], einvoice: false };
+    const e: Edit = { date: isoDay(d), dueDate: isoDay(new Date(d.getTime() + (seller?.dueDays ?? 14) * 864e5)), buyer, lines: [{ label: "", qty: 1, unitPrice: 0 }], note: "", discount: { ...NO_DISCOUNT }, kind: "final", deposits: [], einvoice: false };
     e.deposits = depositsFor(e).map((x) => x.id);
     // Total du projet repris du libellé « … (total 1 500,00 € HT) » si présent
     const m = parse<Line[]>(dep.lines, [])[0]?.label.match(/^Acompte [\d,]+ %(?: - (.*?))? \(total ([\d\s  ,]+) €/);
