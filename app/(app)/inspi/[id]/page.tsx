@@ -44,6 +44,7 @@ export default function Espace({ params }: { params: { id: string } }) {
   const [selEdge, setSelEdge] = useState<string | null>(null);
   const vp = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const lastSaved = useRef("");
 
   useEffect(() => {
     api<{ name: string; data: string }>(`boards/${params.id}`).then((b) => {
@@ -58,7 +59,13 @@ export default function Espace({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!loaded) return;
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => api(`boards/${params.id}`, "PATCH", { data: JSON.stringify({ nodes, edges, view }) }), 600);
+    // N'envoie que si le contenu a vraiment changé, après 1,5 s de calme
+    timer.current = setTimeout(() => {
+      const data = JSON.stringify({ nodes, edges, view });
+      if (data === lastSaved.current) return;
+      lastSaved.current = data;
+      api(`boards/${params.id}`, "PATCH", { data });
+    }, 1500);
   }, [nodes, edges, view, loaded]);
 
   const patchNode = (id: string, p: Partial<BNode>) => setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, ...p } : n)));

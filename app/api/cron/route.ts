@@ -21,11 +21,13 @@ export async function GET(req: Request) {
       step(remindExpiringDeliveries(url.origin).then((n) => { if (n) log.push(`${n} mail(s) de relance « lien bientôt expiré »`); }), "relance livraison"),
     ]);
     log.push(...(await runCron(url.origin)));
-    await Promise.all([
+    // Tâches secondaires (Frame.io, fusion, purge) : limitées à 10 s pour ne pas tourner jusqu'au timeout
+    const secondary = Promise.all([
       step(frameConnected().then(async (ok) => { if (ok) { const n = await pullFrameComments(); if (n) log.push(`${n} retour(s) Frame.io`); } }), "Frame.io"),
       step(mergeDropTasks().then((n) => { if (n) log.push(`${n} tâche(s) « Dérusher » en double fusionnée(s)`); }), "fusion dérush"),
       step(purgeExpiredDeliveries().then((n) => { if (n) log.push(`${n} lien(s) de livraison expiré(s) supprimé(s)`); }), "purge"),
     ]);
+    await Promise.race([secondary, new Promise((ok) => setTimeout(() => { log.push("tâches secondaires coupées après 10 s (reprise au prochain passage)"); ok(null); }, 10_000))]);
     return NextResponse.json({ ok: true, log });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
