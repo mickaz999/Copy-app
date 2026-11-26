@@ -603,7 +603,7 @@ export default function Planning() {
     if (sp.ghost)
       return (
         <div className={`${cls} chip task ghost`} style={pos} title={`${t.title} · ${REPEATS[t.repeat]}`} onClick={(e) => { e.stopPropagation(); setViewing(t); }}>
-          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span>
+          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span><SubList t={{ ...t, subtasks: JSON.stringify(subsOf(t).map((x) => ({ ...x, done: false }))) }} inline={!block} />
         </div>
       );
     return (
@@ -751,7 +751,7 @@ export default function Planning() {
                       {onCal.filter((t) => !multiTask(t) && onDay(t, k)).map((t) => <TaskChip key={t.id} t={t} />)}
                       {ghostsOn(k).map((t) => (
                         <div key={`g-${t.id}`} className="chip task ghost" title={`${t.title} · ${REPEATS[t.repeat]}`} onClick={(e) => { e.stopPropagation(); setViewing(t); }}>
-                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span>
+                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span><SubList t={{ ...t, subtasks: JSON.stringify(subsOf(t).map((x) => ({ ...x, done: false }))) }} inline />
                         </div>
                       ))}
                     </div>
@@ -885,7 +885,7 @@ export default function Planning() {
                       {onCal.filter((t) => !multiTask(t) && !timed(t) && onDay(t, k)).map((t) => <TaskChip key={t.id} t={t} />)}
                       {ghostsOn(k).map((t) => (
                         <div key={`g-${t.id}`} className="chip task ghost" title={`${t.title} · ${REPEATS[t.repeat]}`} onClick={(e) => { e.stopPropagation(); setViewing(t); }}>
-                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.startTime && `${t.startTime} `}{t.title}</span>
+                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.startTime && `${t.startTime} `}{t.title}</span><SubList t={{ ...t, subtasks: JSON.stringify(subsOf(t).map((x) => ({ ...x, done: false }))) }} />
                         </div>
                       ))}
                     </div>

@@ -48,7 +48,7 @@ async function spawnNext(t: Awaited<ReturnType<typeof db.task.findUniqueOrThrow>
       data: {
         title: t.title, notes: t.notes, category: t.category, props: t.props, status: "todo",
         // Sous-tâches reprises, toutes décochées, pour la prochaine occurrence
-        subtasks: JSON.stringify(JSON.parse(t.subtasks || "[]").map((s: { done: boolean }) => ({ ...s, done: false }))),
+        subtasks: JSON.stringify(JSON.parse(t.subtasks || "[]").map((s: { done: boolean; deliveryId?: string }) => ({ ...s, done: false, deliveryId: undefined }))),
         startTime: t.startTime, endTime: t.endTime,
         repeat: t.repeat, repeatUntil: t.repeatUntil,
         date: new Date(next), endDate: span > 0 ? new Date(addDaysISO(next, span)) : null,
