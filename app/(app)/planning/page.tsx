@@ -169,7 +169,7 @@ export default function Planning() {
   const month = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   // Vue « 5 jours » : à partir du jour choisi (aujourd'hui par défaut), sans revenir au lundi
   const timeGrid = view === "days5";
-  // 3 jours sur téléphone, 5 sur ordinateur
+  // 2 jours sur téléphone, 5 sur ordinateur
   const [isPhone, setIsPhone] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 760px)");
@@ -178,7 +178,7 @@ export default function Planning() {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
-  const dayCount = isPhone ? 3 : 5;
+  const dayCount = isPhone ? 2 : 5;
   const rangeStart = view === "days5" ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()) : monday(month);
   const rangeEnd = addDays(rangeStart, timeGrid ? dayCount : 42);
   const rangeStartRef = useRef(rangeStart); rangeStartRef.current = rangeStart;
