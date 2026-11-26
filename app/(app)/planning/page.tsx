@@ -923,7 +923,6 @@ export default function Planning() {
               <Progress t={t} />
               {!late && latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
             </div>
-            <SubList t={t} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
           </div>
         );
         const lateOnly = lateTasks.filter((t) => !todays.some((x) => x.id === t.id));
@@ -1019,7 +1018,6 @@ export default function Planning() {
                 <div key={t.id} className="card task-card" style={catStyle(t)} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)} onClick={() => setViewing(t)}>
                   <div>{t.title}{latePill(t) && <span className="late-pill" style={{ marginLeft: 6 }}><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}{!latePill(t) && <Countdown t={t} />}</div>
                   <Progress t={t} />
-                  <SubList t={t} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
                   <div className="row" style={{ marginTop: 4 }}>
                     <span className="tag" style={{ color: COLORS[t.category] }}>{t.category}</span>
                     {t.date && <span className="muted">{fmtDay(t.date)}{t.endDate && t.endDate.slice(0, 10) !== t.date.slice(0, 10) ? ` → ${fmtDay(t.endDate)}` : ""}</span>}
@@ -1546,7 +1544,6 @@ function TaskTable({ tasks, props, onPatch, onSetProp, onAddOption, onOpen, onNe
                 <input id={`t-${t.id}`} className="cell-input" placeholder="Sans titre" value={t.title} onChange={(e) => onPatch(t.id, { title: e.target.value })} />
                 {!latePill(t) && <Countdown t={t} />}
                 <Progress t={t} small />
-                <SubList t={t} onToggle={(subs) => onPatch(t.id, { subtasks: JSON.stringify(subs) })} />
                 {latePill(t) && <span className="late-pill"><AlertTriangle size={10} strokeWidth={2.5} /> {latePill(t)}</span>}
                 <button className="ghost open-btn" title="Ouvrir la tâche" onClick={() => onOpen(t)}>Ouvrir</button>
               </td>
