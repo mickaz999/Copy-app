@@ -2248,3 +2248,33 @@ tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left:
 /* Le badge (J-1…) reste sur la ligne du titre, les sous-tâches passent dessous */
 .span-bar.block .sub-list { order: 2; }
 .span-bar.block .span-end { align-self: center; }
+
+/* ---------- Livraisons & dépôts : téléphone ---------- */
+.liv-row-main { flex: 1; min-width: 0; }
+@media (max-width: 760px) {
+  .liv-row { gap: 8px; flex-wrap: wrap; }
+  .liv-row-main b { overflow-wrap: anywhere; }
+  .liv-sub { overflow-wrap: anywhere; }
+  .liv-row .ok-pill, .liv-row .late-pill { order: 3; }
+  .liv-quick { width: 44px; height: 44px; display: inline-grid; place-items: center; }
+  /* Actions : grille de gros boutons faciles à toucher, réglages en pleine largeur */
+  .liv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .liv-actions > button, .liv-actions > a { width: 100%; justify-content: center; min-height: 44px; }
+  .liv-actions > button.primary { grid-column: 1 / -1; }
+  .liv-actions > span[style*="flex: 1"] { display: none; }
+  .liv-actions > .liv-exp, .liv-actions > .liv-dl, .liv-actions > .small, .liv-actions > .check, .liv-actions > .ok-pill { grid-column: 1 / -1; }
+  .liv-exp { display: grid !important; grid-template-columns: 1fr; gap: 8px; }
+  .liv-exp button { width: 100%; justify-content: center; min-height: 44px; }
+  .liv-dl { display: flex !important; justify-content: space-between; }
+  .liv-dl select { max-width: none; flex: 1; min-height: 44px; font-size: 16px; }
+  .liv-actions > .check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+  .liv-actions > .check input { width: 20px; height: 20px; }
+  .liv-admin-c { padding: 8px 0; }
+  .liv-admin-c input[type=checkbox] { width: 22px; height: 22px; flex: none; margin-top: 0; }
+  .liv-admin-c span { min-width: 0; overflow-wrap: anywhere; }
+  .liv-admin-c audio { max-width: 100%; width: 100%; }
+  .liv-task { flex-wrap: wrap; }
+  .liv-detail textarea, .liv-detail input { font-size: 16px; }
+  .settings-card .row:not(.liv-actions) > .check { min-height: 40px; }
+  .notice { position: sticky; top: calc(64px + env(safe-area-inset-top, 0px)); z-index: 5; }
+}

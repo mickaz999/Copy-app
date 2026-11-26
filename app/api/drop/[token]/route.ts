@@ -64,9 +64,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
     const total = Number(b.total) || 0;
     const who = author || l.client || "Le client";
     const s = await getSettings();
-    if (s.pushEnabled) await sendPush({ title: `Rushs reçus · ${l.title}`, body: `${who} a déposé ${names.length} fichier${names.length > 1 ? "s" : ""} (${gb(total)}).`, url: "/livraisons", tag: `drop-${l.id}-${Date.now()}` }).catch(() => {});
-    // Une seule tâche « Dérusher » par lien de dépôt : les nouveaux fichiers s'ajoutent en sous-tâches
-    await dropTask(l, names, who, total).catch(() => {});
+    // Notification et tâche « Dérusher » (une seule par lien, les nouveaux fichiers en sous-tâches) en parallèle
+    await Promise.all([
+      s.pushEnabled ? sendPush({ title: `Rushs reçus · ${l.title}`, body: `${who} a déposé ${names.length} fichier${names.length > 1 ? "s" : ""} (${gb(total)}).`, url: "/livraisons", tag: `drop-${l.id}-${Date.now()}` }).catch(() => {}) : null,
+      dropTask(l, names, who, total).catch(() => {}),
+    ]);
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "Action inconnue" }, { status: 400 });
