@@ -1,6 +1,6 @@
 import type { Delivery, DeliveryComment } from "@prisma/client";
 import { db } from "@/lib/db";
-import { dropExpiry, expiryOf, fio } from "@/lib/frameio";
+import { dropExpiry, expiryOf, fio, pool } from "@/lib/frameio";
 import { sendGmail } from "@/lib/google";
 import { emailsOf, mailHtml, nameKey, spaceUrl } from "@/lib/clients";
 import { deliveryUrl, dropUrl } from "@/lib/site";
@@ -93,14 +93,21 @@ export async function pullFrameComments(only?: string) {
   const since = new Date(Date.now() - 90 * 864e5);
   const list = await db.delivery.findMany({ where: only ? { id: only } : { createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, take: 30 });
   let added = 0;
+  const s = await getSettings();
   for (const d of list) {
     const files: { fileId: string }[] = JSON.parse(d.files || "[]");
+    if (!files.length) continue;
+    // Commentaires de toutes les vidéos récupérés en parallèle, et ceux déjà importés lus en une requête
+    const [pages, known] = await Promise.all([
+      pool(files, 4, (f) => fio(`/accounts/${d.accountId}/files/${f.fileId}/comments?page_size=100`).then((r) => (r.data ?? []) as any[], () => [] as any[])),
+      db.deliveryComment.findMany({ where: { deliveryId: d.id, externalId: { not: "" } }, select: { externalId: true } }),
+    ]);
+    const seen = new Set(known.map((k) => k.externalId));
     for (let i = 0; i < files.length; i++) {
-      let items: any[] = [];
-      try { items = (await fio(`/accounts/${d.accountId}/files/${files[i].fileId}/comments?page_size=100`)).data ?? []; } catch { continue; }
-      for (const fc of items) {
+      for (const fc of pages[i]) {
         if (!fc?.id || !fc.text) continue;
-        if (await db.deliveryComment.findFirst({ where: { deliveryId: d.id, externalId: String(fc.id) } })) continue;
+        if (seen.has(String(fc.id))) continue;
+        seen.add(String(fc.id));
         const raw = fc.timestamp ?? fc.timestamp_seconds ?? null;
         const c = await db.deliveryComment.create({
           data: {
@@ -112,7 +119,6 @@ export async function pullFrameComments(only?: string) {
         });
         await commentToTask(d, c);
         added++;
-        const s = await getSettings();
         if (s.pushEnabled) await sendPush({ title: `Retour Frame · ${d.title}`, body: `${c.author} (V${c.version}) : ${c.text.slice(0, 120)}`, url: "/planning", tag: `fio-${c.id}` }).catch(() => {});
       }
     }

@@ -104,4 +104,17 @@ export async function spaceFor(name: string) {
   const c = await clientFor(name).catch(() => null);
   return c ? spaceUrl(c) : "";
 }
+// Espaces de plusieurs clients d'un coup : une seule requête pour les fiches existantes, création des manquantes en parallèle
+export async function spacesFor(names: string[]) {
+  const uniq = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
+  const out = new Map<string, string>();
+  if (!uniq.length) return out;
+  const found = await db.client.findMany({ where: { nameKey: { in: uniq.map(nameKey).filter(Boolean) } } }).catch(() => []);
+  const byKey = new Map(found.map((c) => [c.nameKey, c]));
+  await Promise.all(uniq.map(async (n) => {
+    const c = byKey.get(nameKey(n)) ?? (await clientFor(n).catch(() => null));
+    out.set(n, c ? spaceUrl(c) : "");
+  }));
+  return out;
+}
 export const spacePath = (url: string) => url.replace(/^https?:\/\/[^/]+/, "");

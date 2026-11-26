@@ -24,16 +24,20 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   let email = cleanEmail(req.headers.get("x-viewer")) || cleanEmail(cookie ? decodeURIComponent(cookie) : "");
   // Client récurrent (mail déjà dans sa fiche) : rien à demander, y compris sur les liens déjà envoyés
   let fromClient = false;
-  if (!email && d.client) {
-    const c = await db.client.findUnique({ where: { nameKey: nameKey(d.client) } });
-    if (c && emailsOf(c)[0]) { email = emailsOf(c)[0]; fromClient = true; }
-  }
+  // Fiche client, session admin, espace et réglages : lus en parallèle
   // Moi (connecté à l'app) : je vois le lien sans mail, sans être compté comme visiteur
-  const admin = await verifyToken(req.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${SESSION}=([^;]+)`))?.[1]);
+  const [c, admin, space, settings] = await Promise.all([
+    !email && d.client ? db.client.findUnique({ where: { nameKey: nameKey(d.client) } }) : null,
+    verifyToken(req.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${SESSION}=([^;]+)`))?.[1]),
+    spaceFor(d.client),
+    getSettings(),
+  ]);
+  if (c && emailsOf(c)[0]) { email = emailsOf(c)[0]; fromClient = true; }
   if (!email && !admin) return NextResponse.json({ needEmail: true, title: d.title, client: d.client, expiresAt: expiryOf(d) }, { status: 401 });
-  if (email && !admin && !(await db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }))) await addViewer(d, email);
   const files: F[] = JSON.parse(d.files);
-  const versions = await pool(files, 6, async (f, i) => {
+  const [, versions] = await Promise.all([
+    email && !admin ? db.deliveryViewer.findUnique({ where: { deliveryId_email: { deliveryId: d.id, email } } }).then((v) => v ? null : addViewer(d, email)).catch(() => {}) : null,
+    pool(files, 6, async (f, i) => {
     try {
       const m = await fileMedia(d.accountId, f.fileId);
       const dl = canDownload(d, i + 1);
@@ -46,11 +50,12 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     } catch {
       return { v: i + 1, name: f.name, mediaType: "", play: "", thumb: "", original: "", ready: false };
     }
-  });
+  }),
+  ]);
   const res = NextResponse.json({
     messages: publicMessages(params.token, d.messages),
-    space: spacePath(await spaceFor(d.client)),
-    expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: (await getSettings()).reviewUrl,
+    space: spacePath(space),
+    expiresAt: expiryOf(d), folderId: d.folderId, feedback: d.feedback, reviewUrl: settings.reviewUrl,
     title: d.title, client: d.client, kind: d.kind, approved: JSON.parse(d.approved || "[]"), networks: JSON.parse(d.networks || "[]"), message: d.message, createdAt: d.createdAt, download: d.download, dlMode: d.dlMode, validation: d.validation, approvedV: d.approvedV, approvedAt: d.approvedAt, versions,
     comments: d.comments.map((c) => ({ audio: c.audio ? `/api/livraison/${params.token}/audio?id=${c.id}` : "", fileId: c.fileId, fileName: c.fileName, id: c.id, version: c.version, author: c.author, text: c.text, time: c.time, resolved: c.resolved, createdAt: c.createdAt })),
   });
