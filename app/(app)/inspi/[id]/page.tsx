@@ -7,11 +7,19 @@ import { toEmbed } from "@/lib/embed";
 
 type NodeType = "note" | "video" | "color" | "audio" | "image" | "check" | "link" | "title";
 type Item = { id: string; text: string; done: boolean };
-type BNode = { id: string; type: NodeType; x: number; y: number; w: number; h: number; title: string; text?: string; url?: string; color?: string; mediaId?: string; items?: Item[] };
+type BNode = { id: string; type: NodeType; x: number; y: number; w: number; h: number; title: string; text?: string; url?: string; color?: string; mediaId?: string; items?: Item[]; outline?: number };
 type Edge = { id: string; from: string; to: string };
 type View = { x: number; y: number; z: number };
 type Data = { nodes: BNode[]; edges: Edge[]; view?: View };
 
+// Contour des blocs Titre : 0 aucun · 1 léger (défaut) · 2 moyen · 3 fort
+const OUTLINE = [
+  { "--ol-w": "0px", "--ol-a": "0" },
+  { "--ol-w": "1px", "--ol-a": ".14" },
+  { "--ol-w": "1px", "--ol-a": ".35" },
+  { "--ol-w": "2px", "--ol-a": ".6" },
+] as Record<string, string>[];
+const OUTLINE_LABELS = ["Aucun", "Léger", "Moyen", "Fort"];
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULTS: Record<NodeType, Partial<BNode>> = {
   note: { w: 240, h: 170, title: "Note", text: "" },
@@ -407,7 +415,7 @@ export default function Espace({ params }: { params: { id: string } }) {
             const Icon = ICONS[n.type];
             const emb = n.type === "video" && n.url ? toEmbed(n.url) : null;
             return (
-              <div key={n.id} className={`bnode ${n.type} ${selNode === n.id ? "selected" : ""} ${pending?.id === n.id ? "linking" : ""} ${pending && pending.id !== n.id ? "link-target" : ""}`} data-node={n.id} onPointerDownCapture={(e) => nodeTap(e, n)} onPointerUpCapture={(e) => { const d = tapStart.current; if (d && !panMoved.current && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10) { setSelNode(n.id); setSelEdge(null); } }} style={{ left: n.x, top: n.y, width: n.w, height: n.h, ["--node" as string]: n.type === "color" ? n.color : undefined }}>
+              <div key={n.id} className={`bnode ${n.type} ${selNode === n.id ? "selected" : ""} ${pending?.id === n.id ? "linking" : ""} ${pending && pending.id !== n.id ? "link-target" : ""}`} data-node={n.id} onPointerDownCapture={(e) => nodeTap(e, n)} onPointerUpCapture={(e) => { const d = tapStart.current; if (d && !panMoved.current && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10) { setSelNode(n.id); setSelEdge(null); } }} style={{ left: n.x, top: n.y, width: n.w, height: n.h, ["--node" as string]: n.type === "color" ? n.color : undefined, ...(n.type === "title" ? OUTLINE[n.outline ?? 1] : {}) }}>
                 <div className="bnode-head" onPointerDown={(e) => moveNode(e, n)}>
                   <Icon size={14} />
                   <input className="bnode-title cell-input" placeholder={n.type === "title" ? "Titre…" : "Sans titre"} value={n.title} onPointerDown={(e) => e.stopPropagation()} onChange={(e) => patchNode(n.id, { title: e.target.value })} />
@@ -454,6 +462,7 @@ export default function Espace({ params }: { params: { id: string } }) {
           return (
             <div className="node-actions" style={{ left: view.x + n.x * view.z, top: Math.max(6, view.y + n.y * view.z - 50) }} onPointerDown={(e) => e.stopPropagation()}>
               <button onClick={() => duplicate(n.id)}><Copy size={15} /> Dupliquer</button>
+              {n.type === "title" && <button title="Régler le contour" onClick={() => patchNode(n.id, { outline: ((n.outline ?? 1) + 1) % 4 })}><Square size={15} /> Contour : {OUTLINE_LABELS[n.outline ?? 1]}</button>}
               <button className="danger" onClick={() => removeNode(n.id)}><Trash2 size={15} /> Supprimer</button>
             </div>
           );

@@ -818,6 +818,7 @@ button.primary {
 .board-tools button { padding: 8px 12px; font-size: 13px; }
 .bnode.title { background: transparent !important; border: none !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .bnode.title .bnode-head { border: none; }
+.bnode.title:not(.selected):not(.linking) { border: var(--ol-w, 1px) solid rgba(255, 255, 255, var(--ol-a, .14)) !important; }
 .bnode.title .bnode-head .lucide { display: none; }
 .bnode.title .bnode-title { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; }
 .bnode.title .bnode-body, .bnode.title .port { display: none; }
