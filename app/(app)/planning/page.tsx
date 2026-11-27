@@ -92,24 +92,6 @@ function Progress({ t, small }: { t: Task; small?: boolean }) {
     </span>
   );
 }
-// Liste des sous-tâches visible partout (cochables directement)
-function SubList({ t, onToggle, inline }: { t: Task; onToggle?: (subs: Sub[]) => void; inline?: boolean }) {
-  const subs = subsOf(t);
-  if (!subs.length) return null;
-  return (
-    <ul className={`sub-list ${inline ? "inline" : ""}`} onClick={(e) => e.stopPropagation()}>
-      {subs.map((s) => (
-        <li key={s.id} className={s.done ? "done" : ""}
-          onClick={() => onToggle?.(subs.map((x) => (x.id === s.id ? { ...x, done: !x.done } : x)))}
-          title={onToggle ? "Clic pour cocher / décocher" : undefined}>
-          <span className="sub-box">{s.done && <Check size={8} strokeWidth={4} />}</span>
-          <span className="sub-t">{s.title}</span>
-          {s.deliveryId && <Clapperboard size={10} className="sub-linked" aria-label="Livraison liée" />}
-        </li>
-      ))}
-    </ul>
-  );
-}
 // Couleur de la catégorie (le « projet ») : bordure + fond teinté de la vignette
 // Version plus vive des couleurs de catégorie, lisible sur fond noir (thème sombre)
 const DARK_COLORS: Record<string, string> = { Persos: "#2dd4bf", Gaming: "#c084fc", Clients: "#60a5fa", Admin: "#a8a29e", "Créa persos": "#ff8a3d" };
@@ -603,7 +585,7 @@ export default function Planning() {
     if (sp.ghost)
       return (
         <div className={`${cls} chip task ghost`} style={pos} title={`${t.title} · ${REPEATS[t.repeat]}`} onClick={(e) => { e.stopPropagation(); setViewing(t); }}>
-          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span><SubList t={{ ...t, subtasks: JSON.stringify(subsOf(t).map((x) => ({ ...x, done: false }))) }} inline={!block} />
+          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span>
         </div>
       );
     return (
@@ -619,7 +601,7 @@ export default function Planning() {
           {t.status === "done" && <Check size={9} strokeWidth={3.5} />}
         </span>
         <span className="chip-text">{t.title}</span>
-        <SubList t={t} inline={!block} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
+        <Progress t={t} small />
         {/* Compte à rebours aussi quand la fin est hors de la vue (barre coupée à droite) */}
         <span className={`span-end ${remainingLabel(t, today).urgent ? "urgent" : ""}`}>{remainingLabel(t, today).text}{!sp.tail && " →"}</span>
       </div>
@@ -647,7 +629,6 @@ export default function Planning() {
       {!late && timeOver(t) && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> en retard</span>}
       {late && <span className="late-badge"><AlertTriangle size={10} strokeWidth={2.5} /> {lateLabel(lateDays(t))}</span>}
       {t.repeat && <Repeat size={11} className="rep" aria-label={REPEATS[t.repeat]} />}
-      <SubList t={t} onToggle={(subs) => move(t.id, { subtasks: JSON.stringify(subs), ...(t.status === "todo" && subs.some((x) => x.done) ? { status: "doing" } : {}) })} />
     </div>
   );
 
@@ -751,7 +732,7 @@ export default function Planning() {
                       {onCal.filter((t) => !multiTask(t) && onDay(t, k)).map((t) => <TaskChip key={t.id} t={t} />)}
                       {ghostsOn(k).map((t) => (
                         <div key={`g-${t.id}`} className="chip task ghost" title={`${t.title} · ${REPEATS[t.repeat]}`} onClick={(e) => { e.stopPropagation(); setViewing(t); }}>
-                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span><SubList t={{ ...t, subtasks: JSON.stringify(subsOf(t).map((x) => ({ ...x, done: false }))) }} inline />
+                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.title}</span>
                         </div>
                       ))}
                     </div>
@@ -885,7 +866,7 @@ export default function Planning() {
                       {onCal.filter((t) => !multiTask(t) && !timed(t) && onDay(t, k)).map((t) => <TaskChip key={t.id} t={t} />)}
                       {ghostsOn(k).map((t) => (
                         <div key={`g-${t.id}`} className="chip task ghost" title={`${t.title} · ${REPEATS[t.repeat]}`} onClick={(e) => { e.stopPropagation(); setViewing(t); }}>
-                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.startTime && `${t.startTime} `}{t.title}</span><SubList t={{ ...t, subtasks: JSON.stringify(subsOf(t).map((x) => ({ ...x, done: false }))) }} />
+                          <Repeat size={11} className="rep-lead" /><span className="chip-text">{t.startTime && `${t.startTime} `}{t.title}</span>
                         </div>
                       ))}
                     </div>
