@@ -2278,3 +2278,91 @@ tr.inv-credit td:first-child::before { content: "↳"; position: absolute; left:
   .settings-card .row:not(.liv-actions) > .check { min-height: 40px; }
   .notice { position: sticky; top: calc(64px + env(safe-area-inset-top, 0px)); z-index: 5; }
 }
+
+
+/* =====================================================================
+   Refonte V29 : mise en page « dashboard » (couleurs et polices inchangées)
+   Voir docs/redesign-style-plan.md
+   ===================================================================== */
+:root {
+  --r-card: 22px; --r-ctrl: 999px;
+  --ink: #161412;               /* sombre de la palette, pour la sidebar et les éléments actifs */
+  --lift: 0 1px 2px rgba(60, 40, 20, .04), 0 8px 24px rgba(60, 40, 20, .06);
+  --lift-hover: 0 2px 4px rgba(60, 40, 20, .05), 0 16px 36px rgba(60, 40, 20, .10);
+}
+
+/* Bureau : sidebar flottante sombre, contenu à côté */
+@media (min-width: 761px) {
+  .shell { padding: 12px; gap: 12px; }
+  .sidebar {
+    width: 236px; border-radius: 26px; padding: 14px 10px !important;
+    background: var(--ink) !important; color: #f1ebe4; border: none !important;
+    box-shadow: 0 18px 40px rgba(22, 20, 18, .18) !important;
+  }
+  .main { border-radius: 26px; }
+}
+.sidebar .logo { color: #f1ebe4; font-size: 16px; padding: 8px 10px 14px; }
+.sidebar .logo .pt { background: #f1ebe4 !important; }
+.sidebar .section { color: rgba(241, 235, 228, .45); }
+.sidebar .section button { color: rgba(241, 235, 228, .7); }
+.sidebar .navitem { color: rgba(241, 235, 228, .72); border-radius: 14px; padding: 7px 12px; transition: background-color .15s, color .15s; }
+.sidebar .navitem .nav-ic { color: rgba(241, 235, 228, .5); }
+.sidebar .navitem:hover { background: rgba(255, 255, 255, .07); color: #f1ebe4; }
+.sidebar .navitem.active { background: rgba(255, 255, 255, .10) !important; color: #fff; box-shadow: none !important; border: 1px solid transparent !important; font-weight: 600; }
+.sidebar .navitem.active .nav-ic { color: var(--accent); }
+.sidebar .navitem.active::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: -6px; flex: none; }
+.sidebar .navitem .actions button { color: rgba(241, 235, 228, .6); background: none !important; }
+.sidebar .muted { color: rgba(241, 235, 228, .5); }
+
+/* Titres de page : grands, nets, la date ou le sur-titre en petit au-dessus */
+h1.title { font-weight: 600; letter-spacing: -0.035em; }
+.eyebrow { font-size: 12px; font-weight: 500; letter-spacing: .02em; }
+
+/* Cartes : rayon généreux, ombre douce, légère montée au survol */
+.card, .stat, .settings-card, .week, .cal-month, table:not(.db), .table-wrap, .bookmark, .gaccount {
+  border-radius: var(--r-card) !important; box-shadow: var(--lift) !important; border-color: transparent !important;
+}
+.stat, .settings-card, .card { transition: transform .2s cubic-bezier(.2, 0, 0, 1), box-shadow .2s cubic-bezier(.2, 0, 0, 1); }
+.stat:hover, .settings-card:hover { transform: translateY(-3px); box-shadow: var(--lift-hover) !important; }
+.card:hover { box-shadow: var(--lift-hover) !important; }
+.stat { padding: 22px !important; }
+.stat .v { font-size: 34px; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.col { border-radius: var(--r-card); }
+.bar { height: 8px; border-radius: 999px; }
+.bar > div { border-radius: 999px; background: var(--accent); }
+
+/* Contrôles en pilule */
+button, .gbutton { border-radius: var(--r-ctrl); }
+button.ghost { border-radius: 12px; }
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not(.cell-input), select { border-radius: 14px; }
+textarea { border-radius: 16px; }
+.block textarea { border-radius: 0; }
+
+/* Filtres segmentés : pilule sombre pour l'élément actif */
+.seg, .pl-seg { border-radius: 999px; background: rgba(28, 24, 20, .06); }
+.seg button, .pl-seg button { border-radius: 999px !important; }
+.seg button.on, .pl-seg button.on { background: var(--ink) !important; color: #f1ebe4 !important; box-shadow: none !important; }
+.cal-month { overflow: hidden; }
+.cal-month .cal { border-radius: 0 !important; box-shadow: none !important; }
+
+/* Badges et pastilles */
+.tag, .tag-chip { border-radius: 999px; padding: 1px 10px; }
+.nav-badge { background: var(--accent); color: #1C1814; }
+.chip { border-radius: 10px; }
+
+/* Fenêtres */
+.modal { border-radius: 28px !important; padding: 28px; }
+.overlay { background: rgba(22, 20, 18, .32) !important; }
+
+/* Entrée en douceur du contenu de chaque page */
+@keyframes v29-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.main > * { animation: v29-in .35s cubic-bezier(.2, 0, 0, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .main > *, .stat, .card, .settings-card { animation: none !important; transition: none !important; }
+}
+
+/* Téléphone : barre du haut et tiroir assortis */
+@media (max-width: 760px) {
+  .sidebar { background: var(--ink) !important; border: none !important; border-radius: 0 24px 24px 0; }
+  .topbar { background: rgba(243, 237, 228, .92) !important; }
+}

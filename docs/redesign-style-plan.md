@@ -17,6 +17,7 @@ Partout où la maquette met du corail, on met l'orange de l'app.
 - Mélange de cartes blanches, de cartes en dégradé corail et de quelques cartes noires
 - Sidebar en colonne noire étroite, icônes seules, pastille corail sur la page active
 - Barre du haut : date en petit, titre de page, recherche en pilule avec ⌘K, boutons ronds, avatar
+- Polices conservées : Inter (texte) et Playfair Display italique (mots d'accent)
 - Typo sans-serif moderne, grands titres légers, gros chiffres (ex. « $319K »)
 - Filtres en pilules avec compteurs, badges, avatars empilés, pilule noire pour l'élément actif
 - Animations douces : cartes qui remontent au survol, transitions de page (framer-motion si React)
