@@ -2364,7 +2364,10 @@ textarea { border-radius: 16px; }
 /* Téléphone : barre du haut et tiroir assortis */
 @media (max-width: 760px) {
   .sidebar { background: var(--ink) !important; border: none !important; border-radius: 0 24px 24px 0; }
-  .topbar { background: rgba(243, 237, 228, .92) !important; }
+  /* Menu ouvert : la page ne défile ni ne rebondit, la barre du haut reste collée en haut au-dessus du menu */
+  html:has(.sidebar.open), body:has(.sidebar.open) { overflow: hidden !important; overscroll-behavior: none; }
+  body:has(.sidebar.open) .topbar { position: fixed !important; top: 0; left: 0; right: 0; }
+  .sidebar { overscroll-behavior: contain; }
 }
 
 /* Refonte V29, passe 2 : Accueil et pages clients */
