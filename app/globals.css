@@ -2366,3 +2366,15 @@ textarea { border-radius: 16px; }
   .sidebar { background: var(--ink) !important; border: none !important; border-radius: 0 24px 24px 0; }
   .topbar { background: rgba(243, 237, 228, .92) !important; }
 }
+
+/* Refonte V29, passe 2 : Accueil et pages clients */
+.home-stat, .home-card, .home-tile {
+  border-radius: var(--r-card) !important; border-color: transparent !important; box-shadow: var(--lift) !important;
+  transition: transform .2s cubic-bezier(.2, 0, 0, 1), box-shadow .2s cubic-bezier(.2, 0, 0, 1);
+}
+.home-stat:hover, .home-tile:hover { transform: translateY(-3px); box-shadow: var(--lift-hover) !important; }
+.home-tile-ic { border-radius: 14px; }
+/* Pages clients (livraison, drop, espace, rendez-vous) : mêmes rayons, filet gardé en sombre pour la lisibilité */
+.rdv-card, .liv-hero, .liv-side, .liv-player, .liv-comment { border-radius: var(--r-card) !important; }
+.rdv:not(.liv-dark-solo) .rdv-card { border-color: transparent !important; box-shadow: var(--lift) !important; }
+@media (prefers-reduced-motion: reduce) { .home-stat, .home-tile { transition: none !important; } }
